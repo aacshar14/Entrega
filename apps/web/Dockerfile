@@ -11,5 +11,5 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
-EXPOSE 3000
-CMD ["npm", "start"]
+EXPOSE 8080
+CMD ["sh", "-c", "npm start -- -p ${PORT:-8080}"]
