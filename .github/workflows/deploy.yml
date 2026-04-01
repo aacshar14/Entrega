@@ -1,0 +1,66 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: entrega-468815 # Su ID de proyecto de Google Cloud
+  REGION: us-central1
+  API_IMAGE: gcr.io/entrega-468815/api
+  WEB_IMAGE: gcr.io/entrega-468815/web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Configure Docker
+      run: |-
+        gcloud auth configure-docker --quiet
+
+    # --- Backend Deploy ---
+    - name: Build API Container
+      run: |-
+        docker build -t $API_IMAGE ./apps/api
+
+    - name: Push API Container
+      run: |-
+        docker push $API_IMAGE
+
+    - name: Deploy API to Cloud Run
+      run: |-
+        gcloud run deploy entrega-api \
+          --image $API_IMAGE \
+          --region $REGION \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production"
+
+    # --- Frontend Deploy ---
+    - name: Build Web Container
+      run: |-
+        docker build -t $WEB_IMAGE ./apps/web --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
+
+    - name: Push Web Container
+      run: |-
+        docker push $WEB_IMAGE
+
+    - name: Deploy Web to Cloud Run
+      run: |-
+        gcloud run deploy entrega-web \
+          --image $WEB_IMAGE \
+          --region $REGION \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space"
