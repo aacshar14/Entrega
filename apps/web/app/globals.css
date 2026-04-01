@@ -5,41 +5,41 @@
 @tailwind utilities;
 
 :root {
-  --bg-main: #F4F7F9;
-  --sidebar-blue: #1E3146;
-  --sidebar-active: #2C425A;
-  --text-main: #2D3748;
-  --text-muted: #718096;
+  --navy-dark: #1D3146;
+  --navy-sidebar: #243B53;
+  --bg-app: #EBEEF2;
+  
+  --kpi-blue: #3E82CC;
+  --kpi-teal: #3B9193;
+  --kpi-red: #D24C41;
+  --kpi-orange: #EC8C34;
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
+  background-color: var(--bg-app);
+  color: #334155;
   font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer components {
-  .card-container {
-    @apply bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden;
+  .sidebar-icon {
+    @apply w-5 h-5 opacity-70;
   }
   
-  .kpi-card {
-    @apply rounded-lg p-5 text-white flex flex-col justify-between shadow-md;
+  .sidebar-link {
+    @apply flex items-center gap-4 px-6 py-4 text-slate-300 hover:text-white hover:bg-[#2C425A] transition-all text-[13px] font-semibold;
   }
-  
-  .sidebar-item {
-    @apply flex items-center gap-3 px-6 py-3.5 text-slate-300 hover:text-white hover:bg-[#2C425A] transition-all cursor-pointer text-sm font-medium;
-  }
-  
-  .sidebar-item-active {
+
+  .sidebar-link-active {
     @apply bg-[#2C425A] text-white border-l-4 border-blue-400;
   }
 
-  .table-header {
-    @apply bg-slate-50 text-slate-500 text-[11px] uppercase font-bold tracking-wider py-2 px-4;
+  .main-card {
+    @apply bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden;
   }
 
-  .table-row {
-    @apply border-b border-slate-100 py-3 px-4 text-sm hover:bg-slate-50;
+  .kpi-tile {
+    @apply rounded-xl p-5 text-white shadow-sm flex flex-col justify-between h-32 transition-transform hover:scale-105 cursor-default;
   }
 }

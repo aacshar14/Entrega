@@ -1,118 +1,166 @@
+'use client';
 import React from 'react';
+import { 
+  Truck, 
+  Banknote, 
+  AlertCircle, 
+  Package,
+  ChevronRight,
+  Handshake,
+  Settings2
+} from 'lucide-react';
 
 export default function Dashboard() {
   return (
-    <div className="space-y-8 max-w-[1280px]">
-      {/* 4 Cards de Colores (Top) */}
-      <section className="grid grid-cols-4 gap-6">
-        <div className="kpi-card bg-[#3182CE] border-l-4 border-blue-600">
+    <div className="space-y-8 max-w-[1400px]">
+      {/* 4 Cards Principales (Colores sólidos y degradados suaves) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="rounded-2xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-blue-500/10 transition-all hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-xs font-bold uppercase opacity-80">Entregas Hoy:</p>
-                 <h3 className="text-3xl font-black mt-1">15 <span className="text-sm font-medium opacity-70">productos</span></h3>
-                 <p className="text-[10px] mt-2 opacity-60 italic">30 productos totales</p>
+                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Entregas Hoy:</p>
+                 <h3 className="text-4xl font-extrabold mt-1">15 <span className="text-sm font-medium opacity-70">productos</span></h3>
               </div>
-              <span className="text-2xl bg-white/20 p-2 rounded-lg">🚚</span>
+              <div className="bg-white/20 p-2.5 rounded-xl">
+                <Truck size={24} />
+              </div>
            </div>
+           <p className="text-[12px] font-medium opacity-70">30 productos totales</p>
         </div>
 
-        <div className="kpi-card bg-[#319795] border-l-4 border-teal-600">
+        <div className="rounded-2xl p-6 bg-gradient-to-br from-teal-500 to-teal-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-teal-500/10 transition-all hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-xs font-bold uppercase opacity-80">Pagos Hoy:</p>
-                 <h3 className="text-3xl font-black mt-1">$5,200</h3>
-                 <p className="text-[10px] mt-2 opacity-60 italic">4 recibos</p>
+                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Pagos Hoy:</p>
+                 <h3 className="text-4xl font-extrabold mt-1">$5,200</h3>
               </div>
-              <span className="text-2xl bg-white/20 p-2 rounded-lg">💰</span>
+              <div className="bg-white/20 p-2.5 rounded-xl">
+                <Banknote size={24} />
+              </div>
            </div>
+           <p className="text-[12px] font-medium opacity-70">4 recibidos</p>
         </div>
 
-        <div className="kpi-card bg-[#E53E3E] border-l-4 border-red-700">
+        <div className="rounded-2xl p-6 bg-gradient-to-br from-rose-500 to-rose-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-rose-500/10 transition-all hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-xs font-bold uppercase opacity-80">Clientes con Adeudo:</p>
-                 <h3 className="text-3xl font-black mt-1">3</h3>
-                 <p className="text-[10px] mt-2 opacity-60 italic">Total $8,750</p>
+                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Clientes con Adeudo:</p>
+                 <h3 className="text-4xl font-extrabold mt-1">3</h3>
               </div>
-              <span className="text-2xl bg-white/20 p-2 rounded-lg">⚠️</span>
+              <div className="bg-white/20 p-2.5 rounded-xl">
+                <AlertCircle size={24} />
+              </div>
            </div>
+           <p className="text-[12px] font-medium opacity-70">Total $8,750</p>
         </div>
 
-        <div className="kpi-card bg-[#DD6B20] border-l-4 border-orange-700">
+        <div className="rounded-2xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-orange-500/10 transition-all hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-xs font-bold uppercase opacity-80">Stock Bajo:</p>
-                 <h3 className="text-3xl font-black mt-1">5</h3>
-                 <p className="text-[10px] mt-2 opacity-60 italic">Requiere atención</p>
+                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Stock Bajo:</p>
+                 <h3 className="text-4xl font-extrabold mt-1">5</h3>
               </div>
-              <span className="text-2xl bg-white/20 p-2 rounded-lg">📦</span>
+              <div className="bg-white/20 p-2.5 rounded-xl">
+                <Package size={24} />
+              </div>
            </div>
+           <p className="text-[12px] font-medium opacity-70 italic">Requiere atención</p>
         </div>
       </section>
 
-      <div className="grid grid-cols-12 gap-8 items-start">
+      {/* Grid de Contenido (Columnas 7/5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+         
          {/* Movimientos Recientes (Izquierda - 7/12) */}
-         <div className="col-span-12 lg:col-span-7 bg-white rounded-lg shadow-sm border border-slate-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-               <h3 className="font-bold text-slate-800 text-lg">Movimientos Recientes</h3>
-               <button className="text-xs font-bold text-blue-600 hover:underline">Ver todos &gt;</button>
-            </div>
-            
-            <div className="divide-y divide-slate-50 overflow-hidden">
-               {/* Hoy */}
-               <div className="bg-slate-50/50 px-6 py-2 border-b border-slate-50 text-[11px] font-black uppercase text-slate-400 tracking-wider">Hoy</div>
-               <div className="flex items-center justify-between p-4 px-8 hover:bg-slate-50 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                     <span className="text-xl">🚚</span>
-                     <div>
-                        <p className="text-sm font-bold text-slate-800">Entrega a Juan</p>
-                     </div>
-                  </div>
-                  <span className="font-black text-green-500 text-sm">+15 productos</span>
-               </div>
-               <div className="flex items-center justify-between p-4 px-8 hover:bg-slate-50 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                     <span className="text-xl">🤝</span>
-                     <div>
-                        <p className="text-sm font-bold text-slate-800">Pago recibo Ana</p>
-                     </div>
-                  </div>
-                  <span className="font-black text-red-500 text-sm">$1,500</span>
+         <div className="lg:col-span-7 space-y-8">
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+               <div className="p-8 pb-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Movimientos Recientes</h3>
+                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver todos <ChevronRight size={16} /></button>
                </div>
                
-               {/* 22/04/2024 */}
-               <div className="bg-slate-50/50 px-6 py-2 border-b border-slate-50 text-[11px] font-black uppercase text-slate-400 tracking-wider">22/04/2024</div>
-               <div className="flex items-center justify-between p-4 px-8 hover:bg-slate-50 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                     <span className="text-xl">🚚</span>
-                     <div>
-                        <p className="text-sm font-bold text-slate-800">Entrega a Carlos</p>
+               <div className="p-6 pt-0 space-y-1">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mb-2">Hoy</p>
+                  {[
+                    { icon: Truck, label: 'Entrega a Juan', sub: '+15 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { icon: Handshake, label: 'Pago recibo Ana', sub: '$1,500', color: 'text-orange-500', bg: 'bg-orange-50' },
+                  ].map((m, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
+                       <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
+                             <m.icon className={m.color} size={22} />
+                          </div>
+                          <div>
+                             <p className="text-base font-bold text-slate-900">{m.label}</p>
+                          </div>
+                       </div>
+                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
+                    </div>
+                  ))}
+
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">22/04/2024</p>
+                  {[
+                    { icon: Truck, label: 'Entrega a Carlos', sub: '+10 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { icon: Handshake, label: 'Pago recibo Luis', sub: '$2,000', color: 'text-orange-500', bg: 'bg-orange-50' },
+                  ].map((m, i) => (
+                    <div key={i+2} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
+                       <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
+                             <m.icon className={m.color} size={22} />
+                          </div>
+                          <div>
+                             <p className="text-base font-bold text-slate-900">{m.label}</p>
+                          </div>
+                       </div>
+                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
+                    </div>
+                  ))}
+
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">21/04/2024</p>
+                  <div className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
+                     <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm bg-slate-100`}>
+                           <Settings2 className="text-slate-500" size={22} />
+                        </div>
+                        <div>
+                           <p className="text-base font-bold text-slate-900">Ajuste de Stock</p>
+                        </div>
                      </div>
+                     <span className={`text-base font-black text-rose-500`}>-5 productos</span>
                   </div>
-                  <span className="font-black text-green-500 text-sm">+10 productos</span>
                </div>
-               <div className="flex items-center justify-between p-4 px-8 hover:bg-slate-50 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                     <span className="text-xl">🤝</span>
-                     <div>
-                        <p className="text-sm font-bold text-slate-800">Pago recibo Luis</p>
-                     </div>
-                  </div>
-                  <span className="font-black text-red-500 text-sm">$2,000</span>
-               </div>
+            </div>
+
+            {/* Resumen Semanal INDEPENDIENTE (como imagen) */}
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8">
+                <h4 className="text-lg font-extrabold text-slate-800 mb-6">Resumen Semanal</h4>
+                <div className="grid grid-cols-3 gap-6">
+                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Entregas:</p>
+                      <h4 className="text-4xl font-black text-slate-900">45</h4>
+                   </div>
+                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-center">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagos Recibidos:</p>
+                      <h4 className="text-4xl font-black text-emerald-500 leading-none">$12,800</h4>
+                   </div>
+                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-right">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Saldo Pendiente:</p>
+                      <h4 className="text-4xl font-black text-rose-500 leading-none">$8,750</h4>
+                   </div>
+                </div>
             </div>
          </div>
 
-         {/* Stock y Adeudos (Derecha - 5/12) */}
-         <div className="col-span-12 lg:col-span-5 space-y-8">
+         {/* Derecha - Tablas de Stock y Adeudos (5/12) */}
+         <div className="lg:col-span-5 space-y-8">
             {/* Stock Actual Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-800 text-md">Stock Actual</h3>
-                  <button className="text-[10px] font-black text-blue-600 hover:underline">Ver inventario &gt;</button>
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+               <div className="p-8 pb-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Stock Actual</h3>
+                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver inventario <ChevronRight size={16} /></button>
                </div>
                <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/80 items-center justify-between py-2 px-6 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
                      <span>Producto</span>
                      <span className="text-right">Disponible</span>
                   </div>
@@ -122,22 +170,22 @@ export default function Dashboard() {
                     { n: 'Galleta Crunch', q: '8' },
                     { n: 'Brownie Bites', q: '4' }
                   ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 p-4 px-6 border-b border-slate-50 items-center last:border-0 hover:bg-slate-50 transition-all">
-                       <span className="text-[13px] font-bold text-slate-800">{p.n}</span>
-                       <span className="text-right font-black text-slate-800">{p.q}</span>
+                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default">
+                       <span className="text-base font-bold text-slate-700">{p.n}</span>
+                       <span className="text-right text-lg font-black text-slate-900">{p.q}</span>
                     </div>
                   ))}
                </div>
             </div>
 
             {/* Adeudos por Cliente Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-800 text-md">Adeudos por Cliente</h3>
-                  <button className="text-[10px] font-black text-blue-600 hover:underline">Ver adeudos &gt;</button>
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+               <div className="p-8 pb-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Adeudos por Cliente</h3>
+                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver adeudos <ChevronRight size={16} /></button>
                </div>
                <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/80 items-center justify-between py-2 px-6 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
                      <span>Cliente</span>
                      <span className="text-right">Saldo Pendiente</span>
                   </div>
@@ -146,32 +194,11 @@ export default function Dashboard() {
                     { n: 'Carlos Pérez', a: '$2,750' },
                     { n: 'Luis García', a: '$2,500' }
                   ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 p-4 px-6 border-b border-slate-50 items-center last:border-0 hover:bg-slate-50 transition-all">
-                       <span className="text-[13px] font-bold text-slate-800">{p.n}</span>
-                       <span className="text-right font-black text-slate-800">{p.a}</span>
+                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default text-lg">
+                       <span className="text-base font-bold text-slate-700">{p.n}</span>
+                       <span className="text-right font-black text-slate-900">{p.a}</span>
                     </div>
                   ))}
-               </div>
-            </div>
-         </div>
-      </div>
-
-      {/* Resumen Semanal (Cajas de abajo) */}
-      <div className="grid grid-cols-12 gap-8">
-         <div className="col-span-12 lg:col-span-7 bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col gap-6">
-            <h4 className="font-bold text-slate-500 uppercase text-[11px] tracking-widest">Resumen Semanal</h4>
-            <div className="grid grid-cols-3 gap-6 items-center">
-               <div className="bg-slate-50 p-6 rounded-lg text-center border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">Entregas:</p>
-                  <h4 className="text-3xl font-black text-slate-800 mt-2 tracking-tighter">45</h4>
-               </div>
-               <div className="bg-slate-50 p-6 rounded-lg text-center border border-slate-100/50">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase">Pagos Recibidos:</p>
-                  <h4 className="text-3xl font-black text-emerald-600 mt-2 tracking-tighter">$12,800</h4>
-               </div>
-               <div className="bg-slate-50 p-6 rounded-lg text-center border border-slate-100/50">
-                  <p className="text-[10px] font-black text-red-400 uppercase">Saldo Pendiente:</p>
-                  <h4 className="text-3xl font-black text-red-600 mt-2 tracking-tighter">$8,750</h4>
                </div>
             </div>
          </div>
