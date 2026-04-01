@@ -25,18 +25,25 @@ def seed_data():
         else:
             print(f"✅ Tenant ChocoBites already exists: {tenant.id}")
 
-        # 2. Seed Admin User
-        user_stmt = select(User).where(User.email == "admin@chocobites.com")
-        user = session.exec(user_stmt).first()
-        if not user:
-            print("🌱 Seeding User: Admin ChocoBites...")
-            user = User(
-                tenant_id=tenant.id,
-                email="admin@chocobites.com",
-                full_name="Admin ChocoBites",
-                is_active=True
-            )
-            session.add(user)
+        # 2. Seed Users
+        users_to_seed = [
+            {"email": "owner@chocobites.mx", "name": "Owner ChocoBites", "role": "owner"},
+            {"email": "operador@chocobites.mx", "name": "Operador ChocoBites", "role": "operator"}
+        ]
+        
+        for user_data in users_to_seed:
+            user_stmt = select(User).where(User.email == user_data["email"])
+            user = session.exec(user_stmt).first()
+            if not user:
+                print(f"🌱 Seeding User: {user_data['name']}...")
+                user = User(
+                    tenant_id=tenant.id,
+                    email=user_data["email"],
+                    full_name=user_data["name"],
+                    is_active=True
+                )
+                session.add(user)
+        session.commit()
 
         # 3. Seed Pseudo-Customer: Tulos
         # We use a dummy phone for WhatsApp simulation
