@@ -5,10 +5,10 @@ on:
     branches: [ "main" ]
 
 env:
-  PROJECT_ID: entrega-468815 # Su ID de proyecto de Google Cloud
+  PROJECT_ID: entrega-468815
   REGION: us-central1
-  API_IMAGE: gcr.io/entrega-468815/api
-  WEB_IMAGE: gcr.io/entrega-468815/web
+  API_IMAGE: us-central1-docker.pkg.dev/entrega-468815/entrega-repo/api
+  WEB_IMAGE: us-central1-docker.pkg.dev/entrega-468815/entrega-repo/web
 
 jobs:
   deploy:
@@ -27,7 +27,7 @@ jobs:
 
     - name: Configure Docker
       run: |-
-        gcloud auth configure-docker --quiet
+        gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
     # --- Backend Deploy ---
     - name: Build API Container
