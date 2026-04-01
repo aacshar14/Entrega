@@ -1,5 +1,6 @@
 import React from 'react';
 import './globals.css';
+import Link from 'next/link';
 import { 
   LayoutDashboard, 
   Package, 
@@ -27,25 +28,33 @@ export default function RootLayout({
       <body className="flex min-h-screen bg-[#EBEEF2]">
         {/* Sidebar Azul Compacto */}
         <aside className="w-56 bg-[#1D3146] text-white flex flex-col fixed top-0 h-screen overflow-y-auto border-r border-slate-800">
-          <div className="p-8 pb-10 flex items-center gap-3">
-             <div className="bg-[#56CCF2] p-1 rounded-md shadow-lg shadow-[#56CCF2]/20 rotate-[-12deg]">
-               <Zap className="w-5 h-5 text-white" fill="white" /> 
+          <div className="p-8 pb-10 flex flex-col items-center gap-6">
+             <div className="flex items-center gap-3">
+                <div className="bg-[#56CCF2] p-1 rounded-md shadow-lg shadow-[#56CCF2]/20 rotate-[-12deg]">
+                  <Zap className="w-5 h-5 text-white" fill="white" /> 
+                </div>
+                <h1 className="text-xl font-black italic tracking-tighter text-white">EntréGA</h1>
              </div>
-             <h1 className="text-xl font-black italic tracking-tighter text-white">EntréGA</h1>
+             
+             {/* ChocoBites Pilot Logo Sidebar indicator */}
+             <div className="flex flex-col items-center gap-2 px-4 py-3 bg-white/5 rounded-2xl border border-white/10">
+                <img src="/chocobites.jpg" alt="ChocoBites" className="w-10 h-10 rounded-full border border-white/20" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]">ChocoBites Pilot</span>
+             </div>
           </div>
 
           <nav className="flex flex-col gap-1 px-3">
              {[
-               { icon: LayoutDashboard, label: 'Dashboard', active: true },
-               { icon: Package, label: 'Stock' },
-               { icon: Clock, label: 'Movimientos' },
-               { icon: CreditCard, label: 'Pagos' },
-               { icon: Users, label: 'Adeudos' },
-               { icon: FileText, label: 'Reportes' }
+               { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', active: true },
+               { icon: Package, label: 'Stock', href: '/stock' },
+               { icon: Clock, label: 'Movimientos', href: '/dashboard' },
+               { icon: CreditCard, label: 'Pagos', href: '/payments' },
+               { icon: Users, label: 'Adeudos', href: '/dashboard' },
+               { icon: FileText, label: 'Reportes', href: '/reports' }
              ].map((item, i) => (
-                <a 
+                <Link 
                   key={i} 
-                  href="#" 
+                  href={item.href} 
                   className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-sm font-semibold ${
                     item.active 
                     ? 'bg-[#2B4764] text-white' 
@@ -54,7 +63,7 @@ export default function RootLayout({
                 >
                    <item.icon size={18} className={item.active ? 'text-[#56CCF2]' : 'text-slate-400'} />
                    {item.label}
-                </a>
+                </Link>
              ))}
           </nav>
         </aside>
@@ -66,17 +75,23 @@ export default function RootLayout({
               <h2 className="text-lg font-bold text-white opacity-90 tracking-tight">Dashboard</h2>
               
               <div className="flex items-center gap-6">
-                 <div className="flex items-center gap-3 group cursor-pointer pr-6 border-r border-white/10">
-                    <img 
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
-                      alt="Admin" 
-                      className="w-8 h-8 rounded-full bg-slate-100/10 border border-white/20"
-                    />
-                    <div className="flex flex-col items-start leading-none gap-1">
-                      <span className="text-sm font-bold text-white">Admin</span>
+                 {/* Branding / User Profile */}
+                 <div className="flex items-center gap-4 group cursor-pointer pr-6 border-r border-white/10">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-xs font-black text-[#56CCF2] uppercase tracking-tighter">Pilot Account</p>
+                      <p className="text-sm font-bold text-white leading-none">ChocoBites</p>
+                    </div>
+                    <div className="relative">
+                      <img 
+                        src="/chocobites.jpg" 
+                        alt="Admin" 
+                        className="w-9 h-9 rounded-full border-2 border-[#56CCF2] shadow-lg shadow-white/5"
+                      />
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#1D3146] rounded-full"></span>
                     </div>
                     <ChevronDown size={14} className="text-slate-400" />
                  </div>
+
                  <div className="relative cursor-pointer hover:scale-110 transition-transform">
                    <Bell size={20} className="text-slate-400 hover:text-white" />
                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#56CCF2] rounded-full"></span>

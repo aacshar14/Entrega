@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import uuid4, UUID
 from sqlmodel import Session, create_engine, select
 from app.core.config import settings
 from app.models.models import Tenant, User, Customer, Product, StockBalance, CustomerBalance
@@ -15,6 +15,7 @@ def seed_data():
         if not tenant:
             print("🌱 Seeding Tenant: ChocoBites...")
             tenant = Tenant(
+                id=UUID("00000000-0000-0000-0000-000000000001"),
                 name="ChocoBites Pilot",
                 slug="chocobites"
             )
@@ -22,7 +23,7 @@ def seed_data():
             session.commit()
             session.refresh(tenant)
         else:
-            print("✅ Tenant ChocoBites already exists.")
+            print(f"✅ Tenant ChocoBites already exists: {tenant.id}")
 
         # 2. Seed Admin User
         user_stmt = select(User).where(User.email == "admin@chocobites.com")
