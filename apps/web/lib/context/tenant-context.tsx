@@ -23,6 +23,9 @@ interface Tenant {
   stock_imported: boolean;
   business_whatsapp_connected: boolean;
   ready: boolean;
+  whatsapp_status: string;
+  whatsapp_display_number?: string;
+  whatsapp_account_name?: string;
 }
 
 interface Membership {

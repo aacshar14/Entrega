@@ -290,33 +290,79 @@ export default function OnboardingPage() {
                </div>
                <p className="text-sm text-slate-500 mb-8 font-medium italic">Habilita avisos automáticos a tus clientes.</p>
                
-               <div className="space-y-4">
-                  <label htmlFor="wa_num" className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">WhatsApp del Negocio</label>
-                  <div className="relative">
-                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400">
-                        <MessageCircle size={20} />
-                     </div>
-                     <input 
-                       id="wa_num"
-                       type="tel" 
-                       placeholder="+52 1 878 123 4567" 
-                       className="w-full h-16 pl-14 pr-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
-                       value={formData.whatsapp}
-                       onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
-                       title="Ingresa el número de WhatsApp oficial"
-                     />
-                  </div>
-               </div>
-               
-               <div className="flex gap-4 mt-10">
-                  <button onClick={prevStep} className="py-5 px-6 text-slate-400 font-black rounded-2xl active:scale-95 transition-all" title="Regresar">
-                     <ArrowLeft size={20} />
-                  </button>
-                  <button onClick={handleConnectWhatsApp} disabled={!formData.whatsapp || loading} className="flex-grow py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30">
-                     {loading ? <Loader2 className="animate-spin text-white" /> : "Conectar y Finalizar"}
-                     <ArrowRight size={20} />
-                  </button>
-               </div>
+                <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-center">
+                   {activeTenant.whatsapp_status === 'connected' ? (
+                      <div className="animate-in zoom-in-95 duration-500">
+                         <div className="w-16 h-16 bg-[#56CCF2]/20 text-[#56CCF2] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle2 size={32} />
+                         </div>
+                         <h3 className="text-sm font-black text-[#1D3146] uppercase tracking-tight">¡WhatsApp Conectado!</h3>
+                         <p className="text-[10px] text-slate-400 font-bold mt-1">{activeTenant.whatsapp_account_name || activeTenant.name}</p>
+                         <p className="text-xs font-black text-[#1D3146] mt-2 underline decoration-[#56CCF2]">{activeTenant.whatsapp_display_number || formData.whatsapp}</p>
+                         
+                         <button 
+                           onClick={() => {
+                              setFormData({...formData, whatsapp: ''});
+                              apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id).then(() => refreshUser());
+                           }}
+                           className="mt-4 text-[10px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
+                         >
+                            Desconectar Cuenta
+                         </button>
+                      </div>
+                   ) : (
+                      <div className="py-4">
+                         <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <MessageCircle size={32} />
+                         </div>
+                         <p className="text-[11px] text-slate-500 font-medium mb-6 px-4">
+                            Conecta tu cuenta de <strong>WhatsApp Business</strong> para habilitar avisos automáticos.
+                         </p>
+                         
+                         <button 
+                           onClick={async () => {
+                              setLoading(true);
+                              try {
+                                 // Mocking the Meta OAuth popup/code exchange
+                                 const mockCode = 'meta_auth_code_' + Math.random().toString(36).substring(7);
+                                 await apiRequest('/whatsapp/auth/exchange', 'POST', { code: mockCode }, activeTenant.id);
+                                 await refreshUser();
+                              } catch (err: any) {
+                                 setError("Error al conectar con Meta: " + err.message);
+                              } finally {
+                                 setLoading(false);
+                              }
+                           }}
+                           disabled={loading}
+                           className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                         >
+                            {loading ? <Loader2 className="animate-spin" /> : (
+                               <>
+                                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12.001 2.002c-5.522 0-9.999 4.477-9.999 9.999 0 4.909 3.541 8.987 8.188 9.854V14.89h-2.54v-2.889h2.54V9.798c0-2.507 1.493-3.891 3.776-3.891 1.094 0 2.238.195 2.238.195v2.459h-1.26c-1.242 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.966c4.647-.867 8.188-4.945 8.188-9.854 0-5.522-4.477-9.999-9.999-9.999z"/>
+                                 </svg>
+                                 Conectar con Meta
+                               </>
+                            )}
+                         </button>
+                         <p className="text-[9px] text-slate-400 font-bold mt-4 tracking-tighter uppercase">Integración Oficial de WhatsApp Business Cloud API</p>
+                      </div>
+                   )}
+                </div>
+                
+                <div className="flex gap-4 mt-8">
+                   <button onClick={prevStep} className="py-5 px-6 text-slate-400 font-black rounded-2xl active:scale-95 transition-all" title="Regresar">
+                      <ArrowLeft size={20} />
+                   </button>
+                   <button 
+                     onClick={() => setStep(5)} 
+                     disabled={activeTenant.whatsapp_status !== 'connected'} 
+                     className="flex-grow py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30"
+                   >
+                      Finalizar Configuración
+                      <ArrowRight size={20} />
+                   </button>
+                </div>
             </div>
          )}
 

@@ -21,6 +21,9 @@ class TenantInfo(BaseModel):
     stock_imported: bool = False
     business_whatsapp_connected: bool = False
     ready: bool = False
+    whatsapp_status: str = "disconnected"
+    whatsapp_display_number: Optional[str] = None
+    whatsapp_account_name: Optional[str] = None
 
 class MembershipInfo(BaseModel):
     tenant: TenantInfo
@@ -60,7 +63,29 @@ class Tenant(SQLModel, table=True):
     business_whatsapp_connected: bool = Field(default=False)
     ready: bool = Field(default=False) 
     
+    # Meta WhatsApp Business Account (WABA) Info
+    whatsapp_status: str = Field(default="disconnected") 
+    whatsapp_connected_at: Optional[datetime] = None
+    
     created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
+
+class WhatsAppConfig(SQLModel, table=True):
+    """Secure per-tenant WhatsApp Business Cloud API configuration"""
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenant.id", unique=True, index=True)
+    
+    # Meta Identifiers
+    waba_id: Optional[str] = None
+    phone_number_id: Optional[str] = None
+    display_phone_number: Optional[str] = None
+    whatsapp_business_account_name: Optional[str] = None
+    
+    # Security
+    encrypted_access_token: Optional[str] = Field(default=None, description="AES-256 encrypted Meta Access Token")
+    
+    # Audit
+    connected_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class User(SQLModel, table=True):

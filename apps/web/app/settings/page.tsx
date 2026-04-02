@@ -146,28 +146,59 @@ export default function SettingsPage() {
                </div>
             </div>
 
-            <div className="space-y-6">
-               <div className="space-y-3">
-                  <label htmlFor="wa_num" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Número de Envío Academy</label>
-                  <div className="relative">
-                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400">
-                        <MessageCircle size={20} />
-                     </div>
-                     <input 
-                       id="wa_num"
-                       type="tel" 
-                       placeholder="+52 1 878 123 4567" 
-                       className="w-full h-16 pl-14 pr-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
-                       value={formData.whatsapp}
-                       onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
-                       title="WhatsApp oficial"
-                     />
+            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+               <div className="flex items-center gap-4 text-center md:text-left">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                     activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
+                     <MessageCircle size={24} />
                   </div>
-                  <p className="text-[10px] text-slate-400 font-medium px-2 italic">Usado para enviar comprobantes de pago y avisos de entrega.</p>
+                  <div>
+                     <h4 className="text-sm font-black text-[#1D3146] uppercase tracking-tight">
+                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Conectada') : 'No hay cuenta conectada'}
+                     </h4>
+                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">
+                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number) : 'Integra tu WhatsApp Business'}
+                     </p>
+                  </div>
                </div>
                
-               <button type="button" className="text-xs font-black text-[#56CCF2] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity">
-                  {activeTenant.business_whatsapp_connected ? '👉 Reconfigurar Conexión' : '👉 Conectar cuenta de Meta'}
+               <button 
+                  type="button"
+                  onClick={async () => {
+                     if (activeTenant.whatsapp_status === 'connected') {
+                        if (confirm('¿Estás seguro de que deseas desconectar tu cuenta de WhatsApp?')) {
+                           setLoading(true);
+                           await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
+                           await refreshUser();
+                           setLoading(false);
+                        }
+                        return;
+                     }
+                     
+                     setLoading(true);
+                     try {
+                        const mockCode = 'meta_auth_code_settings_' + Math.random().toString(36).substring(7);
+                        await apiRequest('/whatsapp/auth/exchange', 'POST', { code: mockCode }, activeTenant.id);
+                        await refreshUser();
+                        setSuccess(true);
+                        setTimeout(() => setSuccess(false), 3000);
+                     } catch (err: any) {
+                        setError("Error: " + err.message);
+                     } finally {
+                        setLoading(false);
+                     }
+                  }}
+                  disabled={loading}
+                  className={`px-6 py-3 font-black rounded-xl text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2 ${
+                     activeTenant.whatsapp_status === 'connected' 
+                     ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' 
+                     : 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
+                  }`}
+               >
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : (
+                     activeTenant.whatsapp_status === 'connected' ? 'Desconectar' : 'Conectar con Meta'
+                  )}
                </button>
             </div>
          </div>
