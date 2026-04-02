@@ -10,6 +10,17 @@ class Tenant(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(index=True)
     slug: str = Field(unique=True, index=True)
+    
+    # Business Metadata
+    business_name: Optional[str] = None
+    business_whatsapp_number: Optional[str] = None
+    
+    # Onboarding Readiness Flags
+    clients_imported: bool = Field(default=False)
+    stock_imported: bool = Field(default=False)
+    business_whatsapp_connected: bool = Field(default=False)
+    ready: bool = Field(default=False) # ready = clients && stock && whatsapp
+    
     created_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
