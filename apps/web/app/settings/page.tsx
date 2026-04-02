@@ -14,8 +14,8 @@ import {
   DollarSign,
   ArrowLeft
 } from 'lucide-react';
-import { useTenant } from '../../lib/context/TenantContext';
-import { apiRequest } from '../../lib/api';
+import { useTenant } from '@/lib/context/TenantContext';
+import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 
 export default function SettingsPage() {

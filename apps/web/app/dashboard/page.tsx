@@ -17,7 +17,7 @@ import {
   Zap,
   CheckCircle2
 } from 'lucide-react';
-import { useTenant } from '../../lib/context/TenantContext';
+import { useTenant } from '@/lib/context/TenantContext';
 
 export default function Dashboard() {
   const { user, activeTenant, memberships } = useTenant();
