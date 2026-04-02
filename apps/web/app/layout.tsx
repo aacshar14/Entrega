@@ -23,9 +23,10 @@ export const metadata = {
 
 // Mock Auth context for pilot implementation
 const getCurrentSession = () => {
+    // In production, this would come from a real session or cookie
     return {
-        user: { name: "Gonzalo Choco", role: "owner" },
-        tenant: { name: "ChocoBites" }
+        user: { name: "Owner ChocoBites", role: "owner" },
+        tenant: { name: "ChocoBites Pilot" }
     };
 };
 
@@ -68,7 +69,7 @@ export default function RootLayout({
              {/* Tenant Logo indicator */}
              <div className="flex flex-col items-center gap-2 px-6 py-4 bg-white/5 rounded-2xl border border-white/10 w-full">
                 <img src="/chocobites.jpg" alt={tenant.name} className="w-12 h-12 rounded-full border-2 border-white/20" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-[#56CCF2]">{tenant.name} Pilot</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-[#56CCF2] truncate max-w-full px-2">{tenant.name}</span>
              </div>
           </div>
 
