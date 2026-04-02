@@ -13,22 +13,25 @@ import {
   Search,
   TrendingUp,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
+import { useTenant } from '../../lib/context/TenantContext';
 
 export default function Dashboard() {
-  // Mock session for role-based testing
-  const user = { role: "owner" }; // or "operator"
+  const { user, activeTenant, memberships } = useTenant();
+  const userRole = user?.platform_role === 'admin' ? 'admin' : (memberships.find(m => m.tenant.id === activeTenant?.id)?.role || 'operator');
 
-  // Mock data for initial evolution
+  // KPI Cards
   const kpis = [
-    { label: 'Entregas Hoy', value: '15', sub: '30 productos', icon: Truck, color: 'bg-blue-500', shadow: 'shadow-blue-500/20', roles: ['owner', 'operator'] },
-    { label: 'Pagos Hoy', value: '$5,200', sub: '4 recibidos', icon: Banknote, color: 'bg-emerald-500', shadow: 'shadow-emerald-500/20', roles: ['owner', 'operator'] },
-    { label: 'Adeudos', value: '$8,750', sub: '3 clientes', icon: AlertCircle, color: 'bg-rose-500', shadow: 'shadow-rose-500/20', roles: ['owner'] },
-    { label: 'Stock Bajo', value: '5', sub: 'Atención req.', icon: Package, color: 'bg-orange-500', shadow: 'shadow-orange-500/20', roles: ['owner'] },
+    { label: 'Entregas Hoy', value: '15', sub: '30 productos', icon: Truck, color: 'bg-blue-500', shadow: 'shadow-blue-500/20', roles: ['admin', 'owner', 'operator'] },
+    { label: 'Pagos Hoy', value: '$5,200', sub: '4 recibidos', icon: Banknote, color: 'bg-emerald-500', shadow: 'shadow-emerald-500/20', roles: ['admin', 'owner', 'operator'] },
+    { label: 'Adeudos', value: '$8,750', sub: '3 clientes', icon: AlertCircle, color: 'bg-rose-500', shadow: 'shadow-rose-500/20', roles: ['admin', 'owner'] },
+    { label: 'Stock Bajo', value: '5', sub: 'Atención req.', icon: Package, color: 'bg-orange-500', shadow: 'shadow-orange-500/20', roles: ['admin', 'owner'] },
   ];
 
-  const visibleKpis = kpis.filter(k => k.roles.includes(user.role));
+  const visibleKpis = kpis.filter(k => k.roles.includes(userRole));
 
   const quickActions = [
     { label: 'Nueva Entrega', icon: Plus, href: '/operations', color: 'bg-[#1D3146]' },
@@ -38,31 +41,77 @@ export default function Dashboard() {
   ];
 
   const activities = [
-    { type: 'delivery', client: 'Juan Lopez', detail: '+15 ChocoBites', time: 'hace 10 min', amount: null },
+    { type: 'delivery', client: 'Juan Lopez', detail: '+15 Unidades', time: 'hace 10 min', amount: null },
     { type: 'payment', client: 'Ana Perez', detail: 'Pago recibido', time: 'hace 2h', amount: '$1,500' },
-    { type: 'adjustment', client: 'Inventario', detail: 'Ajuste manual', time: 'hace 4h', amount: '-5 und' },
   ];
 
   return (
     <div className="space-y-10 pb-10">
       
-      {/* 1. Header & Welcome (Mobile Friendly) */}
-      <section className="flex items-center justify-between">
+      {/* 1. Header & Welcome */}
+      <section className="flex flex-col md:flex-row md:items-center justify-between gap-6">
          <div className="space-y-1">
-            <h2 className="text-2xl md:text-4xl font-black text-[#1D3146] tracking-tight">Hola, Leonardo 👋</h2>
-            <p className="text-sm md:text-base text-slate-500 font-medium italic">Esto es lo que sucede hoy en ChocoBites.</p>
+            <h2 className="text-2xl md:text-4xl font-black text-[#1D3146] tracking-tight">Hola, {user?.full_name.split(' ')[0]} 👋</h2>
+            <p className="text-sm md:text-base text-slate-500 font-medium italic">Esto es lo que sucede hoy en {activeTenant?.name}.</p>
          </div>
-         <div className="hidden md:flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100 items-center gap-3 pr-6">
-            <div className="bg-[#56CCF2]/20 p-2 rounded-xl text-[#56CCF2]">
-               <TrendingUp size={20} />
-            </div>
-            <p className="text-xs font-black uppercase tracking-widest text-[#1D3146]">+12.5% vs ayer</p>
-         </div>
+         {activeTenant?.ready && (
+           <div className="hidden md:flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100 items-center gap-3 pr-6">
+              <div className="bg-[#56CCF2]/20 p-2 rounded-xl text-[#56CCF2]">
+                 <TrendingUp size={20} />
+              </div>
+              <p className="text-xs font-black uppercase tracking-widest text-[#1D3146]">Operación Lista</p>
+           </div>
+         )}
       </section>
 
-      {/* 2. KPI Cards - Responsive Grid */}
+      {/* 2. Onboarding Checklist (Setup Wizard Integration) */}
+      {!activeTenant?.ready && (
+        <section className="bg-[#1D3146] rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group">
+           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div className="space-y-6">
+                 <div className="flex items-center gap-3">
+                    <span className="bg-[#56CCF2] p-2 rounded-xl text-[#1D3146]">
+                       <Zap size={24} fill="currentColor" />
+                    </span>
+                    <h3 className="text-2xl md:text-3xl font-black tracking-tight">Activar Mi Negocio</h3>
+                 </div>
+                 <p className="text-slate-300 text-sm leading-relaxed max-w-md">Completa los pasos de la <b>EntréGA Academy</b> para habilitar el registro de operaciones y cobros en {activeTenant?.name}.</p>
+                 <Link href="/onboarding" className="inline-flex items-center gap-3 px-8 py-4 bg-[#56CCF2] text-[#1D3146] font-black rounded-2xl text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#56CCF2]/20">
+                    Ir a la Academy <ChevronRight size={18} />
+                 </Link>
+              </div>
+              
+              <div className="space-y-4">
+                 {[
+                   { label: 'Importar Clientes', done: activeTenant?.clients_imported, step: 2 },
+                   { label: 'Sincronizar Stock', done: activeTenant?.stock_imported, step: 3 },
+                   { label: 'Conectar WhatsApp', done: activeTenant?.business_whatsapp_connected, step: 4 },
+                 ].map((task, i) => (
+                   <div key={i} className={`p-4 rounded-2xl border flex items-center justify-between group/task transition-all ${
+                     task.done ? 'bg-white/10 border-white/20' : 'bg-white/5 border-white/5'
+                   }`}>
+                      <div className="flex items-center gap-4">
+                         <div className={`p-2 rounded-lg ${task.done ? 'bg-green-500' : 'bg-white/10'}`}>
+                            {task.done ? <CheckCircle2 size={16} /> : <div className="w-4 h-4 rounded-full border-2 border-white/30" />}
+                         </div>
+                         <span className={`text-xs font-bold ${task.done ? 'text-white' : 'text-slate-400'}`}>{task.label}</span>
+                      </div>
+                      {!task.done && (
+                        <Link href={`/onboarding?step=${task.step}`} className="text-[10px] uppercase font-black tracking-widest text-[#56CCF2] opacity-0 group-hover/task:opacity-100 transition-opacity">Completar</Link>
+                      )}
+                   </div>
+                 ))}
+              </div>
+           </div>
+           <div className="absolute -right-20 -bottom-20 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+              <Zap size={300} />
+           </div>
+        </section>
+      )}
+
+      {/* 3. KPI Cards */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-         {kpis.map((kpi, i) => (
+         {visibleKpis.map((kpi, i) => (
             <div key={i} className={`${kpi.color} ${kpi.shadow} rounded-[2rem] p-5 md:p-8 text-white flex flex-col justify-between h-40 md:h-48 transition-all hover:scale-[1.03] active:scale-95 cursor-pointer`}>
                <div className="flex justify-between items-start">
                   <div className="bg-white/20 p-2 md:p-3 rounded-2xl">
@@ -72,19 +121,25 @@ export default function Dashboard() {
                </div>
                <div>
                   <p className="text-[10px] md:text-xs font-black uppercase tracking-widest opacity-80 mb-1">{kpi.label}</p>
-                  <h3 className="text-2xl md:text-4xl font-black leading-none">{kpi.value}</h3>
-                  <p className="text-[10px] md:text-xs font-semibold opacity-60 mt-1">{kpi.sub}</p>
+                  <h3 className="text-2xl md:text-4xl font-black leading-none">{activeTenant?.ready ? kpi.value : '0'}</h3>
+                  <p className="text-[10px] md:text-xs font-semibold opacity-60 mt-1">{activeTenant?.ready ? kpi.sub : 'Pendiente'}</p>
                </div>
             </div>
          ))}
       </section>
 
-      {/* 3. Quick Actions (Mobile UI Priority) */}
+      {/* 4. Quick Actions */}
       <section className="space-y-4">
-         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 px-1">Acciones Rápidas</h3>
+         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 px-1">Gestión Central</h3>
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickActions.map((action, i) => (
-               <Link key={i} href={action.href} className="flex flex-col items-center justify-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200 transition-all active:scale-95 group">
+               <Link 
+                 key={i} 
+                 href={activeTenant?.ready || action.href === '/customers' || action.href === '/stock' ? action.href : '#'} 
+                 className={`flex flex-col items-center justify-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all active:scale-95 group ${
+                   !activeTenant?.ready && action.href.startsWith('/operations') ? 'opacity-30 cursor-not-allowed' : 'hover:shadow-xl'
+                 }`}
+               >
                   <div className={`${action.color} p-4 rounded-2xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
                      <action.icon size={24} />
                   </div>
@@ -94,24 +149,22 @@ export default function Dashboard() {
          </div>
       </section>
 
-      {/* 4. Activity Feed (Feed-style Cards) */}
+      {/* 5. Activities Feed */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          <div className="lg:col-span-12 space-y-4">
             <div className="flex items-center justify-between px-2">
-               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Actividad Reciente</h3>
+               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Actividad del Negocio</h3>
                <Link href="/movements" className="text-xs font-black text-[#56CCF2] uppercase tracking-widest flex items-center gap-1 hover:underline">Ver Todo <ChevronRight size={14} /></Link>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {activities.map((act, i) => (
+               {activeTenant?.ready ? activities.map((act, i) => (
                   <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 cursor-pointer">
                      <div className="flex items-center gap-4">
                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
-                           act.type === 'delivery' ? 'bg-blue-50 text-blue-500' :
-                           act.type === 'payment' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'
+                           act.type === 'delivery' ? 'bg-blue-50 text-blue-500' : 'bg-emerald-50 text-emerald-500'
                         }`}>
-                           {act.type === 'delivery' ? <Truck size={24} /> : 
-                            act.type === 'payment' ? <Handshake size={24} /> : <Package size={24} />}
+                           {act.type === 'delivery' ? <Truck size={24} /> : <Handshake size={24} />}
                         </div>
                         <div>
                            <p className="text-sm font-black text-[#1D3146] leading-tight">{act.client}</p>
@@ -119,48 +172,13 @@ export default function Dashboard() {
                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{act.time}</p>
                         </div>
                      </div>
-                     {act.amount && (
-                        <div className={`text-sm font-black px-3 py-1 rounded-full ${
-                           act.amount.startsWith('$') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                        }`}>
-                           {act.amount}
-                        </div>
-                     )}
                   </div>
-               ))}
-            </div>
-         </div>
-
-         {/* Alerts & Urgent Focus (Mobile only shows top summary, Desktop shows details) */}
-         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-            <div className="bg-[#1D3146] p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-               <div className="relative z-10">
-                  <div className="flex items-center gap-2 text-rose-400 mb-4">
-                     <AlertCircle size={20} />
-                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prioridad: Adeudos Vencidos</span>
-                  </div>
-                  <h4 className="text-3xl font-black text-white leading-tight mb-2">3 Clientes en mora</h4>
-                  <p className="text-slate-400 text-sm font-medium mb-6">Total pendiente de cobro: <span className="text-white font-bold">$8,750.00</span></p>
-                  <button className="px-6 py-3 bg-[#56CCF2] text-[#1D3146] font-extrabold rounded-2xl shadow-lg hover:scale-105 transition-all active:scale-95">Gestionar Cobros</button>
-               </div>
-               <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                  <Banknote size={200} />
-               </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
-               <div className="relative z-10">
-                  <div className="flex items-center gap-2 text-orange-500 mb-4">
-                     <Package size={20} />
-                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prioridad: Stock Crítico</span>
-                  </div>
-                  <h4 className="text-3xl font-black text-[#1D3146] leading-tight mb-2">5 SKUs por agotar</h4>
-                  <p className="text-slate-500 text-sm font-medium mb-6">Productos como <span className="text-[#1D3146] font-bold">Brownie Bites</span> requieren restock.</p>
-                  <button className="px-6 py-3 bg-white border-2 border-[#1D3146] text-[#1D3146] font-extrabold rounded-2xl hover:bg-[#1D3146] hover:text-white transition-all active:scale-95">Ver Inventario</button>
-               </div>
-               <div className="absolute -right-10 top-0 opacity-5 group-hover:rotate-12 transition-transform duration-700">
-                  <AlertCircle size={150} />
-               </div>
+               )) : (
+                 <div className="col-span-full py-20 text-center bg-white rounded-[2rem] border border-dashed border-slate-200">
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest italic">No hay actividad para mostrar</p>
+                    <p className="text-xs text-slate-300 mt-2">Completa el onboarding para comenzar.</p>
+                 </div>
+               )}
             </div>
          </div>
       </section>

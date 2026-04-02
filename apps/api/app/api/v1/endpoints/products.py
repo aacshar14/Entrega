@@ -1,37 +1,60 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, require_roles
-from app.models.models import User, Product, StockBalance, InventoryMovement
+from app.core.dependencies import get_current_user, get_active_tenant
+from app.models.models import User, Tenant, Product, StockBalance, InventoryMovement
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
+from pydantic import BaseModel
 import csv
 import io
 
 router = APIRouter()
 
-@router.get("/", response_model=List[Product], dependencies=[Depends(require_roles(["owner", "operator"]))])
+class ProductImportRow(BaseModel):
+    sku: Optional[str] = None
+    name: str
+    quantity: float = 0.0
+    price: float = 0.0
+
+class ProductImportPreviewRow(BaseModel):
+    row_index: int
+    data: ProductImportRow
+    is_valid: bool
+    errors: List[str] = []
+    is_duplicate: bool = False
+
+class ProductImportPreviewResponse(BaseModel):
+    total_rows: int
+    valid_rows_count: int
+    invalid_rows_count: int
+    duplicate_rows_count: int
+    rows: List[ProductImportPreviewRow]
+
+class ProductImportCommitRequest(BaseModel):
+    rows: List[ProductImportRow]
+
+@router.get("/", response_model=List[Product])
 async def list_products(
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """List all products (owner, operator)."""
+    """List all products for the active tenant."""
     products = db.exec(
-        select(Product).where(Product.tenant_id == current_user.tenant_id)
+        select(Product).where(Product.tenant_id == active_tenant.id)
     ).all()
     return products
 
-@router.get("/stock", dependencies=[Depends(require_roles(["owner", "operator"]))])
+@router.get("/stock")
 async def list_products_stock(
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
     """List products with current stock levels."""
-    # Query products joined with their stock balances
     statement = select(Product, StockBalance.quantity).join(
         StockBalance, Product.id == StockBalance.product_id, isouter=True
-    ).where(Product.tenant_id == current_user.tenant_id)
+    ).where(Product.tenant_id == active_tenant.id)
     
     results = db.exec(statement).all()
     
@@ -46,51 +69,110 @@ async def list_products_stock(
         for p, q in results
     ]
 
-@router.post("/bulk-import", dependencies=[Depends(require_roles(["owner"]))])
-async def bulk_import_products(
+@router.post("/import/preview", response_model=ProductImportPreviewResponse)
+async def import_products_preview(
     file: UploadFile = File(...),
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """
-    Bulk import products and initial stock from CSV.
-    Headers: name,sku,price,initial_stock,category
-    """
+    """Step 1: Preview CSV data for product/stock import."""
     content = await file.read()
     string_io = io.StringIO(content.decode('utf-8'))
     reader = csv.DictReader(string_io)
     
-    tenant_id = current_user.tenant_id
+    existing_products = db.exec(
+        select(Product).where(Product.tenant_id == active_tenant.id)
+    ).all()
+    existing_skus = {p.sku.lower() for p in existing_products if p.sku}
+    existing_names = {p.name.lower() for p in existing_products}
+    
+    rows_preview = []
+    total = 0
+    valid_count = 0
+    invalid_count = 0
+    duplicate_count = 0
+    
+    for i, row in enumerate(reader, 1):
+        total += 1
+        errors = []
+        name = row.get("name", "").strip()
+        sku = row.get("sku", "").strip()
+        quantity_str = row.get("quantity", "0").strip()
+        price_str = row.get("price", "0").strip()
+        
+        if not name:
+            errors.append("Product name is required")
+            
+        try:
+            qty = float(quantity_str)
+        except ValueError:
+            errors.append("Quantity must be numeric")
+            qty = 0
+            
+        try:
+            prc = float(price_str)
+        except ValueError:
+            errors.append("Price must be numeric")
+            prc = 0
+            
+        is_duplicate = False
+        if name.lower() in existing_names or (sku and sku.lower() in existing_skus):
+            is_duplicate = True
+            duplicate_count += 1
+            
+        is_valid = len(errors) == 0
+        if is_valid:
+            valid_count += 1
+        else:
+            invalid_count += 1
+            
+        rows_preview.append(ProductImportPreviewRow(
+            row_index=i,
+            data=ProductImportRow(
+                sku=sku,
+                name=name,
+                quantity=qty,
+                price=prc
+            ),
+            is_valid=is_valid,
+            errors=errors,
+            is_duplicate=is_duplicate
+        ))
+        
+    return ProductImportPreviewResponse(
+        total_rows=total,
+        valid_rows_count=valid_count,
+        invalid_rows_count=invalid_count,
+        duplicate_rows_count=duplicate_count,
+        rows=rows_preview
+    )
+
+@router.post("/import/commit")
+async def import_products_commit(
+    request: ProductImportCommitRequest,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
+):
+    """Step 2: Commit valid product rows to the database."""
+    tenant_id = active_tenant.id
     created_count = 0
     updated_count = 0
     
-    for row in reader:
-        name = row.get("name", "").strip()
-        sku = row.get("sku", "").strip()
-        price_str = row.get("price", "0").strip()
-        initial_stock_str = row.get("initial_stock", "0").strip()
+    for row in request.rows:
+        # Simple upsert logic for products
+        product = db.exec(
+            select(Product).where(Product.tenant_id == tenant_id, Product.name == row.name)
+        ).first()
         
-        if not name:
-            continue
-            
-        try:
-            price = float(price_str)
-            initial_stock = float(initial_stock_str)
-        except ValueError:
-            price = 0.0
-            initial_stock = 0.0
-            
-        # Check if product exists by SKU (if provided) or Name
-        product = None
-        if sku:
-            product = db.exec(select(Product).where(Product.tenant_id == tenant_id, Product.sku == sku)).first()
-        
-        if not product:
-            product = db.exec(select(Product).where(Product.tenant_id == tenant_id, Product.name == name)).first()
-            
+        if not product and row.sku:
+             product = db.exec(
+                select(Product).where(Product.tenant_id == tenant_id, Product.sku == row.sku)
+            ).first()
+             
         if product:
-            product.price = price
-            product.sku = sku
+            product.price = row.price
+            if row.sku: product.sku = row.sku
             product.updated_by_user_id = current_user.id
             product.updated_at = datetime.now(timezone.utc)
             db.add(product)
@@ -98,59 +180,56 @@ async def bulk_import_products(
         else:
             product = Product(
                 tenant_id=tenant_id,
-                name=name,
-                sku=sku,
-                price=price,
+                name=row.name,
+                sku=row.sku,
+                price=row.price,
                 created_by_user_id=current_user.id
             )
             db.add(product)
-            db.flush() # Get product ID
+            db.flush()
             created_count += 1
             
-        # Handle stock
-        if initial_stock != 0:
+        # Add stock
+        if row.quantity != 0:
             balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
             if balance:
-                # If product existed, we could choose to add or overwrite. 
-                # For bulk import of "initial stock", we usually set it.
-                balance.quantity = initial_stock
+                balance.quantity += row.quantity
                 balance.updated_by_user_id = current_user.id
                 balance.last_updated = datetime.now(timezone.utc)
-                db.add(balance)
             else:
                 balance = StockBalance(
                     tenant_id=tenant_id,
                     product_id=product.id,
-                    quantity=initial_stock,
+                    quantity=row.quantity,
                     updated_by_user_id=current_user.id
                 )
-                db.add(balance)
+            db.add(balance)
             
-            # Record movement
             movement = InventoryMovement(
                 tenant_id=tenant_id,
                 product_id=product.id,
-                quantity=initial_stock,
+                quantity=row.quantity,
                 type="adjustment",
-                description="Importación Masiva Inicial",
+                description="Importación Masiva Academy",
                 created_by_user_id=current_user.id
             )
             db.add(movement)
             
     db.commit()
-    return {"created": created_count, "updated": updated_count}
+    return {"status": "success", "created": created_count, "updated": updated_count}
 
-@router.post("/", response_model=Product, dependencies=[Depends(require_roles(["owner"]))])
+@router.post("/", response_model=Product)
 async def create_product(
     name: str,
     price: float,
     sku: Optional[str] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """Create a new product (owner only)."""
+    """Create a new product for the active tenant."""
     new_product = Product(
-        tenant_id=current_user.tenant_id,
+        tenant_id=active_tenant.id,
         name=name,
         price=price,
         sku=sku,
@@ -161,18 +240,19 @@ async def create_product(
     db.refresh(new_product)
     return new_product
 
-@router.patch("/{id}", response_model=Product, dependencies=[Depends(require_roles(["owner"]))])
+@router.patch("/{id}", response_model=Product)
 async def update_product(
     id: UUID,
     name: Optional[str] = None,
     price: Optional[float] = None,
     sku: Optional[str] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """Update a product (owner only)."""
+    """Update a product for the active tenant."""
     product = db.get(Product, id)
-    if not product or product.tenant_id != current_user.tenant_id:
+    if not product or product.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
     
     if name is not None:

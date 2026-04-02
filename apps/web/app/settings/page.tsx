@@ -1,188 +1,227 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   MessageCircle, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCcw, 
   Save, 
-  ChevronRight,
-  ShieldCheck,
-  Bell,
-  Database,
+  Settings as SettingsIcon, 
+  Smartphone,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Globe,
+  DollarSign,
   ArrowLeft
 } from 'lucide-react';
+import { useTenant } from '../../lib/context/TenantContext';
+import { apiRequest } from '../../lib/api';
 import Link from 'next/link';
 
 export default function SettingsPage() {
+  const { activeTenant, refreshUser } = useTenant();
   const [loading, setLoading] = useState(false);
-  const [whatsappStatus, setWhatsappStatus] = useState<'connected' | 'not_connected' | 'pending' | 'error'>('connected');
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const [businessData, setBusinessData] = useState({
-    name: 'ChocoBites Pilot México',
-    whatsapp: '+52 1 878 123 4567',
-    email: 'contacto@chocobites.mx'
+  const [formData, setFormData] = useState({
+    name: activeTenant?.name || '',
+    whatsapp: activeTenant?.business_whatsapp_number || '',
+    timezone: 'America/Mexico_City',
+    currency: 'MXN'
   });
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (activeTenant) {
+      setFormData({
+        name: activeTenant.name,
+        whatsapp: activeTenant.business_whatsapp_number || '',
+        timezone: 'America/Mexico_City',
+        currency: 'MXN'
+      });
+    }
+  }, [activeTenant]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTenant) return;
     setLoading(true);
-    setTimeout(() => {
-        setLoading(true);
-        alert("Configuración guardada correctamente");
-        setLoading(false);
-    }, 1000);
+    setSuccess(false);
+    setError(null);
+    try {
+      await apiRequest('/tenants/active', 'PATCH', {
+        name: formData.name,
+        business_whatsapp_number: formData.whatsapp
+      }, activeTenant.id);
+      await refreshUser();
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Error al guardar configuración");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  if (!activeTenant) return null;
+
   return (
-    <div className="max-w-4xl mx-auto space-y-12 pb-12 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-10 pb-20 animate-in fade-in duration-500">
       
       {/* Header Contextual */}
       <div className="flex items-center gap-6">
          <Link href="/dashboard" className="p-4 bg-white rounded-2xl border border-slate-100 text-slate-400 hover:text-[#1D3146] transition-colors shadow-sm active:scale-95">
             <ArrowLeft size={20} />
          </Link>
-         <div>
-            <h1 className="text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
-               Configuración General
-            </h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestión Central ChocoBites</p>
+         <div className="space-y-1">
+            <h2 className="text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
+               <div className="bg-[#1D3146] p-2 rounded-xl text-[#56CCF2]">
+                  <SettingsIcon size={24} />
+               </div>
+               Configuración
+            </h2>
+            <p className="text-sm text-slate-500 font-medium italic underline decoration-[#56CCF2]/30">Gestión de la plataforma operativa de {activeTenant.name}.</p>
          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {success && (
+        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3 text-emerald-600 text-xs font-bold animate-in slide-in-from-top-4">
+           <CheckCircle2 size={18} />
+           ¡Configuración guardada correctamente!
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold animate-in slide-in-from-top-4">
+           <AlertCircle size={18} />
+           {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-12 gap-8">
          
-         {/* Main Settings Form */}
-         <div className="lg:col-span-8 space-y-8">
+         {/* Business Identitiy */}
+         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
+               <Building2 size={16} /> Identidad del Negocio
+            </h3>
             
-            {/* Section 1: Business Profile */}
-            <section className="bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-100 shadow-sm space-y-8">
-               <div className="flex items-center gap-4 border-b border-slate-50 pb-6">
-                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-500 shadow-inner">
-                     <Building2 size={24} />
-                  </div>
-                  <h3 className="text-lg font-black text-[#1D3146] tracking-tight uppercase text-xs tracking-[0.2em] opacity-40">Perfil del Negocio</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-3">
+                  <label htmlFor="biz_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Comercial</label>
+                  <input 
+                    id="biz_name"
+                    type="text" 
+                    className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    title="Nombre del negocio"
+                  />
                </div>
-               
-               <div className="space-y-6">
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Comercial</label>
+               <div className="space-y-3">
+                  <label htmlFor="biz_slug" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Slug (ID Único)</label>
+                  <input 
+                    id="biz_slug"
+                    type="text" 
+                    readOnly
+                    className="w-full h-16 px-6 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-400 outline-none cursor-not-allowed"
+                    value={activeTenant.slug}
+                    title="Slug del negocio"
+                  />
+               </div>
+            </div>
+         </div>
+
+         {/* WhatsApp Section */}
+         <div className="md:col-span-8 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-8">
+               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-2">
+                  <Smartphone size={16} /> WhatsApp del Negocio
+               </h3>
+               <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                  activeTenant.business_whatsapp_connected ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+               }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${activeTenant.business_whatsapp_connected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                  {activeTenant.business_whatsapp_connected ? 'Conectado' : 'No Conectado'}
+               </div>
+            </div>
+
+            <div className="space-y-6">
+               <div className="space-y-3">
+                  <label htmlFor="wa_num" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Número de Envío Academy</label>
+                  <div className="relative">
+                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400">
+                        <MessageCircle size={20} />
+                     </div>
                      <input 
-                        type="text" 
-                        value={businessData.name}
-                        onChange={(e) => setBusinessData({...businessData, name: e.target.value})}
-                        className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none focus:ring-4 focus:ring-[#56CCF2]/10 transition-all"
+                       id="wa_num"
+                       type="tel" 
+                       placeholder="+52 1 878 123 4567" 
+                       className="w-full h-16 pl-14 pr-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                       value={formData.whatsapp}
+                       onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
+                       title="WhatsApp oficial"
                      />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email Operativo</label>
-                        <input 
-                           type="email" 
-                           value={businessData.email}
-                           onChange={(e) => setBusinessData({...businessData, email: e.target.value})}
-                           className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
-                        />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">País / Moneda</label>
-                        <select className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none appearance-none">
-                           <option>México (MXN)</option>
-                           <option>Colombia (COP)</option>
-                           <option>USA (USD)</option>
-                        </select>
-                     </div>
-                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium px-2 italic">Usado para enviar comprobantes de pago y avisos de entrega.</p>
                </div>
-            </section>
-
-            {/* Section 2: WhatsApp Connection (KEY PILOT FEATURE) */}
-            <section className="bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-100 shadow-sm space-y-8 relative overflow-hidden">
-               <div className="flex items-center justify-between border-b border-slate-50 pb-6">
-                  <div className="flex items-center gap-4">
-                     <div className="bg-green-50 p-3 rounded-2xl text-green-500 shadow-inner">
-                        <MessageCircle size={24} fill="currentColor" className="opacity-20" />
-                     </div>
-                     <h3 className="text-lg font-black text-[#1D3146] tracking-tight uppercase text-xs tracking-[0.2em] opacity-40">WhatsApp del Negocio</h3>
-                  </div>
-                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm flex items-center gap-1.5 ${
-                     whatsappStatus === 'connected' ? 'bg-green-100 text-green-600' : 
-                     whatsappStatus === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-orange-100 text-orange-600'
-                  }`}>
-                     {whatsappStatus === 'connected' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                     {whatsappStatus === 'connected' ? 'Conectado' : 
-                      whatsappStatus === 'pending' ? 'Pendiente' : 'Error / Desconectado'}
-                  </div>
-               </div>
-
-               <div className="space-y-6">
-                   <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div className="flex items-center gap-4 text-center md:text-left">
-                         <div className="bg-white p-3 rounded-2xl border border-slate-100 text-slate-400 shadow-sm">
-                            <MessageCircle size={24} />
-                         </div>
-                         <div>
-                            <p className="text-sm font-black text-[#1D3146]">{businessData.whatsapp}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-widest">Número de salida verificado</p>
-                         </div>
-                      </div>
-                      <button className="px-6 py-3 bg-white border border-slate-200 text-slate-500 font-black rounded-xl text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                         <RefreshCcw size={14} />
-                         Reconectar
-                      </button>
-                   </div>
-                   
-                   <p className="text-[10px] text-slate-400 font-medium italic text-center px-4 leading-relaxed">
-                      El número conectado se utiliza para enviar confirmaciones automáticas de pedidos y pagos a tus clientes de ChocoBites.
-                   </p>
-               </div>
-            </section>
-
-            {/* Bottom Actions */}
-            <div className="flex justify-end pt-4">
-               <button onClick={handleSave} className="px-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-[2rem] shadow-xl shadow-[#1D3146]/30 flex items-center justify-center gap-3 active:scale-95 hover:scale-105 transition-all text-sm uppercase tracking-widest">
-                  <Save size={20} />
-                  Guardar Cambios
+               
+               <button type="button" className="text-xs font-black text-[#56CCF2] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity">
+                  {activeTenant.business_whatsapp_connected ? '👉 Reconfigurar Conexión' : '👉 Conectar cuenta de Meta'}
                </button>
             </div>
          </div>
 
-         {/* Sidebar / Quick Settings */}
-         <div className="lg:col-span-4 space-y-6">
-            <div className="bg-[#1D3146] rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group">
-               <div className="relative z-10">
-                  <ShieldCheck className="text-[#56CCF2] mb-6" size={32} />
-                  <h4 className="text-xl font-black mb-2 tracking-tight">Seguridad ChocoBites</h4>
-                  <p className="text-slate-400 text-xs font-bold leading-relaxed mb-8">Administra los permisos de tus repartidores y el acceso a la base de datos operativa.</p>
-                  <button className="w-full py-4 bg-white/10 text-white border border-white/20 font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all">Configurar Accesos</button>
+         {/* Regions */}
+         <div className="md:col-span-4 bg-[#1D3146] rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-white">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#56CCF2] mb-8">Preferencias Regionales</h3>
+            <div className="space-y-6">
+               <div className="space-y-2">
+                  <label htmlFor="timezone" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Zona Horaria</label>
+                  <div className="flex items-center gap-3 text-sm font-bold">
+                     <Globe size={18} className="text-[#56CCF2]" />
+                     <select 
+                       id="timezone"
+                       className="bg-transparent border-none outline-none w-full appearance-none"
+                       value={formData.timezone}
+                       onChange={(e) => setFormData({...formData, timezone: e.target.value})}
+                       title="Zona horaria"
+                     >
+                        <option value="America/Mexico_City">CDMX (GMT-6)</option>
+                        <option value="America/Bogota">Bogotá (GMT-5)</option>
+                     </select>
+                  </div>
                </div>
-               <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                  <ShieldCheck size={180} />
+               <div className="space-y-2">
+                  <label htmlFor="currency" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</label>
+                  <div className="flex items-center gap-3 text-sm font-bold">
+                     <DollarSign size={18} className="text-[#56CCF2]" />
+                     <select 
+                       id="currency"
+                       className="bg-transparent border-none outline-none w-full appearance-none"
+                       value={formData.currency}
+                       onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                       title="Moneda operativa"
+                     >
+                        <option value="MXN">Peso Mexicano (MXN)</option>
+                        <option value="USD">Dólar (USD)</option>
+                     </select>
+                  </div>
                </div>
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-6">
-               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 ml-1">Otros Ajustes</h4>
-               <nav className="space-y-2">
-                  {[
-                    { icon: Bell, label: 'Notificaciones', href: '#' },
-                    { icon: Database, label: 'Backup de Datos', href: '#' },
-                    { icon: RefreshCcw, label: 'Historial de Cambios', href: '#' },
-                  ].map((item, i) => (
-                    <Link key={i} href={item.href} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all group">
-                       <div className="flex items-center gap-3">
-                          <item.icon size={16} className="text-slate-400 group-hover:text-[#1D3146]" />
-                          <span className="text-xs font-bold text-[#1D3146]">{item.label}</span>
-                       </div>
-                       <ChevronRight size={14} className="text-slate-200 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  ))}
-               </nav>
             </div>
          </div>
 
-      </div>
+         <div className="md:col-span-12 flex justify-end gap-6 pt-4">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="px-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest disabled:opacity-50"
+            >
+               {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+               Guardar Cambios
+            </button>
+         </div>
+      </form>
     </div>
   );
 }

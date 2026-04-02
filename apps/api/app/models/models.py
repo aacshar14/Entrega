@@ -116,19 +116,56 @@ class WhatsAppMessage(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
     from_number: str = Field(index=True)
-    message_sid: str = Field(unique=True, index=True) # Meta specific ID
-    external_message_id: Optional[str] = Field(unique=True, index=True) # Idempotency key
+    message_sid: str = Field(unique=True, index=True)
+    external_message_id: Optional[str] = Field(unique=True, index=True)
     body: Optional[str] = None
-    raw_payload: Optional[str] = Field(description="Raw JSON payload from Meta")
-    message_type: str = Field(default="text") # text, audio, image
-    intent: Optional[str] = None
-    processed: bool = Field(default=False)
+    raw_payload: Optional[str] = None
+    message_type: str = Field(default="text")
+    created_at: datetime = Field(default_factory=get_utc_now)
+
+class MessageLog(SQLModel, table=True):
+    """Logging estructurado de mensajes para Review / Learning Mode"""
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
+    sender: str = Field(index=True)
+    raw_message: str
+    timestamp: datetime = Field(default_factory=get_utc_now)
+    
+    # Parsing Engine Output
+    detected_intent: Optional[str] = None # 'delivery', 'payment', 'stock', 'unknown'
+    detected_entities: Optional[str] = Field(default=None, description="JSON string: {customer, product, amount, qty}")
+    confidence: float = Field(default=0.0)
+    
+    # Review & Status
+    needs_confirmation: bool = Field(default=False)
+    final_status: str = Field(default="pending") # 'pending', 'processed', 'corrected', 'failed'
+    
+    # Human Review
+    corrected_intent: Optional[str] = None
+    corrected_entities: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    reviewed_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+
+class CustomerAlias(SQLModel, table=True):
+    """Aliases locales por tenant (Ej: 'Juan' -> Juan Lopez)"""
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
+    customer_id: UUID = Field(foreign_key="customer.id", index=True)
+    alias: str = Field(index=True)
+    created_at: datetime = Field(default_factory=get_utc_now)
+
+class ProductAlias(SQLModel, table=True):
+    """Aliases de productos locales por tenant (Ej: 'Choco' -> ChocoBites Bites)"""
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
+    product_id: UUID = Field(foreign_key="product.id", index=True)
+    alias: str = Field(index=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
 class OnboardingEvent(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
-    event_type: str # 'user_invitation', 'shop_setup', etc.
+    event_type: str 
     metadata_json: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
@@ -137,15 +174,30 @@ class OnboardingEvent(SQLModel, table=True):
 
 from pydantic import BaseModel
 
+class TenantInfo(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    logo_url: Optional[str] = None
+    status: str = "active"
+    onboarding_step: int = 1
+    business_whatsapp_number: Optional[str] = None
+    clients_imported: bool = False
+    stock_imported: bool = False
+    business_whatsapp_connected: bool = False
+    ready: bool = False
+
 class MembershipInfo(BaseModel):
-    tenant_id: UUID
-    tenant_name: str
-    tenant_slug: str
-    tenant_role: str
+    tenant: TenantInfo
+    role: str
     is_default: bool
-    status: str
 
 class MeResponse(BaseModel):
     user: User
-    active_tenant: Tenant
-    memberships: List[MembershipInfo]
+    active_tenant: Optional[TenantInfo] = None
+    memberships: List[MembershipInfo] = []
+
+class MessageCorrection(BaseModel):
+    intent: str
+    entities: dict
+    status: str = "corrected"
