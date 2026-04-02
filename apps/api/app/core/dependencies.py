@@ -113,6 +113,9 @@ def require_tenant_role(roles: List[str]):
         return membership
     return role_dependency
 
+# Alias for backward compatibility
+require_roles = require_tenant_role
+
 def require_platform_role(authorized_roles: List[str]):
     async def role_dependency(current_user: User = Depends(get_current_user)):
         if current_user.platform_role not in authorized_roles:

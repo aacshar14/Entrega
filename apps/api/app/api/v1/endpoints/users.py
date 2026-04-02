@@ -78,11 +78,14 @@ async def get_me(
 @router.get("/", response_model=List[User], dependencies=[Depends(require_roles(["owner"]))])
 async def list_users(
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
     """List all users for the tenant (owner only)."""
+    # Get all users linked to this tenant
     users = db.exec(
-        select(User).where(User.tenant_id == current_user.tenant_id)
+        select(User)
+        .join(TenantUser)
+        .where(TenantUser.tenant_id == active_tenant_id)
     ).all()
     return users
 
@@ -92,19 +95,43 @@ async def create_user(
     full_name: str,
     role: str = "operator",
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
-    """Create a new user (owner only)."""
-    new_user = User(
-        tenant_id=current_user.tenant_id,
-        email=email,
-        full_name=full_name,
-        role=role
-    )
-    db.add(new_user)
+    """
+    Invite/Create a new user for the tenant.
+    In the pilot, we create a local user and a membership.
+    """
+    # Check if user already exists globally
+    user = db.exec(select(User).where(User.email == email)).first()
+    
+    if not user:
+        user = User(
+            email=email,
+            full_name=full_name,
+            platform_role="user"
+        )
+        db.add(user)
+        db.flush()
+    
+    # Check if already a member
+    membership = db.exec(
+        select(TenantUser).where(
+            TenantUser.user_id == user.id,
+            TenantUser.tenant_id == active_tenant_id
+        )
+    ).first()
+    
+    if not membership:
+        membership = TenantUser(
+            tenant_id=active_tenant_id,
+            user_id=user.id,
+            tenant_role=role
+        )
+        db.add(membership)
+    
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    db.refresh(user)
+    return user
 
 @router.patch("/{id}", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def update_user(
@@ -113,21 +140,35 @@ async def update_user(
     role: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
-    """Update a user (owner only)."""
+    """Update a user's role or status within the tenant context."""
     user = db.get(User, id)
-    if not user or user.tenant_id != current_user.tenant_id:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
+        
+    membership = db.exec(
+        select(TenantUser).where(
+            TenantUser.user_id == user.id,
+            TenantUser.tenant_id == active_tenant_id
+        )
+    ).first()
+    
+    if not membership:
+        raise HTTPException(status_code=404, detail="User is not a member of this tenant")
     
     if full_name is not None:
         user.full_name = full_name
-    if role is not None:
-        user.role = role
-    if is_active is not None:
-        user.is_active = is_active
+        db.add(user)
         
-    db.add(user)
+    if role is not None:
+        membership.tenant_role = role
+        db.add(membership)
+        
+    if is_active is not None:
+        membership.is_active = is_active
+        db.add(membership)
+        
     db.commit()
     db.refresh(user)
     return user
