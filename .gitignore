@@ -169,3 +169,8 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# Project specific
+apps/web/.env.local
+build_output.txt
+.env*
