@@ -14,7 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python-specific and common distribution/packaging
+# /lib/ (root level only, or ignore entirely if not used)
+# Removing 'lib/' which clashes with Next.js monorepo structure
 lib64/
 parts/
 sdist/
