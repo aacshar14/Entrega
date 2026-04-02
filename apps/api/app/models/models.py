@@ -8,32 +8,45 @@ def get_utc_now():
 
 class Tenant(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    name: str = Field(index=True)
     slug: str = Field(unique=True, index=True)
+    name: str = Field(index=True)
+    logo_url: Optional[str] = None
+    
+    # Status & Localization
+    status: str = Field(default="active")
+    timezone: str = Field(default="UTC")
+    currency: str = Field(default="MXN")
     
     # Business Metadata
     business_name: Optional[str] = None
     business_whatsapp_number: Optional[str] = None
     
-    # Onboarding Readiness Flags
+    # Onboarding Readiness Flags (State Machine)
     clients_imported: bool = Field(default=False)
     stock_imported: bool = Field(default=False)
     business_whatsapp_connected: bool = Field(default=False)
-    ready: bool = Field(default=False) # ready = clients && stock && whatsapp
+    ready: bool = Field(default=False) 
     
     created_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class User(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(foreign_key="tenant.id")
     email: str = Field(unique=True, index=True)
     full_name: str
-    role: str = Field(default="operator") # owner, admin, operator
+    platform_role: str = Field(default="user") # 'admin' (global), 'user' (limited to memberships)
     is_active: bool = Field(default=True)
-    auth_provider_ref: Optional[str] = Field(unique=True, index=True) # e.g., Supabase Auth ID
-    phone_number: Optional[str] = Field(unique=True, index=True)
-    last_login_at: Optional[datetime] = None
+    auth_provider_id: Optional[str] = Field(unique=True, index=True) # Supabase UUID
+    created_at: datetime = Field(default_factory=get_utc_now)
+
+class TenantUser(SQLModel, table=True):
+    """Link table for Users and Tenants (Memberships)"""
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
+    user_id: UUID = Field(foreign_key="user.id", index=True)
+    tenant_role: str = Field(default="operator") # 'owner', 'operator'
+    is_default: bool = Field(default=False)
+    is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
 class Customer(SQLModel, table=True):
@@ -119,3 +132,20 @@ class OnboardingEvent(SQLModel, table=True):
     metadata_json: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+
+# --- Response & DTO Schemas ---
+
+from pydantic import BaseModel
+
+class MembershipInfo(BaseModel):
+    tenant_id: UUID
+    tenant_name: str
+    tenant_slug: str
+    tenant_role: str
+    is_default: bool
+    status: str
+
+class MeResponse(BaseModel):
+    user: User
+    active_tenant: Tenant
+    memberships: List[MembershipInfo]

@@ -1,17 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.core.dependencies import get_current_user, require_roles
-from app.models.models import User
-from uuid import UUID
-from typing import List, Optional
+from app.models.models import User, Tenant, TenantUser, MeResponse, MembershipInfo
 
 router = APIRouter()
 
-@router.get("/me", response_model=User)
-async def get_me(current_user: User = Depends(get_current_user)):
-    """Returns the current authenticated user's information."""
-    return current_user
+@router.get("/me", response_model=MeResponse)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant),
+    db: Session = Depends(get_session)
+):
+    """Returns the current authenticated user's information along with memberships."""
+    # Get all memberships for the user
+    memberships_data = db.exec(
+        select(TenantUser, Tenant)
+        .join(Tenant, Tenant.id == TenantUser.tenant_id)
+        .where(TenantUser.user_id == current_user.id)
+    ).all()
+
+    memberships = [
+        MembershipInfo(
+            tenant_id=m.id,
+            tenant_name=t.name,
+            tenant_slug=t.slug,
+            tenant_role=m.tenant_role,
+            is_default=m.is_default,
+            status=t.status
+        )
+        for m, t in memberships_data
+    ]
+
+    return MeResponse(
+        user=current_user,
+        active_tenant=active_tenant,
+        memberships=memberships
+    )
 
 @router.get("/", response_model=List[User], dependencies=[Depends(require_roles(["owner"]))])
 async def list_users(
