@@ -16,7 +16,7 @@ def seed_data():
             print("🌱 Seeding Tenant: ChocoBites...")
             tenant = Tenant(
                 id=UUID("00000000-0000-0000-0000-000000000001"),
-                name="ChocoBites Pilot",
+                name="ChocoBites",
                 slug="chocobites"
             )
             session.add(tenant)
@@ -27,7 +27,7 @@ def seed_data():
 
         # 2. Seed Users
         users_to_seed = [
-            {"email": "owner@chocobites.mx", "name": "Owner ChocoBites", "role": "owner"},
+            {"email": "owner@chocobites.mx", "name": "Leonardo Gonzalez", "role": "owner"},
             {"email": "operador@chocobites.mx", "name": "Operador ChocoBites", "role": "operator"}
         ]
         

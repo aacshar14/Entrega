@@ -25,8 +25,8 @@ export const metadata = {
 const getCurrentSession = () => {
     // In production, this would come from a real session or cookie
     return {
-        user: { name: "Owner ChocoBites", role: "owner" },
-        tenant: { name: "ChocoBites Pilot" }
+        user: { name: "Leonardo Gonzalez", role: "owner" },
+        tenant: { name: "ChocoBites" }
     };
 };
 
