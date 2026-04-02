@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # Maintain dependencies for Next.js (Web App)
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "aacshar14" # The repo owner
+
+  # Maintain dependencies for FastAPI (API Backend)
+  - package-ecosystem: "pip"
+    directory: "/apps/api"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "aacshar14"
+
+  # Maintain GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "aacshar14"
