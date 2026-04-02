@@ -53,7 +53,8 @@ interface PreviewResponse {
 }
 
 export default function CustomersPage() {
-  const [view, setView] = useState<'list' | 'upload' | 'preview' | 'summary'>('list');
+  const [view, setView] = useState<'list' | 'upload' | 'preview' | 'summary' | 'new'>('list');
+  const [newClient, setNewClient] = useState({ name: '', phone: '', initial_balance: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -98,7 +99,7 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-2">
+    <div className="max-w-6xl mx-auto py-2 px-4 md:px-0">
       
       {/* Header Interactivo */}
       {view === 'list' && (
@@ -115,7 +116,7 @@ export default function CustomersPage() {
                  <button onClick={() => setView('upload')} className="p-3 bg-[#EBEEF2] text-[#1D3146] rounded-2xl hover:bg-slate-200 transition-colors" title="Importar Clientes" aria-label="Importar Clientes">
                     <Upload size={20} />
                  </button>
-                 <button className="px-5 py-3 bg-[#1D3146] text-white font-bold rounded-2xl flex items-center gap-2 shadow-lg active:scale-95 transition-all">
+                 <button onClick={() => setView('new')} className="px-5 py-3 bg-[#1D3146] text-white font-bold rounded-2xl flex items-center gap-2 shadow-lg active:scale-95 transition-all">
                     <Plus size={20} strokeWidth={3} />
                     <span className="hidden sm:inline">Nuevo</span>
                  </button>
@@ -137,6 +138,66 @@ export default function CustomersPage() {
               </button>
            </div>
         </div>
+      )}
+
+      {view === 'new' && (
+         <div className="max-w-xl mx-auto bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-100 shadow-2xl animate-in zoom-in-95 duration-300">
+            <h2 className="text-2xl font-black text-[#1D3146] mb-2 tracking-tight">Alta de Cliente</h2>
+            <p className="text-sm text-slate-500 mb-8">Registra un nuevo destino de ChocoBites manualmente.</p>
+            
+            <div className="space-y-6">
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Nombre Completo</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Chiltepik Market" 
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                    className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                  />
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">WhatsApp / Celular</label>
+                     <input 
+                       type="tel" 
+                       placeholder="+52..." 
+                       value={newClient.phone}
+                       onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                       className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Saldo Inicial (Opcional)</label>
+                     <input 
+                       type="number" 
+                       placeholder="0.00" 
+                       value={newClient.initial_balance}
+                       onChange={(e) => setNewClient({...newClient, initial_balance: e.target.value})}
+                       className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none font-mono"
+                     />
+                  </div>
+               </div>
+            </div>
+
+            <div className="flex justify-between items-center mt-12 gap-4">
+               <button onClick={() => setView('list')} className="text-sm font-black text-slate-400 uppercase tracking-widest px-4">Cancelar</button>
+               <button 
+                  onClick={() => {
+                     // Simulate save
+                     setLoading(true);
+                     setTimeout(() => {
+                        setLoading(false);
+                        setView('list');
+                     }, 800);
+                  }}
+                  className="flex-grow py-4 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl shadow-[#1D3146]/20 flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest"
+               >
+                  {loading ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={20} />}
+                  Guardar Cliente
+               </button>
+            </div>
+         </div>
       )}
 
       {view === 'list' && (

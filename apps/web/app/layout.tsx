@@ -100,6 +100,12 @@ export default function RootLayout({
                 <img src="/chocobites.jpg" alt={tenant.name} className="w-12 h-12 rounded-full border-2 border-white/20 shadow-md" />
                 <span className="text-[11px] font-black uppercase tracking-widest text-[#56CCF2] truncate w-full">{tenant.name}</span>
              </div>
+
+             {/* PRIMARY DESKTOP ACTION */}
+             <Link href="/operations" className="w-full py-4 bg-[#56CCF2] text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-xs tracking-widest shadow-lg shadow-[#56CCF2]/20 hover:scale-105 transition-all active:scale-95 group">
+                <PlusCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                Nueva Operación
+             </Link>
           </div>
 
           <nav className="flex flex-col gap-1.5 px-4 mb-20 overflow-y-auto max-h-[calc(100vh-250px)] scrollbar-hide">
