@@ -1,0 +1,553 @@
+
+> entrega-web@1.1.0 build
+> next build
+
+   Γû▓ Next.js 14.1.0
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/16) ...
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 2230 (C:\Entrega\apps\web\.next\server\app\onboarding\page.js:1:2066)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /onboarding. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/onboarding". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 2230 (C:\Entrega\apps\web\.next\server\app\onboarding\page.js:1:2066)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 8341 (C:\Entrega\apps\web\.next\server\app\settings\page.js:11:235)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /settings. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/settings". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 8341 (C:\Entrega\apps\web\.next\server\app\settings\page.js:11:235)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /operations. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /_not-found. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/_not-found". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 8117 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12021)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 36 (C:\Entrega\apps\web\.next\server\app\learning\page.js:11:174)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /learning. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/learning". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 8117 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12021)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 36 (C:\Entrega\apps\web\.next\server\app\learning\page.js:11:174)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /stock. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/stock". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 2859 (C:\Entrega\apps\web\.next\server\app\customers\page.js:6:395)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /customers. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/customers". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 2859 (C:\Entrega\apps\web\.next\server\app\customers\page.js:6:395)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /landing. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/landing". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /payments. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/payments". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 9900 (C:\Entrega\apps\web\.next\server\app\dashboard\page.js:6:136)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+   Generating static pages (4/16) 
+
+   Generating static pages (8/16) 
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /more. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Error occurred prerendering page "/dashboard". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 9900 (C:\Entrega\apps\web\.next\server\app\dashboard\page.js:6:136)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+Error occurred prerendering page "/operations". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+Error occurred prerendering page "/login". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+ ΓÜá Unsupported metadata viewport is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ΓÜá Unsupported metadata themeColor is configured in metadata export in /reports/weekly. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+   Generating static pages (12/16) 
+
+Error occurred prerendering page "/more". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+Error occurred prerendering page "/reports/weekly". Read more: https://nextjs.org/docs/messages/prerender-error
+
+Error: supabaseUrl is required.
+    at C:\Entrega\apps\web\.next\server\chunks\782.js:117:48121
+    at new rC (C:\Entrega\apps\web\.next\server\chunks\782.js:117:48372)
+    at rx (C:\Entrega\apps\web\.next\server\chunks\782.js:117:52112)
+    at 2829 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:14045)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 650 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12734)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at 548 (C:\Entrega\apps\web\.next\server\chunks\49.js:1:12591)
+    at t (C:\Entrega\apps\web\.next\server\webpack-runtime.js:1:127)
+    at F (C:\Entrega\apps\web\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:94693)
+
+ Γ£ô Generating static pages (16/16) 
+
+> Export encountered errors on following paths:
+	/_not-found
+	/customers/page: /customers
+	/dashboard/page: /dashboard
+	/landing/page: /landing
+	/learning/page: /learning
+	/login/page: /login
+	/more/page: /more
+	/onboarding/page: /onboarding
+	/operations/page: /operations
+	/page: /
+	/payments/page: /payments
+	/reports/weekly/page: /reports/weekly
+	/settings/page: /settings
+	/stock/page: /stock
