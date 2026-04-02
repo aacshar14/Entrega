@@ -1,7 +1,6 @@
 from fastapi import Depends, HTTPException, Security, status, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional, List
 
