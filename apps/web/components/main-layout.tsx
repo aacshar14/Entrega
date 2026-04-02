@@ -20,7 +20,7 @@ import {
   Plus,
   ChevronDown
 } from 'lucide-react';
-import { useTenant } from '../lib/context/TenantContext';
+import { useTenant } from '../lib/context/tenant-context';
 import { apiRequest } from '../lib/api';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {

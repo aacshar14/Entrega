@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { useTenant } from '@/lib/context/TenantContext';
+import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 

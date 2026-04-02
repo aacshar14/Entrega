@@ -19,7 +19,7 @@ import {
   Plus
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
-import { useTenant } from '@/lib/context/TenantContext';
+import { useTenant } from '@/lib/context/tenant-context';
 
 interface MessageLog {
   id: string;
