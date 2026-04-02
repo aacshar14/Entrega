@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 
 from app.core.config import settings
-from app.core.db import get_engine
 from app.models.models import User, Tenant
 from sqlmodel import Session, select
 

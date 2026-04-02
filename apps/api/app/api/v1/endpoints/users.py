@@ -1,83 +1,70 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
-from uuid import UUID
-
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, require_roles
 from app.models.models import User
+from uuid import UUID
+from typing import List, Optional
 
 router = APIRouter()
 
 @router.get("/me", response_model=User)
-async def get_me(
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Returns the currently authenticated user's profile.
-    """
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Returns the current authenticated user's information."""
     return current_user
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=List[User], dependencies=[Depends(require_roles(["owner"]))])
 async def list_users(
     db: Session = Depends(get_session),
-    current_user: User = Depends(require_roles(["owner", "admin"]))
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    Lists all users for the current tenant.
-    Only accessible by owners and admins.
-    """
-    statement = select(User).where(User.tenant_id == current_user.tenant_id)
-    users = db.exec(statement).all()
+    """List all users for the tenant (owner only)."""
+    users = db.exec(
+        select(User).where(User.tenant_id == current_user.tenant_id)
+    ).all()
     return users
 
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def create_user(
-    user_data: User,
+    email: str,
+    full_name: str,
+    role: str = "operator",
     db: Session = Depends(get_session),
-    current_user: User = Depends(require_roles(["owner", "admin"]))
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    Creates a new user in the current tenant.
-    """
-    # Enforce current tenant
-    user_data.tenant_id = current_user.tenant_id
-    
-    # Check if user already exists
-    statement = select(User).where(User.email == user_data.email)
-    existing_user = db.exec(statement).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-    
-    db.add(user_data)
+    """Create a new user (owner only)."""
+    new_user = User(
+        tenant_id=current_user.tenant_id,
+        email=email,
+        full_name=full_name,
+        role=role
+    )
+    db.add(new_user)
     db.commit()
-    db.refresh(user_data)
-    return user_data
+    db.refresh(new_user)
+    return new_user
 
-@router.patch("/{user_id}", response_model=User)
+@router.patch("/{id}", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def update_user(
-    user_id: UUID,
-    user_update: dict, # Simple dict for patch, in prod use a schema
+    id: UUID,
+    full_name: Optional[str] = None,
+    role: Optional[str] = None,
+    is_active: Optional[bool] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(require_roles(["owner", "admin"]))
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    Updates a user's details.
-    """
-    statement = select(User).where(User.id == user_id, User.tenant_id == current_user.tenant_id)
-    user = db.exec(statement).first()
-    
-    if not user:
+    """Update a user (owner only)."""
+    user = db.get(User, id)
+    if not user or user.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Apply updates
-    for key, value in user_update.items():
-        if hasattr(user, key) and key not in ["id", "tenant_id", "email"]:
-            setattr(user, key, value)
-            
+    if full_name is not None:
+        user.full_name = full_name
+    if role is not None:
+        user.role = role
+    if is_active is not None:
+        user.is_active = is_active
+        
     db.add(user)
     db.commit()
     db.refresh(user)

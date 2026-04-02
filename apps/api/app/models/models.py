@@ -30,10 +30,13 @@ class Customer(SQLModel, table=True):
     tenant_id: UUID = Field(foreign_key="tenant.id")
     name: str = Field(index=True)
     phone_number: str = Field(unique=True, index=True)
+    email: Optional[str] = None
     address: Optional[str] = None
+    notes: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
 
 class Product(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
@@ -44,6 +47,7 @@ class Product(SQLModel, table=True):
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
 
 class StockBalance(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
@@ -62,7 +66,9 @@ class InventoryMovement(SQLModel, table=True):
     type: str # 'delivery', 'restock', 'return', 'adjustment'
     description: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
 
 class Payment(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
@@ -71,7 +77,9 @@ class Payment(SQLModel, table=True):
     amount: float
     method: str # 'cash', 'transfer', 'card'
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
 
 class CustomerBalance(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)

@@ -8,12 +8,18 @@ from app.api.v1.endpoints import (
     payments,
     balances,
     reports,
-    users
+    users,
+    dashboard,
+    movements,
+    settings
 )
 
 api_router = APIRouter()
 
 api_router.include_router(health.router, prefix="/health", tags=["system"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(movements.router, prefix="/movements", tags=["movements"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(customers.router, prefix="/customers", tags=["customers"])

@@ -45,7 +45,7 @@ jobs:
           --region $REGION \
           --platform managed \
           --allow-unauthenticated \
-          --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production"
+          --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}"
 
     # --- Frontend Deploy ---
     - name: Build Web Container
