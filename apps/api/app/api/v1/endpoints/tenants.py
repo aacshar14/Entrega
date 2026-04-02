@@ -76,8 +76,15 @@ async def update_active_business(
         
     if request.name is not None:
         tenant.name = request.name
+        
     if request.business_whatsapp_number is not None:
-        tenant.business_whatsapp_number = request.business_whatsapp_number
+        # If empty string, treat as removal (quitar)
+        val = request.business_whatsapp_number.strip()
+        tenant.business_whatsapp_number = val if val else None
+        # Also update connected flag if removing
+        if not tenant.business_whatsapp_number:
+            tenant.business_whatsapp_connected = False
+            
     if request.logo_url is not None:
         tenant.logo_url = request.logo_url
     if request.timezone is not None:
