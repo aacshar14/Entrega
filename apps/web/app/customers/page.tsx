@@ -185,15 +185,17 @@ export default function CustomersPage() {
            </div>
 
            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#56CCF2] transition-colors" size={20} />
-              <input 
-                type="text" 
-                placeholder="Buscar por nombre o celular..." 
-                className="w-full h-16 pl-14 pr-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-sm font-bold text-[#1D3146] outline-none focus:ring-4 focus:ring-[#56CCF2]/10 transition-all placeholder:text-slate-300"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-           </div>
+               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#56CCF2] transition-colors" size={20} />
+               <input 
+                 id="customer_search"
+                 type="text" 
+                 placeholder="Buscar por nombre o celular..." 
+                 className="w-full h-16 pl-14 pr-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-sm font-bold text-[#1D3146] outline-none focus:ring-4 focus:ring-[#56CCF2]/10 transition-all placeholder:text-slate-300"
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 title="Buscar clientes"
+               />
+            </div>
         </div>
       )}
 
@@ -204,34 +206,40 @@ export default function CustomersPage() {
             
             <div className="space-y-6">
                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Nombre Completo</label>
+                  <label htmlFor="new_client_name" className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Nombre Completo</label>
                   <input 
+                    id="new_client_name"
                     type="text" 
                     placeholder="Ej: Chiltepik Market" 
                     value={newClient.name}
                     onChange={(e) => setNewClient({...newClient, name: e.target.value})}
                     className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                    title="Nombre del cliente"
                   />
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">WhatsApp / Celular</label>
+                     <label htmlFor="new_client_phone" className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">WhatsApp / Celular</label>
                      <input 
+                       id="new_client_phone"
                        type="tel" 
                        placeholder="+52..." 
                        value={newClient.phone}
                        onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
                        className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                       title="WhatsApp del cliente"
                      />
                   </div>
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Saldo Inicial (Opcional)</label>
+                     <label htmlFor="new_client_balance" className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Saldo Inicial (Opcional)</label>
                      <input 
+                       id="new_client_balance"
                        type="number" 
                        placeholder="0.00" 
                        value={newClient.initial_balance}
                        onChange={(e) => setNewClient({...newClient, initial_balance: e.target.value})}
                        className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none font-mono"
+                       title="Saldo inicial"
                      />
                   </div>
                </div>

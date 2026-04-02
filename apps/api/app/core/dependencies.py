@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import Optional, List
 
 from app.core.config import settings
 from app.models.models import User, Tenant, TenantUser
