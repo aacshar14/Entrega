@@ -55,7 +55,7 @@ jobs:
     # --- Frontend Deploy ---
     - name: Build Web Container
       run: |-
-        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest ./apps/web --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
+        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
 
     - name: Push Web Container
       run: |-

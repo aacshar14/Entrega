@@ -2,9 +2,13 @@ FROM node:20-slim AS builder
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 WORKDIR /app
-COPY package*.json ./
+
+# The context should be the root of the repository
+COPY apps/web/package*.json ./
 RUN npm install
-COPY . .
+COPY apps/web/ .
+
+# Ensure env variable is passed to Next.js build
 RUN npm run build
 
 FROM node:20-slim
