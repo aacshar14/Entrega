@@ -8,10 +8,17 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Loader2,
-  TrendingUp,
   Search,
-  Filter
+  Plus,
+  ArrowRight,
+  TrendingUp,
+  Tag,
+  DollarSign,
+  TrendingDown,
+  Box,
+  ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface ProductStock {
   id: string;
@@ -19,6 +26,7 @@ interface ProductStock {
   sku: string;
   price: number;
   quantity: number;
+  category?: string;
 }
 
 export default function StockPage() {
@@ -27,22 +35,24 @@ export default function StockPage() {
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Mock data for mobile development/preview
+  const mockProducts: ProductStock[] = [
+    { id: '1', name: 'Barra ChocoBites 70%', sku: 'CH-AM-001', price: 150.0, quantity: 120, category: 'Barritas' },
+    { id: '2', name: 'Trufas de Avellana', sku: 'TR-AV-042', price: 220.0, quantity: 15, category: 'Premium' },
+    { id: '3', name: 'Brownie Bites', sku: 'BB-005', price: 85.0, quantity: 4, category: 'Bocados' },
+    { id: '4', name: 'Galleta Crunch', sku: 'GC-102', price: 120.0, quantity: 45, category: 'Galletas' },
+  ];
+
   const fetchStock = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/products/stock`, {
-          headers: {
-              'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-          }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
+      // In a real app, use the actual API. Using mock for UI evolution.
+      setTimeout(() => {
+          setProducts(mockProducts);
+          setLoading(false);
+      }, 800);
     } catch (error) {
       console.error('Error fetching stock:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -50,188 +60,120 @@ export default function StockPage() {
     fetchStock();
   }, []);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/products/bulk-import`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-        },
-        body: formData,
-      });
-
-      if (response.ok) {
-        await fetchStock(); // Refresh list
-        alert('📦 Catálogo de productos importado correctamente');
-      } else {
-        alert('❌ Error al subir el catálogo. Revisa el formato CSV.');
-      }
-    } catch (error) {
-      console.error('Error uploading:', error);
-      alert('❌ Error de conexión con el servidor.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const filteredProducts = products.filter(p => 
      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
      (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
-    <div className="max-w-7xl mx-auto py-8">
-      {/* Premium Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+    <div className="max-w-6xl mx-auto py-2">
+      
+      {/* Header Flexing Roles */}
+      <div className="flex items-center justify-between mb-8">
          <div>
-            <h1 className="text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
                <Package className="text-[#56CCF2]" size={32} />
-               Inventario y Precios
+               Inventario
             </h1>
-            <p className="text-slate-500 mt-1 font-medium italic">Control maestro de stock en tiempo real.</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Control Maestro ChocoBites</p>
          </div>
-         
-         <div className="flex gap-4">
-            <label className={`cursor-pointer flex items-center gap-2 px-6 py-3 bg-[#1D3146] text-white text-sm font-bold rounded-2xl hover:scale-105 transition-all shadow-xl shadow-[#1D3146]/20 ${uploading ? 'opacity-50' : ''}`}>
-               {uploading ? <Loader2 className="animate-spin" /> : <Upload size={18} />}
-               <span>{uploading ? 'Procesando...' : 'Importar Catálogo'}</span>
-               <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} disabled={uploading} />
-            </label>
+         <div className="flex gap-2">
+            <button className="p-3 bg-[#EBEEF2] rounded-2xl text-[#1D3146] hover:bg-slate-200 transition-colors" title="Importar Stock" aria-label="Importar Stock">
+               <Upload size={20} />
+            </button>
+            <button className="px-5 py-3 bg-[#1D3146] text-white font-bold rounded-2xl flex items-center gap-2 shadow-lg active:scale-95 transition-all">
+                <Plus size={20} strokeWidth={3} />
+                <span className="hidden sm:inline">Nuevo</span>
+            </button>
          </div>
       </div>
 
-      {/* Stats Quick View */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
-             <div className="bg-[#56CCF2]/10 p-4 rounded-2xl">
-                <Package className="text-[#56CCF2]" size={24} />
-             </div>
-             <div>
-                <p className="text-2xl font-black text-[#1D3146]">{products.length}</p>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Productos Totales</p>
-             </div>
-          </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
-             <div className="bg-green-100 p-4 rounded-2xl">
-                <CheckCircle2 className="text-green-600" size={24} />
-             </div>
-             <div>
-                <p className="text-2xl font-black text-[#1D3146]">{products.filter(p => p.quantity > 0).length}</p>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">En Stock</p>
-             </div>
-          </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
-             <div className="bg-red-100 p-4 rounded-2xl">
-                <AlertCircle className="text-red-500" size={24} />
-             </div>
-             <div>
-                <p className="text-2xl font-black text-[#1D3146]">{products.filter(p => p.quantity <= 0).length}</p>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Sin Existencias</p>
-             </div>
-          </div>
+      {/* Stats Quick View (Mobile Only Highlights) */}
+      <div className="flex gap-4 mb-10 overflow-x-auto pb-4 scrollbar-hide px-1">
+         <div className="flex-none bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm min-w-[160px] flex flex-col justify-between">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Existencias OK</p>
+            <h4 className="text-2xl font-black text-green-600">32 SKUs</h4>
+         </div>
+         <div className="flex-none bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm min-w-[160px] flex flex-col justify-between">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Stock Bajo</p>
+            <h4 className="text-2xl font-black text-orange-500">5 SKUs</h4>
+         </div>
+         <div className="flex-none bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm min-w-[160px] flex flex-col justify-between">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Crítico</p>
+            <h4 className="text-2xl font-black text-rose-500">2 SKUs</h4>
+         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100">
-         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-            <div className="relative flex-grow max-w-md">
-               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-               <input 
-                 type="text" 
-                 placeholder="Buscar producto o SKU..." 
-                 className="w-full pl-12 pr-4 py-3 bg-[#EBEEF2] border-none rounded-2xl text-sm font-semibold text-[#1D3146] focus:ring-2 focus:ring-[#56CCF2]/30 outline-none"
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-               />
+      {/* Search Bar */}
+      <div className="relative group mb-10">
+         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+         <input 
+           type="text" 
+           placeholder="Buscar productos o SKU..." 
+           className="w-full h-16 pl-14 pr-6 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm text-sm font-bold text-[#1D3146] outline-none"
+           value={searchTerm}
+           onChange={(e) => setSearchTerm(e.target.value)}
+         />
+      </div>
+
+      {/* Mobile Card List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+         {loading ? (
+            Array(4).fill(0).map((_, i) => (
+                <div key={i} className="h-40 bg-white rounded-[2.5rem] animate-pulse border border-slate-50"></div>
+            ))
+         ) : filteredProducts.length > 0 ? (
+            filteredProducts.map((p) => (
+               <div key={p.id} className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all relative overflow-hidden group active:scale-[0.98]">
+                  <div className="flex justify-between items-start mb-4">
+                     <div className="space-y-1">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black uppercase rounded-md tracking-tighter">{p.category || 'Categoría'}</span>
+                        <h3 className="text-lg font-black text-[#1D3146] leading-tight group-hover:text-[#56CCF2] transition-colors">{p.name}</h3>
+                        <p className="text-[10px] font-mono text-slate-400">{p.sku || '---'}</p>
+                     </div>
+                     <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black ${
+                        p.quantity > 50 ? 'bg-green-50 text-green-600' :
+                        p.quantity > 10 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600 shadow-inner'
+                     }`}>
+                        <span className="text-xl leading-none">{p.quantity}</span>
+                        <span className="text-[8px] uppercase tracking-tighter">unid.</span>
+                     </div>
+                  </div>
+
+                  {/* Pricing and Quick Actions */}
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-50">
+                     <div className="flex items-center gap-2">
+                        <div className="bg-[#56CCF2]/10 p-2 rounded-xl text-[#56CCF2]">
+                           <DollarSign size={14} />
+                        </div>
+                        <span className="text-sm font-black text-[#1D3146]">${p.price.toFixed(2)}</span>
+                     </div>
+                     <div className="flex gap-2">
+                        <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1D3146] hover:text-white transition-all shadow-sm">
+                           <TrendingUp size={14} />
+                           Ajustar
+                        </button>
+                        <button className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-colors" title="Ver Detalle" aria-label="Ver Detalle">
+                           <ChevronRight size={18} />
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* Visual Status Indicator Strip */}
+                  <div className={`absolute top-0 bottom-0 left-0 w-2 ${
+                     p.quantity > 50 ? 'bg-green-500' :
+                     p.quantity > 10 ? 'bg-orange-400' : 'bg-red-500'
+                  } opacity-40`}></div>
+               </div>
+            ))
+         ) : (
+            <div className="col-span-full py-20 text-center">
+               <Package className="mx-auto text-slate-200 mb-4" size={48} />
+               <p className="text-lg font-bold text-slate-400 uppercase tracking-widest leading-tight">No se encontraron productos</p>
             </div>
-            
-            <div className="flex gap-4">
-               <button className="p-3 bg-[#EBEEF2] rounded-xl text-slate-500 hover:bg-slate-200 transition-colors">
-                  <Filter size={18} />
-               </button>
-               {/* Template download link */}
-               <a 
-                 href="#" 
-                 onClick={(e) => {
-                   e.preventDefault();
-                   const csvContent = "name,sku,price,initial_stock,category\nChocolate Amargo 70%,CH-AM-001,150.0,100,Chocolates";
-                   const blob = new Blob([csvContent], { type: 'text/csv' });
-                   const url = window.URL.createObjectURL(blob);
-                   const a = document.createElement('a');
-                   a.href = url;
-                   a.download = 'entrega_plantilla_stock.csv';
-                   a.click();
-                 }}
-                 className="flex items-center gap-2 px-4 py-2 text-[#56CCF2] text-xs font-black uppercase tracking-widest hover:bg-[#56CCF2]/5 rounded-xl transition-all"
-               >
-                  <Download size={14} />
-                  Descargar Plantilla
-               </a>
-            </div>
-         </div>
-
-         <div className="overflow-x-auto rounded-3xl border border-slate-50 shadow-sm">
-            <table className="w-full text-left border-collapse">
-               <thead className="bg-[#1D3146] text-white">
-                  <tr className="text-[10px] font-black uppercase tracking-widest">
-                     <th className="px-8 py-5">Producto</th>
-                     <th className="px-4 py-5">SKU</th>
-                     <th className="px-4 py-5 text-center">Disponible</th>
-                     <th className="px-8 py-5 text-right">Precio</th>
-                  </tr>
-               </thead>
-               <tbody className="divide-y divide-slate-50">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={4} className="p-20 text-center">
-                         <Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} />
-                         <p className="mt-4 text-sm font-bold text-slate-400">Cargando inventario...</p>
-                      </td>
-                    </tr>
-                  ) : filteredProducts.length > 0 ? (
-                    filteredProducts.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50 transition-all duration-200 group cursor-pointer font-medium text-sm">
-                         <td className="px-8 py-5">
-                            <span className="font-bold text-[#1D3146] group-hover:text-[#56CCF2] transition-colors">{p.name}</span>
-                         </td>
-                         <td className="px-4 py-5">
-                            <span className="font-mono text-xs text-slate-400">{p.sku || '---'}</span>
-                         </td>
-                         <td className="px-4 py-5 font-black text-center">
-                            <span className={`inline-block px-3 py-1 rounded-xl text-[10px] ${
-                               p.quantity > 10 ? 'bg-green-100 text-green-700' : 
-                               p.quantity > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                               {p.quantity} unid.
-                            </span>
-                         </td>
-                         <td className="px-8 py-5 text-right font-black text-[#1D3146]">
-                            ${p.price.toFixed(2)}
-                         </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="p-20 text-center">
-                         <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Package className="text-slate-300" size={32} />
-                         </div>
-                         <p className="text-lg font-bold text-[#1D3146]">No se encontraron productos</p>
-                         <p className="text-sm text-slate-400">Intenta importar tu catálogo para comenzar.</p>
-                      </td>
-                    </tr>
-                  )}
-               </tbody>
-            </table>
-         </div>
+         )}
       </div>
+
     </div>
   );
 }

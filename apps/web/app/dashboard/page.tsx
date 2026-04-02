@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import Link from 'next/link';
 import { 
   Truck, 
   Banknote, 
@@ -7,202 +8,162 @@ import {
   Package,
   ChevronRight,
   Handshake,
-  Settings2
+  Plus,
+  Users,
+  Search,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 export default function Dashboard() {
+  // Mock session for role-based testing
+  const user = { role: "owner" }; // or "operator"
+
+  // Mock data for initial evolution
+  const kpis = [
+    { label: 'Entregas Hoy', value: '15', sub: '30 productos', icon: Truck, color: 'bg-blue-500', shadow: 'shadow-blue-500/20', roles: ['owner', 'operator'] },
+    { label: 'Pagos Hoy', value: '$5,200', sub: '4 recibidos', icon: Banknote, color: 'bg-emerald-500', shadow: 'shadow-emerald-500/20', roles: ['owner', 'operator'] },
+    { label: 'Adeudos', value: '$8,750', sub: '3 clientes', icon: AlertCircle, color: 'bg-rose-500', shadow: 'shadow-rose-500/20', roles: ['owner'] },
+    { label: 'Stock Bajo', value: '5', sub: 'Atención req.', icon: Package, color: 'bg-orange-500', shadow: 'shadow-orange-500/20', roles: ['owner'] },
+  ];
+
+  const visibleKpis = kpis.filter(k => k.roles.includes(user.role));
+
+  const quickActions = [
+    { label: 'Nueva Entrega', icon: Plus, href: '/operations', color: 'bg-[#1D3146]' },
+    { label: 'Registrar Cobro', icon: Banknote, href: '/operations', color: 'bg-[#1D3146]' },
+    { label: 'Ver Clientes', icon: Users, href: '/customers', color: 'bg-[#1D3146]' },
+    { label: 'Inventario', icon: Package, href: '/stock', color: 'bg-[#1D3146]' },
+  ];
+
+  const activities = [
+    { type: 'delivery', client: 'Juan Lopez', detail: '+15 ChocoBites', time: 'hace 10 min', amount: null },
+    { type: 'payment', client: 'Ana Perez', detail: 'Pago recibido', time: 'hace 2h', amount: '$1,500' },
+    { type: 'adjustment', client: 'Inventario', detail: 'Ajuste manual', time: 'hace 4h', amount: '-5 und' },
+  ];
+
   return (
-    <div className="space-y-8 max-w-[1400px]">
-      {/* 4 Cards Principales (Colores sólidos y degradados suaves) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-blue-500/10 transition-all hover:scale-[1.02]">
-           <div className="flex justify-between items-start">
-              <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Entregas Hoy:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">15 <span className="text-sm font-medium opacity-70">productos</span></h3>
-              </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <Truck size={24} />
-              </div>
-           </div>
-           <p className="text-[12px] font-medium opacity-70">30 productos totales</p>
-        </div>
-
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-teal-500 to-teal-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-teal-500/10 transition-all hover:scale-[1.02]">
-           <div className="flex justify-between items-start">
-              <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Pagos Hoy:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">$5,200</h3>
-              </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <Banknote size={24} />
-              </div>
-           </div>
-           <p className="text-[12px] font-medium opacity-70">4 recibidos</p>
-        </div>
-
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-rose-500 to-rose-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-rose-500/10 transition-all hover:scale-[1.02]">
-           <div className="flex justify-between items-start">
-              <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Clientes con Adeudo:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">3</h3>
-              </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <AlertCircle size={24} />
-              </div>
-           </div>
-           <p className="text-[12px] font-medium opacity-70">Total $8,750</p>
-        </div>
-
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-orange-500/10 transition-all hover:scale-[1.02]">
-           <div className="flex justify-between items-start">
-              <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Stock Bajo:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">5</h3>
-              </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <Package size={24} />
-              </div>
-           </div>
-           <p className="text-[12px] font-medium opacity-70 italic">Requiere atención</p>
-        </div>
+    <div className="space-y-10 pb-10">
+      
+      {/* 1. Header & Welcome (Mobile Friendly) */}
+      <section className="flex items-center justify-between">
+         <div className="space-y-1">
+            <h2 className="text-2xl md:text-4xl font-black text-[#1D3146] tracking-tight">Hola, Leonardo 👋</h2>
+            <p className="text-sm md:text-base text-slate-500 font-medium italic">Esto es lo que sucede hoy en ChocoBites.</p>
+         </div>
+         <div className="hidden md:flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100 items-center gap-3 pr-6">
+            <div className="bg-[#56CCF2]/20 p-2 rounded-xl text-[#56CCF2]">
+               <TrendingUp size={20} />
+            </div>
+            <p className="text-xs font-black uppercase tracking-widest text-[#1D3146]">+12.5% vs ayer</p>
+         </div>
       </section>
 
-      {/* Grid de Contenido (Columnas 7/5) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-         
-         {/* Movimientos Recientes (Izquierda - 7/12) */}
-         <div className="lg:col-span-7 space-y-8">
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Movimientos Recientes</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver todos <ChevronRight size={16} /></button>
+      {/* 2. KPI Cards - Responsive Grid */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+         {kpis.map((kpi, i) => (
+            <div key={i} className={`${kpi.color} ${kpi.shadow} rounded-[2rem] p-5 md:p-8 text-white flex flex-col justify-between h-40 md:h-48 transition-all hover:scale-[1.03] active:scale-95 cursor-pointer`}>
+               <div className="flex justify-between items-start">
+                  <div className="bg-white/20 p-2 md:p-3 rounded-2xl">
+                     <kpi.icon size={20} className="md:w-6 md:h-6" />
+                  </div>
+                  <ArrowUpRight size={16} className="opacity-40" />
                </div>
-               
-               <div className="p-6 pt-0 space-y-1">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mb-2">Hoy</p>
-                  {[
-                    { icon: Truck, label: 'Entrega a Juan', sub: '+15 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { icon: Handshake, label: 'Pago recibo Ana', sub: '$1,500', color: 'text-orange-500', bg: 'bg-orange-50' },
-                  ].map((m, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
-                       <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
-                             <m.icon className={m.color} size={22} />
-                          </div>
-                          <div>
-                             <p className="text-base font-bold text-slate-900">{m.label}</p>
-                          </div>
-                       </div>
-                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
-                    </div>
-                  ))}
+               <div>
+                  <p className="text-[10px] md:text-xs font-black uppercase tracking-widest opacity-80 mb-1">{kpi.label}</p>
+                  <h3 className="text-2xl md:text-4xl font-black leading-none">{kpi.value}</h3>
+                  <p className="text-[10px] md:text-xs font-semibold opacity-60 mt-1">{kpi.sub}</p>
+               </div>
+            </div>
+         ))}
+      </section>
 
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">22/04/2024</p>
-                  {[
-                    { icon: Truck, label: 'Entrega a Carlos', sub: '+10 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { icon: Handshake, label: 'Pago recibo Luis', sub: '$2,000', color: 'text-orange-500', bg: 'bg-orange-50' },
-                  ].map((m, i) => (
-                    <div key={i+2} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
-                       <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
-                             <m.icon className={m.color} size={22} />
-                          </div>
-                          <div>
-                             <p className="text-base font-bold text-slate-900">{m.label}</p>
-                          </div>
-                       </div>
-                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
-                    </div>
-                  ))}
+      {/* 3. Quick Actions (Mobile UI Priority) */}
+      <section className="space-y-4">
+         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 px-1">Acciones Rápidas</h3>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {quickActions.map((action, i) => (
+               <Link key={i} href={action.href} className="flex flex-col items-center justify-center gap-3 p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200 transition-all active:scale-95 group">
+                  <div className={`${action.color} p-4 rounded-2xl text-white group-hover:scale-110 transition-transform shadow-lg`}>
+                     <action.icon size={24} />
+                  </div>
+                  <span className="text-xs font-black text-[#1D3146] uppercase tracking-tighter text-center">{action.label}</span>
+               </Link>
+            ))}
+         </div>
+      </section>
 
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">21/04/2024</p>
-                  <div className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
+      {/* 4. Activity Feed (Feed-style Cards) */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+         <div className="lg:col-span-12 space-y-4">
+            <div className="flex items-center justify-between px-2">
+               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Actividad Reciente</h3>
+               <Link href="/movements" className="text-xs font-black text-[#56CCF2] uppercase tracking-widest flex items-center gap-1 hover:underline">Ver Todo <ChevronRight size={14} /></Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+               {activities.map((act, i) => (
+                  <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between transition-all hover:bg-slate-50 cursor-pointer">
                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm bg-slate-100`}>
-                           <Settings2 className="text-slate-500" size={22} />
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+                           act.type === 'delivery' ? 'bg-blue-50 text-blue-500' :
+                           act.type === 'payment' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'
+                        }`}>
+                           {act.type === 'delivery' ? <Truck size={24} /> : 
+                            act.type === 'payment' ? <Handshake size={24} /> : <Package size={24} />}
                         </div>
                         <div>
-                           <p className="text-base font-bold text-slate-900">Ajuste de Stock</p>
+                           <p className="text-sm font-black text-[#1D3146] leading-tight">{act.client}</p>
+                           <p className="text-xs text-slate-500 font-medium">{act.detail}</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{act.time}</p>
                         </div>
                      </div>
-                     <span className={`text-base font-black text-rose-500`}>-5 productos</span>
+                     {act.amount && (
+                        <div className={`text-sm font-black px-3 py-1 rounded-full ${
+                           act.amount.startsWith('$') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                           {act.amount}
+                        </div>
+                     )}
                   </div>
-               </div>
-            </div>
-
-            {/* Resumen Semanal INDEPENDIENTE (como imagen) */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8">
-                <h4 className="text-lg font-extrabold text-slate-800 mb-6">Resumen Semanal</h4>
-                <div className="grid grid-cols-3 gap-6">
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Entregas:</p>
-                      <h4 className="text-4xl font-black text-slate-900">45</h4>
-                   </div>
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-center">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagos Recibidos:</p>
-                      <h4 className="text-4xl font-black text-emerald-500 leading-none">$12,800</h4>
-                   </div>
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-right">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Saldo Pendiente:</p>
-                      <h4 className="text-4xl font-black text-rose-500 leading-none">$8,750</h4>
-                   </div>
-                </div>
+               ))}
             </div>
          </div>
 
-         {/* Derecha - Tablas de Stock y Adeudos (5/12) */}
-         <div className="lg:col-span-5 space-y-8">
-            {/* Stock Actual Table */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Stock Actual</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver inventario <ChevronRight size={16} /></button>
-               </div>
-               <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
-                     <span>Producto</span>
-                     <span className="text-right">Disponible</span>
+         {/* Alerts & Urgent Focus (Mobile only shows top summary, Desktop shows details) */}
+         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+            <div className="bg-[#1D3146] p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+               <div className="relative z-10">
+                  <div className="flex items-center gap-2 text-rose-400 mb-4">
+                     <AlertCircle size={20} />
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prioridad: Adeudos Vencidos</span>
                   </div>
-                  {[
-                    { n: 'ChocoBites Barra', q: '25' },
-                    { n: 'ChocoBites Mix', q: '12' },
-                    { n: 'Galleta Crunch', q: '8' },
-                    { n: 'Brownie Bites', q: '4' }
-                  ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default">
-                       <span className="text-base font-bold text-slate-700">{p.n}</span>
-                       <span className="text-right text-lg font-black text-slate-900">{p.q}</span>
-                    </div>
-                  ))}
+                  <h4 className="text-3xl font-black text-white leading-tight mb-2">3 Clientes en mora</h4>
+                  <p className="text-slate-400 text-sm font-medium mb-6">Total pendiente de cobro: <span className="text-white font-bold">$8,750.00</span></p>
+                  <button className="px-6 py-3 bg-[#56CCF2] text-[#1D3146] font-extrabold rounded-2xl shadow-lg hover:scale-105 transition-all active:scale-95">Gestionar Cobros</button>
+               </div>
+               <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
+                  <Banknote size={200} />
                </div>
             </div>
 
-            {/* Adeudos por Cliente Table */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Adeudos por Cliente</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver adeudos <ChevronRight size={16} /></button>
-               </div>
-               <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
-                     <span>Cliente</span>
-                     <span className="text-right">Saldo Pendiente</span>
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden group">
+               <div className="relative z-10">
+                  <div className="flex items-center gap-2 text-orange-500 mb-4">
+                     <Package size={20} />
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Prioridad: Stock Crítico</span>
                   </div>
-                  {[
-                    { n: 'Ana López', a: '$3,500' },
-                    { n: 'Carlos Pérez', a: '$2,750' },
-                    { n: 'Luis García', a: '$2,500' }
-                  ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default text-lg">
-                       <span className="text-base font-bold text-slate-700">{p.n}</span>
-                       <span className="text-right font-black text-slate-900">{p.a}</span>
-                    </div>
-                  ))}
+                  <h4 className="text-3xl font-black text-[#1D3146] leading-tight mb-2">5 SKUs por agotar</h4>
+                  <p className="text-slate-500 text-sm font-medium mb-6">Productos como <span className="text-[#1D3146] font-bold">Brownie Bites</span> requieren restock.</p>
+                  <button className="px-6 py-3 bg-white border-2 border-[#1D3146] text-[#1D3146] font-extrabold rounded-2xl hover:bg-[#1D3146] hover:text-white transition-all active:scale-95">Ver Inventario</button>
+               </div>
+               <div className="absolute -right-10 top-0 opacity-5 group-hover:rotate-12 transition-transform duration-700">
+                  <AlertCircle size={150} />
                </div>
             </div>
          </div>
-      </div>
+      </section>
     </div>
   )
 }

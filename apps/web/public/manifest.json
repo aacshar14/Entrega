@@ -1,0 +1,23 @@
+{
+  "name": "EntréGA ChocoBites",
+  "short_name": "EntréGA",
+  "description": "Gestión operativa inteligente para ChocoBites.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#1D3146",
+  "theme_color": "#1D3146",
+  "icons": [
+    {
+      "src": "/chocobites.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/chocobites.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
