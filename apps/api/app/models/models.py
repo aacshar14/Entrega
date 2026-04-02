@@ -2,9 +2,42 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship
+from pydantic import BaseModel
 
 def get_utc_now():
     return datetime.now(timezone.utc)
+
+# --- Response & DTO Schemas (Top to avoid circular evaluation) ---
+
+class TenantInfo(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    logo_url: Optional[str] = None
+    status: str = "active"
+    onboarding_step: int = 1
+    business_whatsapp_number: Optional[str] = None
+    clients_imported: bool = False
+    stock_imported: bool = False
+    business_whatsapp_connected: bool = False
+    ready: bool = False
+
+class MembershipInfo(BaseModel):
+    tenant: TenantInfo
+    role: str
+    is_default: bool
+
+class MeResponse(BaseModel):
+    user: "User"
+    active_tenant: Optional[TenantInfo] = None
+    memberships: List[MembershipInfo] = []
+
+class MessageCorrection(BaseModel):
+    intent: str
+    entities: dict
+    status: str = "corrected"
+
+# --- Database Tables (SQLModel) ---
 
 class Tenant(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
@@ -169,35 +202,3 @@ class OnboardingEvent(SQLModel, table=True):
     metadata_json: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
-
-# --- Response & DTO Schemas ---
-
-from pydantic import BaseModel
-
-class TenantInfo(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    logo_url: Optional[str] = None
-    status: str = "active"
-    onboarding_step: int = 1
-    business_whatsapp_number: Optional[str] = None
-    clients_imported: bool = False
-    stock_imported: bool = False
-    business_whatsapp_connected: bool = False
-    ready: bool = False
-
-class MembershipInfo(BaseModel):
-    tenant: TenantInfo
-    role: str
-    is_default: bool
-
-class MeResponse(BaseModel):
-    user: User
-    active_tenant: Optional[TenantInfo] = None
-    memberships: List[MembershipInfo] = []
-
-class MessageCorrection(BaseModel):
-    intent: str
-    entities: dict
-    status: str = "corrected"
