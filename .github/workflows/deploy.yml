@@ -30,18 +30,23 @@ jobs:
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
     # --- Backend Deploy ---
-    - name: Build API Container
+    - name: Build and Tag API Container
       run: |-
-        docker build -t $API_IMAGE ./apps/api
+        docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
+
+    - name: API Smoke Test
+      run: |-
+        docker run --rm $API_IMAGE:${{ github.sha }} python -c "from app.main import app; print('🚀 Smoke test: app.main imported correctly')"
 
     - name: Push API Container
       run: |-
-        docker push $API_IMAGE
+        docker push $API_IMAGE:${{ github.sha }}
+        docker push $API_IMAGE:latest
 
     - name: Deploy API to Cloud Run
       run: |-
         gcloud run deploy entrega-api \
-          --image $API_IMAGE \
+          --image $API_IMAGE:${{ github.sha }} \
           --region $REGION \
           --platform managed \
           --allow-unauthenticated \
@@ -50,16 +55,17 @@ jobs:
     # --- Frontend Deploy ---
     - name: Build Web Container
       run: |-
-        docker build -t $WEB_IMAGE ./apps/web --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
+        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest ./apps/web --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
 
     - name: Push Web Container
       run: |-
-        docker push $WEB_IMAGE
+        docker push $WEB_IMAGE:${{ github.sha }}
+        docker push $WEB_IMAGE:latest
 
     - name: Deploy Web to Cloud Run
       run: |-
         gcloud run deploy entrega-web \
-          --image $WEB_IMAGE \
+          --image $WEB_IMAGE:${{ github.sha }} \
           --region $REGION \
           --platform managed \
           --allow-unauthenticated \
