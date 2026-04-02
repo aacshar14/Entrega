@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select, func
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, require_roles
-from app.models.models import User, Customer, CustomerBalance, OnboardingEvent
+from app.core.dependencies import get_current_user, get_active_tenant
+from app.models.models import User, Tenant, Customer, CustomerBalance, OnboardingEvent
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 import csv
 import io
 import re
@@ -38,18 +38,18 @@ class ImportPreviewResponse(BaseModel):
 class ImportCommitRequest(BaseModel):
     rows: List[CustomerImportRow]
 
-@router.get("/", response_model=List[Customer], dependencies=[Depends(require_roles(["owner", "operator"]))])
+@router.get("/", response_model=List[Customer])
 async def list_customers(
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """List all customers (owner, operator)."""
+    """List all customers for the active tenant."""
     customers = db.exec(
-        select(Customer).where(Customer.tenant_id == current_user.tenant_id)
+        select(Customer).where(Customer.tenant_id == active_tenant.id)
     ).all()
     return customers
 
-@router.post("/", response_model=Customer, dependencies=[Depends(require_roles(["owner"]))])
+@router.post("/", response_model=Customer)
 async def create_customer(
     name: str,
     phone_number: str,
@@ -57,11 +57,12 @@ async def create_customer(
     address: Optional[str] = None,
     notes: Optional[str] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """Create a new customer (owner only)."""
+    """Create a new customer for the active tenant."""
     new_customer = Customer(
-        tenant_id=current_user.tenant_id,
+        tenant_id=active_tenant.id,
         name=name,
         phone_number=phone_number,
         email=email,
@@ -74,22 +75,20 @@ async def create_customer(
     db.refresh(new_customer)
     return new_customer
 
-@router.post("/import/preview", response_model=ImportPreviewResponse, dependencies=[Depends(require_roles(["owner"]))])
+@router.post("/import/preview", response_model=ImportPreviewResponse)
 async def import_customers_preview(
     file: UploadFile = File(...),
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """
-    Step 1: Preview CSV data for customer import.
-    """
+    """Step 1: Preview CSV data for customer import."""
     content = await file.read()
     string_io = io.StringIO(content.decode('utf-8'))
     reader = csv.DictReader(string_io)
     
     # Get existing customers to detect duplicates
     existing_customers = db.exec(
-        select(Customer).where(Customer.tenant_id == current_user.tenant_id)
+        select(Customer).where(Customer.tenant_id == active_tenant.id)
     ).all()
     existing_phones = {c.phone_number for c in existing_customers if c.phone_number}
     existing_names = {c.name.lower() for c in existing_customers}
@@ -109,20 +108,16 @@ async def import_customers_preview(
         initial_balance = row.get("initial_balance", "0").strip()
         notes = row.get("notes", "").strip()
         
-        # Validation
         if not name:
             errors.append("Name is required")
             
-        # Normalization
         normalized_phone = re.sub(r'\D', '', phone) if phone else None
         if normalized_phone and not (10 <= len(normalized_phone) <= 15):
              errors.append("Invalid phone number format")
              
-        # Email check
         if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             errors.append("Invalid email format")
             
-        # Balance check
         try:
             bal = float(initial_balance) if initial_balance else 0.0
         except ValueError:
@@ -162,20 +157,18 @@ async def import_customers_preview(
         rows=rows_preview
     )
 
-@router.post("/import/commit", dependencies=[Depends(require_roles(["owner"]))])
+@router.post("/import/commit")
 async def import_customers_commit(
     request: ImportCommitRequest,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """
-    Step 2: Commit valid customer rows to the database.
-    """
-    tenant_id = current_user.tenant_id
+    """Step 2: Commit valid customer rows to the database."""
+    tenant_id = active_tenant.id
     created_count = 0
     skipped_duplicates = 0
     
-    # Get existing for final duplicate check
     existing_customers = db.exec(
         select(Customer).where(Customer.tenant_id == tenant_id)
     ).all()
@@ -183,12 +176,10 @@ async def import_customers_commit(
     existing_names = {c.name.lower() for c in existing_customers}
 
     for row in request.rows:
-        # Final duplicate check before save
         if row.name.lower() in existing_names or (row.phone and row.phone in existing_phones):
             skipped_duplicates += 1
             continue
             
-        # Create Customer
         new_customer = Customer(
             tenant_id=tenant_id,
             name=row.name,
@@ -198,14 +189,13 @@ async def import_customers_commit(
             created_by_user_id=current_user.id
         )
         db.add(new_customer)
-        db.flush() # Populate ID
+        db.flush()
         
-        # Create Balance if applies
         if row.initial_balance != 0:
             new_balance = CustomerBalance(
                 tenant_id=tenant_id,
                 customer_id=new_customer.id,
-                balance=-row.initial_balance, # amount user owes us
+                balance=-row.initial_balance,
                 last_updated=datetime.now(timezone.utc)
             )
             db.add(new_balance)
@@ -215,7 +205,6 @@ async def import_customers_commit(
         if row.phone:
             existing_phones.add(row.phone)
             
-    # Record event
     event = OnboardingEvent(
         tenant_id=tenant_id,
         event_type="customer_import",
@@ -223,27 +212,22 @@ async def import_customers_commit(
         created_by_user_id=current_user.id
     )
     db.add(event)
-    
     db.commit()
-    
-    return {
-        "status": "success",
-        "created_count": created_count,
-        "skipped_duplicates": skipped_duplicates
-    }
+    return {"status": "success", "created_count": created_count, "skipped_duplicates": skipped_duplicates}
 
-@router.patch("/{id}", response_model=Customer, dependencies=[Depends(require_roles(["owner"]))])
+@router.patch("/{id}", response_model=Customer)
 async def update_customer(
     id: UUID,
     name: Optional[str] = None,
     phone_number: Optional[str] = None,
     address: Optional[str] = None,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """Update a customer (owner only)."""
+    """Update a customer for the active tenant."""
     customer = db.get(Customer, id)
-    if not customer or customer.tenant_id != current_user.tenant_id:
+    if not customer or customer.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Customer not found")
     
     if name is not None:

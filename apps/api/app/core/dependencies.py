@@ -50,50 +50,68 @@ async def get_current_user(
         
     return user
 
-async def get_active_tenant(
+async def get_active_membership(
     x_tenant_id: Optional[UUID] = Header(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> Tenant:
+) -> TenantUser:
     """
-    Resolves the active tenant context for the request.
-    Admins can switch tenants via X-Tenant-Id. 
-    Standard users are restricted to their memberships.
+    Resolves the active membership context.
+    Platform admins are granted a 'pseudo-membership' if targeting a tenant.
     """
     # 1. Platform Admin override
     if current_user.platform_role == "admin" and x_tenant_id:
         tenant = db.get(Tenant, x_tenant_id)
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
-        return tenant
+        # Return a mock membership for the admin
+        return TenantUser(
+            tenant_id=x_tenant_id,
+            user_id=current_user.id,
+            tenant_role="owner", # Admin acts as owner
+            is_active=True
+        )
 
-    # 2. Resolve via memberships for standard users (or admin without header)
+    # 2. Resolve via DB memberships
     membership_stmt = select(TenantUser).where(
         TenantUser.user_id == current_user.id,
         TenantUser.is_active == True
     )
     
-    # Selection priority: X-Tenant-Id > is_default > First membership
     if x_tenant_id:
         membership_stmt = membership_stmt.where(TenantUser.tenant_id == x_tenant_id)
     
     memberships = db.exec(membership_stmt).all()
     if not memberships:
-        raise HTTPException(status_code=403, detail="User has no active tenant memberships")
+        raise HTTPException(status_code=403, detail="No active membership found")
 
+    # Priority: X-Tenant-Id matched > is_default > First
     membership = next((m for m in memberships if m.is_default), memberships[0])
     if x_tenant_id:
-        membership = next((m for m in memberships if m.tenant_id == x_tenant_id), None)
-        if not membership:
-             raise HTTPException(status_code=403, detail="Access denied to requested tenant")
+        membership = next((m for m in memberships if m.tenant_id == x_tenant_id), memberships[0])
 
-    tenant = db.get(Tenant, membership.tenant_id)
-    return tenant
+    return membership
+
+async def get_active_tenant(
+    membership: TenantUser = Depends(get_active_membership),
+    db: Session = Depends(get_db)
+) -> Tenant:
+    return db.get(Tenant, membership.tenant_id)
 
 async def get_active_tenant_id(
-    tenant: Tenant = Depends(get_active_tenant)
+    membership: TenantUser = Depends(get_active_membership)
 ) -> UUID:
-    return tenant.id
+    return membership.tenant_id
+
+def require_tenant_role(roles: List[str]):
+    async def role_dependency(membership: TenantUser = Depends(get_active_membership)):
+        if membership.tenant_role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operation requires one of roles: {roles}"
+            )
+        return membership
+    return role_dependency
 
 def require_platform_role(authorized_roles: List[str]):
     async def role_dependency(current_user: User = Depends(get_current_user)):
