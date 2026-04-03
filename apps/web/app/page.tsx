@@ -1,9 +1,30 @@
 'use client';
 
-import React from 'react';
-import { Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useTenant } from '@/lib/context/tenant-context';
+import { useRouter } from 'next/navigation';
 
 export default function RootPage() {
+  const { user, activeTenant, isLoading, memberships } = useTenant();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.replace('/landing');
+      } else {
+        const isAdmin = user.platform_role === 'admin';
+        const isAdminWithMultiple = isAdmin && memberships.length > 1;
+
+        if (isAdminWithMultiple && !activeTenant) {
+          router.replace('/select-tenant');
+        } else if (activeTenant) {
+          router.replace(activeTenant.ready ? '/dashboard' : '/onboarding');
+        }
+      }
+    }
+  }, [isLoading, user, activeTenant, memberships, router]);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] gap-4">
       <div className="relative">

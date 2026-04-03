@@ -122,6 +122,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
           router.replace('/landing');
         }
+      } else {
+        // General error fallback: if we are stuck at root or protected, go to login
+        if (!pathname.startsWith('/landing') && !pathname.startsWith('/login') && pathname !== '/login') {
+          router.replace('/login');
+        }
       }
     } finally {
       setIsLoading(false);
