@@ -367,12 +367,12 @@ export default function StockPage() {
                        <tr key={idx} className={`hover:bg-slate-50 transition-colors ${!row.is_valid ? 'bg-rose-50/20' : ''}`}>
                           <td className="px-10 py-5 text-slate-300 font-mono text-xs">#{row.row_index}</td>
                           <td className="px-4 py-5">
-                             <p className="font-bold text-[#1D3146]">{row.data.name}</p>
-                             <p className="font-mono text-[10px] text-slate-400">{row.data.sku}</p>
+                             <p className="font-bold text-[#1D3146]">{row.data?.name || '---'}</p>
+                             <p className="font-mono text-[10px] text-slate-400">{row.data?.sku || '---'}</p>
                           </td>
-                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_mayoreo?.toFixed(2)}</td>
-                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_menudeo?.toFixed(2)}</td>
-                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_especial?.toFixed(2)}</td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data?.price_mayoreo?.toFixed(2) || '0.00'}</td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data?.price_menudeo?.toFixed(2) || '0.00'}</td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data?.price_especial?.toFixed(2) || '0.00'}</td>
                           <td className="px-10 py-5">
                              <div className="flex items-center justify-center">
                                 {row.is_valid ? (

@@ -222,15 +222,15 @@ export default function CustomersPage() {
                     {preview.rows.map((row, idx) => (
                        <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/80 transition-colors ${!row.is_valid ? 'bg-red-50/30' : ''}`}>
                           <td className="px-8 py-4 text-slate-400 font-mono text-xs">#{row.row_index}</td>
-                          <td className="px-4 py-4 font-bold text-[#1D3146] text-sm">{row.data.name}</td>
-                          <td className="px-4 py-4 text-slate-500 text-sm">{row.data.phone || 'N/A'}</td>
+                          <td className="px-4 py-4 font-bold text-[#1D3146] text-sm">{row.data?.name || '---'}</td>
+                          <td className="px-4 py-4 text-slate-500 text-sm">{row.data?.phone || 'N/A'}</td>
                           <td className="px-4 py-4">
                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                                row.data.tier === 'mayoreo' ? 'bg-blue-100 text-blue-700' :
-                                row.data.tier === 'especial' ? 'bg-purple-100 text-purple-700' :
+                                row.data?.tier === 'mayoreo' ? 'bg-blue-100 text-blue-700' :
+                                row.data?.tier === 'especial' ? 'bg-purple-100 text-purple-700' :
                                 'bg-slate-100 text-slate-700'
                              }`}>
-                                {row.data.tier}
+                                {row.data?.tier || 'menudeo'}
                              </span>
                           </td>
                           <td className="px-4 py-4">
