@@ -31,19 +31,6 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Application shutting down...")
 
-# Set all CORS enabled origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # Adjust for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Handle HTTPS behind proxy
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
