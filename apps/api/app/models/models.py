@@ -44,6 +44,7 @@ class MessageCorrection(BaseModel):
 # --- Database Tables (SQLModel) ---
 
 class Tenant(SQLModel, table=True):
+    __tablename__ = "tenants"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     slug: str = Field(unique=True, index=True)
     name: str = Field(index=True)
@@ -74,6 +75,7 @@ class Tenant(SQLModel, table=True):
 
 class WhatsAppConfig(SQLModel, table=True):
     """Secure per-tenant WhatsApp Business Cloud API configuration"""
+    __tablename__ = "whatsapp_configs"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id", unique=True, index=True)
     
@@ -91,6 +93,7 @@ class WhatsAppConfig(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class User(SQLModel, table=True):
+    __tablename__ = "users"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     email: str = Field(unique=True, index=True)
     full_name: str
@@ -101,6 +104,7 @@ class User(SQLModel, table=True):
 
 class TenantUser(SQLModel, table=True):
     """Link table for Users and Tenants (Memberships)"""
+    __tablename__ = "tenant_members"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
     user_id: UUID = Field(foreign_key="user.id", index=True)
@@ -110,6 +114,7 @@ class TenantUser(SQLModel, table=True):
     created_at: datetime = Field(default_factory=get_utc_now)
 
 class Customer(SQLModel, table=True):
+    __tablename__ = "customers"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     name: str = Field(index=True)
@@ -124,6 +129,7 @@ class Customer(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class Product(SQLModel, table=True):
+    __tablename__ = "products"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     name: str = Field(index=True)
@@ -138,6 +144,7 @@ class Product(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class StockBalance(SQLModel, table=True):
+    __tablename__ = "stock_balances"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     product_id: UUID = Field(foreign_key="product.id")
@@ -146,6 +153,7 @@ class StockBalance(SQLModel, table=True):
     last_updated: datetime = Field(default_factory=get_utc_now)
 
 class InventoryMovement(SQLModel, table=True):
+    __tablename__ = "inventory_movements"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     product_id: UUID = Field(foreign_key="product.id")
@@ -166,6 +174,7 @@ class InventoryMovement(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class Payment(SQLModel, table=True):
+    __tablename__ = "payments"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     customer_id: UUID = Field(foreign_key="customer.id")
@@ -177,6 +186,7 @@ class Payment(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 class CustomerBalance(SQLModel, table=True):
+    __tablename__ = "customer_balances"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     customer_id: UUID = Field(foreign_key="customer.id")
@@ -184,6 +194,7 @@ class CustomerBalance(SQLModel, table=True):
     last_updated: datetime = Field(default_factory=get_utc_now)
 
 class WhatsAppMessage(SQLModel, table=True):
+    __tablename__ = "whatsapp_messages"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
     from_number: str = Field(index=True)
@@ -196,6 +207,7 @@ class WhatsAppMessage(SQLModel, table=True):
 
 class MessageLog(SQLModel, table=True):
     """Logging estructurado de mensajes para Review / Learning Mode"""
+    __tablename__ = "message_logs"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
     sender: str = Field(index=True)
@@ -219,6 +231,7 @@ class MessageLog(SQLModel, table=True):
 
 class CustomerAlias(SQLModel, table=True):
     """Aliases locales por tenant (Ej: 'Juan' -> Juan Lopez)"""
+    __tablename__ = "customer_aliases"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
     customer_id: UUID = Field(foreign_key="customer.id", index=True)
@@ -227,6 +240,7 @@ class CustomerAlias(SQLModel, table=True):
 
 class ProductAlias(SQLModel, table=True):
     """Aliases de productos locales por tenant (Ej: 'Choco' -> ChocoBites Bites)"""
+    __tablename__ = "product_aliases"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id", index=True)
     product_id: UUID = Field(foreign_key="product.id", index=True)
@@ -234,6 +248,7 @@ class ProductAlias(SQLModel, table=True):
     created_at: datetime = Field(default_factory=get_utc_now)
 
 class OnboardingEvent(SQLModel, table=True):
+    __tablename__ = "onboarding_events"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     event_type: str 
