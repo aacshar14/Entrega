@@ -80,13 +80,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const membershipCount = data.memberships?.length || 0;
       const isAdminWithMultiple = isAdmin && membershipCount > 1;
 
-      // 1. HARD STOP for admin with multiple tenants (and no explicit session selection)
-      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
+      // 1. HARD STOP for admin with multiple tenants (and no explicit override)
+      if (isAdminWithMultiple && !overrideId) {
         console.log('[AUTH DEBUG] Admin with multiple tenants detected. REDIRECTING TO SELECTOR.');
         setUser(data.user);
         setMemberships(data.memberships || []);
         setActiveTenant(null);
         setActiveTenantId(null);
+        setIsLoading(false);
 
         if (!pathname.startsWith('/select-tenant')) {
           router.replace('/select-tenant');
@@ -121,11 +122,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setActiveTenant(null);
         if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
           router.replace('/landing');
-        }
-      } else {
-        // General error fallback: if we are stuck at root or protected, go to login
-        if (!pathname.startsWith('/landing') && !pathname.startsWith('/login') && pathname !== '/login') {
-          router.replace('/login');
         }
       }
     } finally {
@@ -177,7 +173,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (subscription) subscription.unsubscribe();
     };
-  }, [pathname]);
+  }, []); // Static initialization - avoid redirect loops triggered by pathname
 
   const switchTenant = (tenantId: string) => {
     setActiveTenantId(tenantId);
