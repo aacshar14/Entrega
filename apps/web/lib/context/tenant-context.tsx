@@ -62,18 +62,26 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const handleManualLogout = () => {
     setUser(null);
     setActiveTenant(null);
+    setActiveRole(null);
     setMemberships([]);
     setActiveTenantId(null);
   };
 
   const fetchContext = async (overrideId?: string) => {
     try {
-      const data = await apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined);
+      // Safety: if the API call hangs, we don't want to lock the UI forever
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT_ME_RESOLUTION')), 8000)
+      );
+
+      const data = await Promise.race([
+        apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined),
+        timeoutPromise
+      ]) as any;
       
-      console.log('[AUTH DEBUG] Context resolved:', {
+      console.log('[AUTH DEBUG] Context resolved successfully', {
         role: data.user?.platform_role,
-        memberships: data.memberships?.length,
-        active_tenant: data.active_tenant?.id,
+        tenant: data.active_tenant?.id,
         pathname
       });
 
@@ -99,9 +107,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       // --- CENTRALIZED ROUTING AUTHORITY (PHASE 2 - STRICT) ---
       
-      // 1. Unauthenticated -> Handled in initialize() / catch block
-
-      // 2. Admin with multiple tenants and no selection -> Force Selector
+      // 1. Admin with multiple tenants and no selection -> Force Selector
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
         if (!pathname.startsWith('/select-tenant')) {
           router.replace('/select-tenant');
@@ -110,26 +116,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return; // HALT
       }
 
-      // 3. Active Tenant Onboarding/Dashboard Gates
+      // 2. Active Tenant Onboarding/Dashboard Gates
       if (data.active_tenant) {
         const isNotReady = !data.active_tenant.ready;
         const isOnboarding = pathname.startsWith('/onboarding');
         const isProtectedAppRoute = !['/landing', '/login', '/select-tenant', '/'].includes(pathname);
 
         if (isNotReady && isProtectedAppRoute && !isOnboarding) {
-          // If not ready and on a dashboard/stock/etc. route -> force onboarding
           router.replace('/onboarding');
         } else if (!isNotReady && isOnboarding) {
-          // If ready but somehow stuck on onboarding -> go to dashboard
           router.replace('/dashboard');
         } else if (!isNotReady && pathname === '/') {
-          // If ready and hit root -> go to dashboard
           router.replace('/dashboard');
         }
       }
     } catch (error: any) {
       console.error('Failed to resolve context:', error);
-      if (error.status === 401 || error.status === 403) {
+      if (error.message === 'TIMEOUT_ME_RESOLUTION' || error.status === 401 || error.status === 403) {
         handleManualLogout();
         if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
           router.replace('/landing');
@@ -160,8 +163,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          console.log('[AUTH DEBUG] Active session found, fetching context...');
           await fetchContext();
         } else {
+          console.log('[AUTH DEBUG] No active session, releasing loader.');
           setIsLoading(false);
           const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
           if (!isPublic && pathname !== '/') {
@@ -184,7 +189,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setActiveTenant(null);
     setActiveRole(null);
     setMemberships([]);
-    setActiveTenantId(null);
+    setActiveTenantId(tenantId);
     setIsLoading(true);
     fetchContext(tenantId);
   };
