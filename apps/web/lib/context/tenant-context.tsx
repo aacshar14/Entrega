@@ -74,6 +74,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         } else if (data.active_tenant.ready && pathname.startsWith('/onboarding')) {
           router.push('/dashboard');
         }
+      } else if (data.user?.platform_role === 'admin' && data.memberships?.length > 1) {
+        // Platform Admin with multiple options and NO active tenant selected
+        if (!pathname.startsWith('/select-tenant')) {
+          router.push('/select-tenant');
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch tenant context:', error);

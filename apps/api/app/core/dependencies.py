@@ -54,25 +54,29 @@ async def get_active_membership(
     x_tenant_id: Optional[UUID] = Header(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> TenantUser:
+) -> Optional[TenantUser]:
     """
     Resolves the active membership context.
     Platform admins are granted a 'pseudo-membership' if targeting a tenant.
     """
-    # 1. Platform Admin override
-    if current_user.platform_role == "admin" and x_tenant_id:
-        tenant = db.get(Tenant, x_tenant_id)
-        if not tenant:
-            raise HTTPException(status_code=404, detail="Tenant not found")
-        # Return a mock membership for the admin
-        return TenantUser(
-            tenant_id=x_tenant_id,
-            user_id=current_user.id,
-            tenant_role="owner", # Admin acts as owner
-            is_active=True
-        )
+    # 1. Platform Admin logic
+    if current_user.platform_role == "admin":
+        if x_tenant_id:
+            tenant = db.get(Tenant, x_tenant_id)
+            if not tenant:
+                raise HTTPException(status_code=404, detail="Tenant not found")
+            return TenantUser(
+                tenant_id=x_tenant_id,
+                user_id=current_user.id,
+                tenant_role="owner", 
+                is_active=True
+            )
+        else:
+            # If admin has no X-Tenant-Id, we check how many tenants exist.
+            # If they belong to multiple, return None so UI can show selector.
+            return None
 
-    # 2. Resolve via DB memberships
+    # 2. Resolve via DB memberships for regular users
     membership_stmt = select(TenantUser).where(
         TenantUser.user_id == current_user.id,
         TenantUser.is_active == True
@@ -83,7 +87,8 @@ async def get_active_membership(
     
     memberships = db.exec(membership_stmt).all()
     if not memberships:
-        raise HTTPException(status_code=403, detail="No active membership found")
+        # If user has no memberships at all, return None (might need to onboard)
+        return None
 
     # Priority: X-Tenant-Id matched > is_default > First
     membership = next((m for m in memberships if m.is_default), memberships[0])
