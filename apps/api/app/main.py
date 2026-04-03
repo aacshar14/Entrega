@@ -40,6 +40,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Handle HTTPS behind proxy
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
