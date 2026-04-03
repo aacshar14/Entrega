@@ -151,8 +151,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           await fetchContext();
         } else {
           setIsLoading(false);
-          // Redirect to landing if on protected page without session
-          if (!pathname.startsWith('/landing') && !pathname.startsWith('/login') && pathname !== '/') {
+          // Redirect to landing if on protected page (including root) without session
+          const isPublicPath = pathname.startsWith('/landing') || pathname.startsWith('/login');
+          if (!isPublicPath) {
             router.replace('/landing');
           }
         }
