@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabaseClient } from '../supabase';
 import { apiRequest } from '../api';
 import { useRouter, usePathname } from 'next/navigation';
+import SessionTimeout from './session-timeout';
 
 interface User {
   id: string;
@@ -55,6 +56,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   
   const router = useRouter();
   const pathname = usePathname();
+
+  const handleManualLogout = () => {
+    setUser(null);
+    setActiveTenant(null);
+    setMemberships([]);
+    setActiveTenantId(null);
+  };
 
   const fetchContext = async (overrideId?: string) => {
     try {
@@ -157,6 +165,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       refreshUser: fetchContext
     }}>
       {children}
+      <SessionTimeout user={user} onLogout={handleManualLogout} />
     </TenantContext.Provider>
   );
 }
