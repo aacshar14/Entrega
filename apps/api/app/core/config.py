@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     # App General Settings
@@ -11,6 +12,11 @@ class Settings(BaseSettings):
 
     # Database URL - DO NOT HARDCODE production values
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/entrega_db"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def trim_db_url(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
     # WhatsApp Cloud API (Meta)
     WHATSAPP_VERIFY_TOKEN: str = "default_verify_token" # Overwrite in .env
