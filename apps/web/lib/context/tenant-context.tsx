@@ -63,6 +63,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setActiveTenant(data.active_tenant);
       setMemberships(data.memberships);
       
+      // Update activeTenantId to persist state across re-renders
+      if (data.active_tenant?.id) {
+        setActiveTenantId(data.active_tenant.id);
+      }
+
       if (data.active_tenant) {
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.push('/onboarding');
@@ -70,44 +75,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           router.push('/dashboard');
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch tenant context, falling back to Pilot/Mock Mode:', error);
+    } catch (error: any) {
+      console.error('Failed to fetch tenant context:', error);
       
-      // PILOT (MOCK) FALLBACK — RESTORES UI FOR CHOCOBITES
-      const mockUser: User = { 
-        id: 'mock-uuid', 
-        email: 'pilot@chocobites.mx', 
-        full_name: 'LG Pilot User', 
-        platform_role: 'admin' 
-      };
-      
-      const mockTenant: Tenant = {
-        id: 'chocobites-uuid',
-        name: 'ChocoBites',
-        slug: 'chocobites',
-        logo_url: '/chocobites.jpg',
-        status: 'active',
-        clients_imported: true,
-        stock_imported: true,
-        business_whatsapp_connected: true,
-        ready: true,
-        whatsapp_status: 'connected',
-        whatsapp_display_number: '+52 1 55 1234 5678',
-        whatsapp_account_name: 'ChocoBites México',
-        whatsapp_app_id: '904555555555555'
-      };
-      
-      setUser(mockUser);
-      setActiveTenant(mockTenant);
-      setMemberships([{ tenant: mockTenant, role: 'owner', is_default: true }]);
+      // Handle 401/403 explicitly
+      if (error.status === 401 || error.status === 403) {
+        setUser(null);
+        setActiveTenant(null);
+        if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
+          router.push('/landing');
+        }
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Wrap initial logic in a try-catch to ensure isLoading is definitely set to false
-    // and pilot mode is activated if Supabase configuration is missing.
     const initialize = async () => {
       try {
         const supabase = getSupabaseClient();
@@ -130,18 +114,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           fetchContext();
         } else {
           setIsLoading(false);
+          // Redirect to landing if on protected page without session
+          if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
+            router.push('/landing');
+          }
         }
         
         return () => subscription.unsubscribe();
       } catch (err) {
-        console.warn('Supabase initialization failed (likely missing keys), activating Pilot Fallback:', err);
-        // FORCE PILOT MODE SO THE UI IS VISIBLE
-        fetchContext();
+        console.error('Supabase initialization failed:', err);
+        setIsLoading(false);
       }
     };
 
     initialize();
-  }, [activeTenantId]);
+  }, [activeTenantId, pathname]);
 
   const switchTenant = (tenantId: string) => {
     setActiveTenantId(tenantId);

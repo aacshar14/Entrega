@@ -84,8 +84,10 @@ export default function StockPage() {
   };
 
   useEffect(() => {
-    fetchStock();
-  }, []);
+    if (activeTenant) {
+      fetchStock();
+    }
+  }, [activeTenant]);
 
   const downloadTemplate = () => {
     const csvContent = "sku,name,quantity,price_mayoreo,price_menudeo,price_especial\nCH-CC,Galleta Chocochip,100,28,30,35\nCH-BR,Brookie,100,30,32,37";
