@@ -43,7 +43,14 @@ jobs:
 
     - name: API Smoke Test
       run: |-
-        docker run --rm $API_IMAGE:${{ github.sha }} python -c "from app.main import app; print('🚀 Smoke test: app.main imported correctly')"
+        docker run --rm \
+          -e DATABASE_URL="postgresql://test:test@localhost:5432/db" \
+          -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+          -e SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+          -e SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+          -e SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }} \
+          $API_IMAGE:${{ github.sha }} python -c "from app.main import app; print('🚀 Smoke test: app.main imported correctly')"
+
 
     - name: Push API Container
       run: |-

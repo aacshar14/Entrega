@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import time
+
+# Immediate startup signal for Cloud Run logging
+print(f"DEBUG: Entrypoint reached at {time.ctime()} (UTC)")
+
 from app.api.v1.api import api_router
+
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 
