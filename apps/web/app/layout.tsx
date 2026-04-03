@@ -19,6 +19,7 @@ import {
   Layout
 } from 'lucide-react';
 import { Providers } from '../lib/context/providers';
+import { useTenant } from '../lib/context/tenant-context';
 import { usePathname } from 'next/navigation';
 
 const menuItems = [
@@ -31,11 +32,38 @@ const menuItems = [
     { icon: FileText, label: 'Reportes', href: '/reports/weekly' }, // Fix 404
 ];
 
-function UI_Shell({ children, user = { name: 'Admin', role: 'owner' }, tenant = { name: 'ChocoBites' } }) {
+function UI_Shell({ children }) {
   const pathname = usePathname();
+  const { user, activeTenant, isLoading } = useTenant();
   
   // No shell for landing or login
-  if (['/landing', '/login', '/'].includes(pathname)) return children;
+  const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
+  if (isPublicPath) return children;
+
+  // Protected route loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#F8FAFC] gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
+          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="text-slate-500 font-black text-xs uppercase tracking-widest animate-pulse">Protegiendo tu sesión</p>
+      </div>
+    );
+  }
+
+  // If loading finished but no user, and NOT on public path, show nothing (Provider will redirect)
+  if (!user) return null;
+
+  const displayUser = {
+    name: user.full_name || 'Usuario',
+    role: user.platform_role === 'admin' ? 'Plataforma Admin' : 'Operador'
+  };
+
+  const displayTenant = {
+    name: activeTenant?.name || 'Seleccionar Negocio'
+  };
 
   return (
     <div className="flex min-h-screen bg-[#EBEEF2] font-sans antialiased text-slate-900">
@@ -91,7 +119,7 @@ function UI_Shell({ children, user = { name: 'Admin', role: 'owner' }, tenant = 
                   <span className="text-[10px] font-black uppercase text-[#1D3146] tracking-tighter">Premium Enterprise</span>
                </div>
                <span className="text-slate-400 text-sm font-medium">/</span>
-               <h2 className="text-sm font-black text-[#1D3146] uppercase tracking-widest">{tenant.name}</h2>
+               <h2 className="text-sm font-black text-[#1D3146] uppercase tracking-widest">{displayTenant.name}</h2>
             </div>
             
             <div className="flex items-center gap-6">
@@ -104,11 +132,13 @@ function UI_Shell({ children, user = { name: 'Admin', role: 'owner' }, tenant = 
 
                <div className="flex items-center gap-4 px-2 py-1 hover:bg-slate-50 rounded-xl transition-all cursor-pointer group">
                   <div className="text-right">
-                     <p className="text-sm font-black text-[#1D3146] leading-none mb-1">{user.name}</p>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</p>
+                     <p className="text-sm font-black text-[#1D3146] leading-none mb-1">{displayUser.name}</p>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{displayUser.role}</p>
                   </div>
                   <div className="relative">
-                    <img src="/chocobites.jpg" alt={user.name} className="w-9 h-9 rounded-full border-2 border-slate-200 group-hover:border-[#56CCF2] transition-colors" />
+                    <div className="w-9 h-9 rounded-full bg-[#1D3146] flex items-center justify-center text-[#56CCF2] font-black text-xs border-2 border-slate-200 group-hover:border-[#56CCF2] transition-colors">
+                      {displayUser.name.charAt(0)}
+                    </div>
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-[0_0_8px_#56CCF2]"></span>
                   </div>
                   <ChevronDown size={14} className="text-slate-400" />
