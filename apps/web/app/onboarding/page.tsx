@@ -68,13 +68,16 @@ export default function OnboardingPage() {
       
       const preview = await apiRequest(`/${type}/import/preview`, 'POST', fd, activeTenant.id);
       
-      if (preview.valid_rows_count > 0) {
-        const validRows = preview.rows.filter((r: any) => r.is_valid).map((r: any) => r.data);
+      // Harden rows access
+      const rows = Array.isArray(preview?.rows) ? preview.rows : [];
+      
+      if (preview?.valid_rows_count > 0 && rows.length > 0) {
+        const validRows = rows.filter((r: any) => r.is_valid).map((r: any) => r.data);
         await apiRequest(`/${type}/import/commit`, 'POST', { rows: validRows }, activeTenant.id);
         await refreshUser();
         setStep(type === 'customers' ? 3 : 4);
       } else {
-        setError("El archivo CSV no contiene filas válidas.");
+        setError(`El archivo CSV no contiene filas válidas o el formato es incorrecto.`);
       }
     } catch (err: any) {
       setError(err.message || `Error al subir ${type}`);

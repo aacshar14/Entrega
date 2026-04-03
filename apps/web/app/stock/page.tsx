@@ -15,6 +15,8 @@ import {
   TrendingUp,
   ChevronRight
 } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
+import { useTenant } from '@/lib/context/tenant-context';
 
 interface ProductImportRow {
   sku: string;
@@ -59,21 +61,19 @@ export default function StockPage() {
   const [isCommitting, setIsCommitting] = useState(false);
   const [summary, setSummary] = useState<{ created: number; updated: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const { activeTenant } = useTenant();
 
   const fetchStock = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/products/stock`, {
-          headers: {
-              'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-          }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error('Error fetching stock:', error);
+      setError(null);
+      
+      const data = await apiRequest('/products/stock', 'GET', null, activeTenant?.id);
+      setProducts(data || []);
+    } catch (err: any) {
+      console.error('Error fetching stock:', err);
+      setError(err.message || 'Error al cargar el inventario');
     } finally {
       setLoading(false);
     }
@@ -102,23 +102,24 @@ export default function StockPage() {
   const handleUpload = async () => {
     if (!file) return;
     setIsUploading(true);
+    setError(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/products/import/preview`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-        },
-        body: formData
-      });
+      const data = await apiRequest('/products/import/preview', 'POST', formData, activeTenant?.id);
       
-      const data = await response.json();
-      setPreview(data);
+      // Harden data shape
+      const hardenedData = {
+        ...data,
+        rows: Array.isArray(data?.rows) ? data.rows : []
+      };
+      
+      setPreview(hardenedData);
       setStep('preview');
-    } catch (error) {
-      console.error('Error uploading CSV:', error);
+    } catch (err: any) {
+      console.error('Error uploading CSV:', err);
+      setError(err.message || 'Error al procesar el archivo CSV');
     } finally {
       setIsUploading(false);
     }
@@ -127,24 +128,18 @@ export default function StockPage() {
   const handleCommit = async () => {
     if (!preview) return;
     setIsCommitting(true);
+    setError(null);
     try {
       const validRows = preview.rows.filter(r => r.is_valid).map(r => r.data);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/products/import/commit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-        },
-        body: JSON.stringify({ rows: validRows })
-      });
+      const data = await apiRequest('/products/import/commit', 'POST', { rows: validRows }, activeTenant?.id);
       
-      const data = await response.json();
       setSummary({ created: data.created, updated: data.updated });
       setStep('summary');
       await fetchStock();
-    } catch (error) {
-       console.error('Error committing CSV:', error);
+    } catch (err: any) {
+       console.error('Error committing CSV:', err);
+       setError(err.message || 'Error al finalizar la importación');
     } finally {
       setIsCommitting(false);
     }
@@ -166,6 +161,14 @@ export default function StockPage() {
             </h1>
             <p className="text-slate-500 mt-1 font-medium italic">Control maestro de stock en tiempo real.</p>
          </div>
+         
+         {error && (
+            <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-rose-700 text-sm font-bold animate-in fade-in slide-in-from-top-4">
+               <AlertCircle size={20} />
+               {error}
+               <button onClick={() => setError(null)} className="ml-auto hover:scale-110 transition-transform">×</button>
+            </div>
+          )}
          
          <div className="flex gap-4">
             <button 

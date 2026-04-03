@@ -13,7 +13,6 @@ export async function apiRequest(
 
   const headers: Record<string, string> = {};
   
-  // Don't set Content-Type if we're sending FormData (browser needs to set boundary)
   if (!(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
@@ -26,15 +25,22 @@ export async function apiRequest(
     headers['X-Tenant-Id'] = activeTenantId;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
+    });
 
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'No error body');
+      console.error(`[API ERROR] ${method} ${path} -> ${response.status}`, errorBody);
+      throw new Error(`API Error ${response.status}: ${errorBody || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error(`[API FETCH FAILED] ${method} ${path}:`, error.message);
+    throw error;
   }
-
-  return response.json();
 }

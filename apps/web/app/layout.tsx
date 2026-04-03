@@ -27,8 +27,8 @@ const menuItems = [
     { icon: Package, label: 'Inventario', href: '/stock' },
     { icon: Layout, label: 'Operaciones', href: '/operations' },
     { icon: CreditCard, label: 'Pagos', href: '/payments' },
-    { icon: Clock, label: 'Movimientos', href: '/movements' },
-    { icon: FileText, label: 'Reportes', href: '/reports' },
+    { icon: Clock, label: 'Movimientos', href: '/operations' }, // Point to operations for now
+    { icon: FileText, label: 'Reportes', href: '/reports/weekly' }, // Fix 404
 ];
 
 function UI_Shell({ children, user = { name: 'Admin', role: 'owner' }, tenant = { name: 'ChocoBites' } }) {

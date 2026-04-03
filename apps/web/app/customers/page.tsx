@@ -14,6 +14,8 @@ import {
   Plus,
   ArrowRight
 } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
+import { useTenant } from '@/lib/context/tenant-context';
 
 interface ImportRow {
   row_index: number;
@@ -45,6 +47,8 @@ export default function CustomersPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [summary, setSummary] = useState<{ created: number; skipped: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { activeTenant } = useTenant();
 
   const downloadTemplate = () => {
     const csvContent = "name,phone,email,initial_balance,notes,tier\nTienda Juan,+528781111111,juan@email.com,0,,mayoreo\nAbarrotes Ana,+528782222222,,0,,menudeo\nCliente Promo,+528783333333,,0,,especial";
@@ -65,25 +69,24 @@ export default function CustomersPage() {
   const handleUpload = async () => {
     if (!file) return;
     setIsUploading(true);
+    setError(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      // In a real app, use the actual API base URL from process.env.NEXT_PUBLIC_API_URL
-      // For this pilot, we assume the backend handles it correctly.
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/customers/import/preview`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-        },
-        body: formData
-      });
+      const data = await apiRequest('/customers/import/preview', 'POST', formData, activeTenant?.id);
       
-      const data = await response.json();
-      setPreview(data);
+      // Harden data shape
+      const hardenedData = {
+        ...data,
+        rows: Array.isArray(data?.rows) ? data.rows : []
+      };
+
+      setPreview(hardenedData);
       setStep('preview');
-    } catch (error) {
-      console.error('Error uploading CSV:', error);
+    } catch (err: any) {
+      console.error('Error uploading CSV:', err);
+      setError(err.message || 'Error al procesar el archivo CSV');
     } finally {
       setIsUploading(false);
     }
@@ -92,24 +95,17 @@ export default function CustomersPage() {
   const handleCommit = async () => {
     if (!preview) return;
     setIsCommitting(true);
+    setError(null);
     try {
-      // Only commit valid rows
       const validRows = preview.rows.filter(r => r.is_valid).map(r => r.data);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/customers/import/commit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase-token') || ''}`,
-        },
-        body: JSON.stringify({ rows: validRows })
-      });
+      const data = await apiRequest('/customers/import/commit', 'POST', { rows: validRows }, activeTenant?.id);
       
-      const data = await response.json();
       setSummary({ created: data.created_count, skipped: data.skipped_duplicates });
       setStep('summary');
-    } catch (error) {
-       console.error('Error committing CSV:', error);
+    } catch (err: any) {
+       console.error('Error committing CSV:', err);
+       setError(err.message || 'Error al finalizar la importación');
     } finally {
       setIsCommitting(false);
     }
@@ -125,6 +121,14 @@ export default function CustomersPage() {
             </h1>
             <p className="text-slate-500 mt-1 font-medium">Administra tu cartera y realiza importaciones masivas.</p>
          </div>
+
+         {error && (
+            <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-rose-700 text-sm font-bold animate-in fade-in slide-in-from-top-4">
+               <AlertCircle size={20} />
+               {error}
+               <button onClick={() => setError(null)} className="ml-auto hover:scale-110 transition-transform">×</button>
+            </div>
+          )}
          
          <div className="flex gap-4">
             <button 
