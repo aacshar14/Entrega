@@ -76,36 +76,33 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       });
 
       const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
-      
-      // 1. Force Selection for Admins with multiple options IF no explicit selection exists
-      // We check !overrideId because switchTenant passes it explicitly
+
+      // 1. MANDATORY SELECTOR PRIORITY: If Admin + multiple tenants + NO explicit session selection
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
-        console.log('[DEBUG AUTH] Admin with multiple tenants detected. FORCING SELECTOR.');
+        console.log('[DEBUG AUTH] Admin selector branch forced.');
         setUser(data.user);
         setMemberships(data.memberships || []);
-        setActiveTenant(null); // Ensure no tenant is active yet
+        setActiveTenant(null); // Force no active tenant
         
         if (!pathname.startsWith('/select-tenant')) {
-          console.log('[DEBUG AUTH] Redirecting to /select-tenant');
           router.push('/select-tenant');
         }
-        return; // Halt further routing
+        return; // HALT HERE
       }
 
-      console.log('[DEBUG AUTH] Proceeding with normal tenant assignment');
-      // 2. Normal assignment for non-admins, or admins with a selection
+      // 2. ASSIGNMENT: Proceed only if selection is made or not admin-with-multiple
       setUser(data.user);
       setActiveTenant(data.active_tenant);
       setMemberships(data.memberships || []);
       
-      // Update activeTenantId to persist state across re-renders
       if (data.active_tenant?.id) {
-        console.log('[DEBUG AUTH] Setting activeTenantId:', data.active_tenant.id);
+        console.log('[DEBUG AUTH] Persisting selection:', data.active_tenant.id);
         setActiveTenantId(data.active_tenant.id);
       }
 
+      // 3. AUTO-ROUTING
       if (data.active_tenant) {
-        console.log('[DEBUG AUTH] Auto-routing check for active tenant');
+        console.log('[DEBUG AUTH] Entering routing logic for:', data.active_tenant.slug);
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.push('/onboarding');
         } else if (data.active_tenant.ready && pathname.startsWith('/onboarding')) {
