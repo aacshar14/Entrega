@@ -17,10 +17,12 @@ import {
 } from 'lucide-react';
 
 interface ProductImportRow {
-  sku?: string;
+  sku: string;
   name: string;
   quantity: number;
-  price: number;
+  price_mayoreo: number;
+  price_menudeo: number;
+  price_especial: number;
 }
 
 interface ProductImportPreviewRow {
@@ -82,7 +84,7 @@ export default function StockPage() {
   }, []);
 
   const downloadTemplate = () => {
-    const csvContent = "name,sku,quantity,price\nChocoBites Barra 70%,CH-70-01,50,150.0\nChocoBites Trufas,CH-TR-02,20,200.0";
+    const csvContent = "sku,name,quantity,price_mayoreo,price_menudeo,price_especial\nCH-CC,Galleta Chocochip,100,28,30,35\nCH-BR,Brookie,100,30,32,37";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -353,9 +355,10 @@ export default function StockPage() {
                  <thead className="sticky top-0 bg-white/80 backdrop-blur-md z-10">
                     <tr className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
                        <th className="px-10 py-5">Item</th>
-                       <th className="px-4 py-5">Nombre del Producto</th>
-                       <th className="px-4 py-5">SKU</th>
-                       <th className="px-4 py-5 text-right">Precio</th>
+                       <th className="px-4 py-5">Nombre / SKU</th>
+                       <th className="px-4 py-5 text-right">Mayoreo</th>
+                       <th className="px-4 py-5 text-right">Menudeo</th>
+                       <th className="px-4 py-5 text-right">Especial</th>
                        <th className="px-10 py-5 text-center">Estado</th>
                     </tr>
                  </thead>
@@ -363,9 +366,13 @@ export default function StockPage() {
                     {preview.rows.map((row, idx) => (
                        <tr key={idx} className={`hover:bg-slate-50 transition-colors ${!row.is_valid ? 'bg-rose-50/20' : ''}`}>
                           <td className="px-10 py-5 text-slate-300 font-mono text-xs">#{row.row_index}</td>
-                          <td className="px-4 py-5 font-bold text-[#1D3146]">{row.data.name}</td>
-                          <td className="px-4 py-5 font-mono text-xs text-slate-400">{row.data.sku || '---'}</td>
-                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price?.toFixed(2)}</td>
+                          <td className="px-4 py-5">
+                             <p className="font-bold text-[#1D3146]">{row.data.name}</p>
+                             <p className="font-mono text-[10px] text-slate-400">{row.data.sku}</p>
+                          </td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_mayoreo?.toFixed(2)}</td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_menudeo?.toFixed(2)}</td>
+                          <td className="px-4 py-5 text-right font-black text-slate-700">${row.data.price_especial?.toFixed(2)}</td>
                           <td className="px-10 py-5">
                              <div className="flex items-center justify-center">
                                 {row.is_valid ? (

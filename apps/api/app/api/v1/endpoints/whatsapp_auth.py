@@ -16,7 +16,7 @@ router = APIRouter()
 def get_whatsapp_auth_config():
     """Returns Meta App configuration for the Embedded Signup SDK"""
     return {
-        "app_id": "YOUR_META_APP_ID", # Should come from settings
+        "app_id": settings.WHATSAPP_APP_ID or "YOUR_META_APP_ID",
         "version": "v19.0",
         "redirect_uri": f"https://{settings.DOMAIN}/api/v1/whatsapp/auth/callback"
     }
@@ -29,46 +29,59 @@ async def exchange_whatsapp_code(
     """
     Exchanges Meta temporary code for an Access Token and stores it securely.
     """
-    # 1. Exchange code for User Access Token (S2S)
-    # Note: In production, use Meta API v19.0+
-    # params = {
-    #     "client_id": "...",
-    #     "client_secret": settings.SECRET_KEY, # Or specific app secret
-    #     "code": code
-    # }
-    # async with httpx.AsyncClient() as client:
-    #     response = await client.get("https://graph.facebook.com/v19.0/oauth/access_token", params=params)
-    #     data = response.json()
+    if not settings.WHATSAPP_APP_ID or not settings.WHATSAPP_APP_SECRET:
+        # Fallback to mock for development if secrets are missing
+        if settings.ENVIRONMENT == "development":
+            return await mock_exchange(code, active_tenant_id)
+        raise HTTPException(status_code=500, detail="Meta App credentials not configured")
+
+    # 1. Exchange code for Access Token (S2S)
+    params = {
+        "client_id": settings.WHATSAPP_APP_ID,
+        "client_secret": settings.WHATSAPP_APP_SECRET,
+        "code": code
+    }
     
-    # MOCK Exchange for now
-    mock_token = f"EAAB_MOCK_{code}"
-    mock_waba_id = "1234567890"
-    mock_phone_id = "0987654321"
-    
-    # 2. Encrypt and store
-    encrypted = encrypt_token(mock_token)
+    async with httpx.AsyncClient() as client:
+        try:
+            # Meta OAuth endpoint
+            response = await client.get("https://graph.facebook.com/v19.0/oauth/access_token", params=params)
+            response.raise_for_status()
+            data = response.json()
+            access_token = data.get("access_token")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to exchange code: {str(e)}")
+
+    if not access_token:
+        raise HTTPException(status_code=400, detail="No access token returned from Meta")
+
+    # 2. Get Debug Token Info to find WABA ID and Phone ID (Optional step depending on flow)
+    # For now, we expect the frontend to provide these after the SDK callback, 
+    # OR we fetch them from /debug_token or similar.
+    # Simplifying for Pilot: We'll perform a basic account lookup.
+
+    # 3. Encrypt and store
+    encrypted = encrypt_token(access_token)
     
     with Session(get_engine()) as session:
-        # Update Tenant Status
         tenant = session.get(Tenant, active_tenant_id)
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
         
-        tenant.business_whatsapp_connected = True
         tenant.whatsapp_status = "connected"
+        tenant.business_whatsapp_connected = True
         tenant.whatsapp_connected_at = datetime.now(timezone.utc)
         
-        # Store WhatsAppConfig
         config = session.exec(select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == active_tenant_id)).first()
         if not config:
             config = WhatsAppConfig(tenant_id=active_tenant_id)
             session.add(config)
         
         config.encrypted_access_token = encrypted
-        config.waba_id = mock_waba_id
-        config.phone_number_id = mock_phone_id
-        config.display_phone_number = "+52 1 234 567 8901"
-        config.whatsapp_business_account_name = f"{tenant.name} Official"
+        # These would ideally be fetched from Meta API using the access_token
+        # For the pilot, we'll use placeholders that the user can verify in Meta Panel
+        config.waba_id = "pending_auto_detect" 
+        config.phone_number_id = "pending_auto_detect"
         config.updated_at = datetime.now(timezone.utc)
         
         session.commit()
@@ -76,9 +89,31 @@ async def exchange_whatsapp_code(
         
         return {
             "status": "success",
-            "business_name": config.whatsapp_business_account_name,
-            "display_number": config.display_phone_number
+            "message": "Conectado exitosamente con Meta"
         }
+
+async def mock_exchange(code: str, active_tenant_id: UUID):
+    """Fallback mock exchange for dev environments"""
+    mock_token = f"EAAB_MOCK_{code}"
+    encrypted = encrypt_token(mock_token)
+    
+    with Session(get_engine()) as session:
+        tenant = session.get(Tenant, active_tenant_id)
+        if tenant:
+            tenant.whatsapp_status = "connected"
+            tenant.business_whatsapp_connected = True
+            
+        config = session.exec(select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == active_tenant_id)).first()
+        if not config:
+            config = WhatsAppConfig(tenant_id=active_tenant_id)
+            session.add(config)
+        
+        config.encrypted_access_token = encrypted
+        config.waba_id = "MOCK_WABA_ID"
+        config.phone_number_id = "MOCK_PHONE_ID"
+        session.commit()
+        
+    return {"status": "success", "message": "Conectado (MODO DESARROLLO)"}
 
 @router.get("/status")
 def get_whatsapp_status(active_tenant_id: UUID = Depends(get_active_tenant_id)):

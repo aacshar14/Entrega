@@ -22,6 +22,7 @@ interface ImportRow {
     email: string;
     initial_balance: number;
     notes: string;
+    tier: string;
   };
   is_valid: boolean;
   errors: string[];
@@ -45,7 +46,7 @@ export default function CustomersPage() {
   const [summary, setSummary] = useState<{ created: number; skipped: number } | null>(null);
 
   const downloadTemplate = () => {
-    const csvContent = "name,phone,email,initial_balance,notes\nAna,+528781111111,ana@email.com,650,Cliente frecuente\nLuis,+528782222222,,300,";
+    const csvContent = "name,phone,email,initial_balance,notes,tier\nTienda Juan,+528781111111,juan@email.com,0,,mayoreo\nAbarrotes Ana,+528782222222,,0,,menudeo\nCliente Promo,+528783333333,,0,,especial";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -212,6 +213,7 @@ export default function CustomersPage() {
                        <th className="px-8 py-4">Fila</th>
                        <th className="px-4 py-4">Nombre</th>
                        <th className="px-4 py-4">Teléfono</th>
+                       <th className="px-4 py-4">Tier</th>
                        <th className="px-4 py-4">Status</th>
                     </tr>
                  </thead>
@@ -221,6 +223,15 @@ export default function CustomersPage() {
                           <td className="px-8 py-4 text-slate-400 font-mono text-xs">#{row.row_index}</td>
                           <td className="px-4 py-4 font-bold text-[#1D3146] text-sm">{row.data.name}</td>
                           <td className="px-4 py-4 text-slate-500 text-sm">{row.data.phone || 'N/A'}</td>
+                          <td className="px-4 py-4">
+                             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                                row.data.tier === 'mayoreo' ? 'bg-blue-100 text-blue-700' :
+                                row.data.tier === 'especial' ? 'bg-purple-100 text-purple-700' :
+                                'bg-slate-100 text-slate-700'
+                             }`}>
+                                {row.data.tier}
+                             </span>
+                          </td>
                           <td className="px-4 py-4">
                              {row.is_valid ? (
                                 <div className="flex items-center gap-2">

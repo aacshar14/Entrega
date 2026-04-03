@@ -15,11 +15,9 @@ router = APIRouter()
 
 # Schema for preview/commit
 class CustomerImportRow(BaseModel):
-    name: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
     initial_balance: Optional[float] = 0.0
     notes: Optional[str] = None
+    tier: str = "menudeo"
 
 class ImportPreviewRow(BaseModel):
     row_index: int
@@ -142,7 +140,8 @@ async def import_customers_preview(
                 phone=normalized_phone,
                 email=email,
                 initial_balance=bal,
-                notes=notes
+                notes=notes,
+                tier=row.get("tier", "menudeo").strip().lower() or "menudeo"
             ),
             is_valid=is_valid,
             errors=errors,
@@ -186,6 +185,7 @@ async def import_customers_commit(
             phone_number=row.phone,
             email=row.email,
             notes=row.notes,
+            tier=row.tier if row.tier in ["mayoreo", "menudeo", "especial"] else "menudeo",
             created_by_user_id=current_user.id
         )
         db.add(new_customer)

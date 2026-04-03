@@ -32,15 +32,60 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (activeTenant) {
-      setFormData({
-        name: activeTenant.name,
-        whatsapp: activeTenant.business_whatsapp_number || '',
-        timezone: 'America/Mexico_City',
-        currency: 'MXN'
-      });
+    // Load Meta SDK for WhatsApp Embedded Signup
+    if (!(window as any).FB) {
+      const script = document.createElement('script');
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        (window as any).fbAsyncInit = function() {
+          (window as any).FB.init({
+            appId      : activeTenant?.whatsapp_app_id || '904555555555555', // Should match WHATSAPP_APP_ID
+            cookie     : true,
+            xfbml      : true,
+            version    : 'v19.0'
+          });
+        };
+      };
+      document.body.appendChild(script);
     }
   }, [activeTenant]);
+
+  const launchWhatsAppOnboarding = () => {
+    if (!(window as any).FB) {
+       setError("SDK de Meta no cargado. Reintenta en unos segundos.");
+       return;
+    }
+
+    (window as any).FB.login((response: any) => {
+      if (response.authResponse) {
+        const code = response.authResponse.code;
+        handleExchangeCode(code);
+      } else {
+        console.log('User cancelled login or did not fully authorize.');
+      }
+    }, {
+      scope: 'whatsapp_business_management,whatsapp_business_messaging',
+      extras: {
+        feature: 'whatsapp_embedded_signup'
+      }
+    });
+  };
+
+  const handleExchangeCode = async (code: string) => {
+    setLoading(true);
+    try {
+      await apiRequest('/whatsapp/auth/exchange', 'POST', { code }, activeTenant?.id);
+      await refreshUser();
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError("Error en la conexión: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,45 +143,53 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
          
          {/* Business Identitiy */}
-         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
+         <form onSubmit={handleSave} className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100 grid md:grid-cols-2 gap-8">
+            <h3 className="md:col-span-2 text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
                <Building2 size={16} /> Identidad del Negocio
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-3">
-                  <label htmlFor="biz_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Comercial</label>
-                  <input 
-                    id="biz_name"
-                    type="text" 
-                    className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    title="Nombre del negocio"
-                  />
-               </div>
-               <div className="space-y-3">
-                  <label htmlFor="biz_slug" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Slug (ID Único)</label>
-                  <input 
-                    id="biz_slug"
-                    type="text" 
-                    readOnly
-                    className="w-full h-16 px-6 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-400 outline-none cursor-not-allowed"
-                    value={activeTenant.slug}
-                    title="Slug del negocio"
-                  />
-               </div>
+            <div className="space-y-3">
+               <label htmlFor="biz_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Comercial</label>
+               <input 
+                  id="biz_name"
+                  type="text" 
+                  className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  title="Nombre del negocio"
+               />
             </div>
-         </div>
+            <div className="space-y-3">
+               <label htmlFor="biz_slug" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Slug (ID Único)</label>
+               <input 
+                  id="biz_slug"
+                  type="text" 
+                  readOnly
+                  className="w-full h-16 px-6 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-400 outline-none cursor-not-allowed"
+                  value={activeTenant.slug}
+                  title="Slug del negocio"
+               />
+            </div>
+            <div className="md:col-span-2 flex justify-end">
+               <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="px-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest disabled:opacity-50"
+               >
+                  {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+                  Guardar Identidad
+               </button>
+            </div>
+         </form>
 
          {/* WhatsApp Section */}
-         <div className="md:col-span-8 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-8">
                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-2">
-                  <Smartphone size={16} /> WhatsApp del Negocio
+                  <Smartphone size={16} /> WhatsApp Cloud API
                </h3>
                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
                   activeTenant.business_whatsapp_connected ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
@@ -146,19 +199,21 @@ export default function SettingsPage() {
                </div>
             </div>
 
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
-               <div className="flex items-center gap-4 text-center md:text-left">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                     activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8">
+               <div className="flex items-center gap-6">
+                  <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${
+                     activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600 shadow-emerald-200/50' : 'bg-blue-100 text-blue-600 shadow-blue-200/50'
                   }`}>
-                     <MessageCircle size={24} />
+                     <MessageCircle size={32} />
                   </div>
                   <div>
-                     <h4 className="text-sm font-black text-[#1D3146] uppercase tracking-tight">
-                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Conectada') : 'No hay cuenta conectada'}
+                     <h4 className="text-lg font-black text-[#1D3146] tracking-tight">
+                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Oficial') : 'Automatización WhatsApp'}
                      </h4>
-                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">
-                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number) : 'Integra tu WhatsApp Business'}
+                     <p className="text-sm text-slate-400 font-medium max-w-sm mt-1">
+                        {activeTenant.whatsapp_status === 'connected' 
+                           ? `Número activo: ${activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number}` 
+                           : 'Conecta tu cuenta para enviar notificaciones automáticas de pedidos y pagos.'}
                      </p>
                   </div>
                </div>
@@ -167,92 +222,68 @@ export default function SettingsPage() {
                   type="button"
                   onClick={async () => {
                      if (activeTenant.whatsapp_status === 'connected') {
-                        if (confirm('¿Estás seguro de que deseas desconectar tu cuenta de WhatsApp?')) {
+                        if (confirm('¿Deseas desconectar WhatsApp? Se detendrán todas las automatizaciones.')) {
                            setLoading(true);
-                           await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
-                           await refreshUser();
-                           setLoading(false);
+                           try {
+                              await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
+                              await refreshUser();
+                           } finally {
+                              setLoading(false);
+                           }
                         }
                         return;
                      }
-                     
-                     setLoading(true);
-                     try {
-                        const mockCode = 'meta_auth_code_settings_' + Math.random().toString(36).substring(7);
-                        await apiRequest('/whatsapp/auth/exchange', 'POST', { code: mockCode }, activeTenant.id);
-                        await refreshUser();
-                        setSuccess(true);
-                        setTimeout(() => setSuccess(false), 3000);
-                     } catch (err: any) {
-                        setError("Error: " + err.message);
-                     } finally {
-                        setLoading(false);
-                     }
+                     launchWhatsAppOnboarding();
                   }}
                   disabled={loading}
-                  className={`px-6 py-3 font-black rounded-xl text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2 ${
+                  className={`px-8 py-4 font-black rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 shadow-xl ${
                      activeTenant.whatsapp_status === 'connected' 
-                     ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' 
-                     : 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
+                     ? 'bg-white text-rose-500 border border-rose-100 hover:bg-rose-50' 
+                     : 'bg-[#25D366] text-white hover:scale-105 shadow-[#25D366]/20'
                   }`}
                >
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : (
-                     activeTenant.whatsapp_status === 'connected' ? 'Desconectar' : 'Conectar con Meta'
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : (
+                     activeTenant.whatsapp_status === 'connected' ? 'Desconectar Servicio' : 'Conectar con Meta'
                   )}
                </button>
             </div>
          </div>
 
          {/* Regions */}
-         <div className="md:col-span-4 bg-[#1D3146] rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-white">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#56CCF2] mb-8">Preferencias Regionales</h3>
-            <div className="space-y-6">
-               <div className="space-y-2">
-                  <label htmlFor="timezone" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Zona Horaria</label>
-                  <div className="flex items-center gap-3 text-sm font-bold">
-                     <Globe size={18} className="text-[#56CCF2]" />
-                     <select 
-                       id="timezone"
-                       className="bg-transparent border-none outline-none w-full appearance-none"
-                       value={formData.timezone}
-                       onChange={(e) => setFormData({...formData, timezone: e.target.value})}
-                       title="Zona horaria"
-                     >
-                        <option value="America/Mexico_City">CDMX (GMT-6)</option>
-                        <option value="America/Bogota">Bogotá (GMT-5)</option>
-                     </select>
-                  </div>
+         <div className="md:col-span-12 bg-[#1D3146] rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-white grid md:grid-cols-2 gap-8">
+            <h3 className="md:col-span-2 text-xs font-black uppercase tracking-[0.2em] text-[#56CCF2]">Preferencias Regionales</h3>
+            <div className="space-y-4">
+               <label htmlFor="timezone" className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]/50">Zona Horaria</label>
+               <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                  <Globe size={20} className="text-[#56CCF2]" />
+                  <select 
+                     id="timezone"
+                     className="bg-transparent border-none outline-none w-full appearance-none font-bold text-sm"
+                     value={formData.timezone}
+                     onChange={(e) => setFormData({...formData, timezone: e.target.value})}
+                  >
+                     <option value="America/Mexico_City">Ciudad de México (GMT-6)</option>
+                     <option value="America/Bogota">Bogotá (GMT-5)</option>
+                  </select>
                </div>
-               <div className="space-y-2">
-                  <label htmlFor="currency" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Moneda</label>
-                  <div className="flex items-center gap-3 text-sm font-bold">
-                     <DollarSign size={18} className="text-[#56CCF2]" />
-                     <select 
-                       id="currency"
-                       className="bg-transparent border-none outline-none w-full appearance-none"
-                       value={formData.currency}
-                       onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                       title="Moneda operativa"
-                     >
-                        <option value="MXN">Peso Mexicano (MXN)</option>
-                        <option value="USD">Dólar (USD)</option>
-                     </select>
-                  </div>
+            </div>
+            <div className="space-y-4">
+               <label htmlFor="currency" className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]/50">Moneda</label>
+               <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                  <DollarSign size={20} className="text-[#56CCF2]" />
+                  <select 
+                     id="currency"
+                     className="bg-transparent border-none outline-none w-full appearance-none font-bold text-sm"
+                     value={formData.currency}
+                     onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                  >
+                     <option value="MXN">Peso Mexicano (MXN)</option>
+                     <option value="USD">Dólar (USD)</option>
+                  </select>
                </div>
             </div>
          </div>
-
-         <div className="md:col-span-12 flex justify-end gap-6 pt-4">
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="px-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest disabled:opacity-50"
-            >
-               {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-               Guardar Cambios
-            </button>
-         </div>
-      </form>
+      </div>
     </div>
   );
 }

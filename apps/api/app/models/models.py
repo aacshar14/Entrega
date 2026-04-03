@@ -115,6 +115,7 @@ class Customer(SQLModel, table=True):
     email: Optional[str] = None
     address: Optional[str] = None
     notes: Optional[str] = None
+    tier: str = Field(default="menudeo") # 'mayoreo', 'menudeo', 'especial'
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
@@ -124,8 +125,11 @@ class Product(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenant.id")
     name: str = Field(index=True)
-    sku: Optional[str] = Field(index=True)
-    price: float = Field(default=0.0)
+    sku: str = Field(index=True)
+    price: float = Field(default=0.0) # Base/Legacy price
+    price_mayoreo: float = Field(default=0.0)
+    price_menudeo: float = Field(default=0.0)
+    price_especial: float = Field(default=0.0)
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)
@@ -147,6 +151,13 @@ class InventoryMovement(SQLModel, table=True):
     quantity: float # positive for stock additions, negative for deliveries
     type: str # 'delivery', 'restock', 'return', 'adjustment'
     description: Optional[str] = None
+    
+    # Financial Metadata (Snapshot at time of movement)
+    sku: Optional[str] = None
+    tier_applied: Optional[str] = None
+    unit_price: float = Field(default=0.0)
+    total_amount: float = Field(default=0.0)
+    
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_utc_now)

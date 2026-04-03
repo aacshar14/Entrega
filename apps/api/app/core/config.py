@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         return v.strip() if isinstance(v, str) else v
 
     # WhatsApp Cloud API (Meta)
+    WHATSAPP_APP_ID: Optional[str] = None
+    WHATSAPP_APP_SECRET: Optional[str] = None
     WHATSAPP_VERIFY_TOKEN: str = "default_verify_token" # Overwrite in .env
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None

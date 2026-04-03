@@ -13,10 +13,12 @@ import io
 router = APIRouter()
 
 class ProductImportRow(BaseModel):
-    sku: Optional[str] = None
+    sku: str
     name: str
     quantity: float = 0.0
-    price: float = 0.0
+    price_mayoreo: float = 0.0
+    price_menudeo: float = 0.0
+    price_especial: float = 0.0
 
 class ProductImportPreviewRow(BaseModel):
     row_index: int
@@ -98,10 +100,14 @@ async def import_products_preview(
         name = row.get("name", "").strip()
         sku = row.get("sku", "").strip()
         quantity_str = row.get("quantity", "0").strip()
-        price_str = row.get("price", "0").strip()
+        price_mayoreo_str = row.get("price_mayoreo", "0").strip()
+        price_menudeo_str = row.get("price_menudeo", "0").strip()
+        price_especial_str = row.get("price_especial", "0").strip()
         
         if not name:
             errors.append("Product name is required")
+        if not sku:
+            errors.append("SKU is required")
             
         try:
             qty = float(quantity_str)
@@ -110,10 +116,12 @@ async def import_products_preview(
             qty = 0
             
         try:
-            prc = float(price_str)
+            p_may = float(price_mayoreo_str)
+            p_men = float(price_menudeo_str)
+            p_esp = float(price_especial_str)
         except ValueError:
-            errors.append("Price must be numeric")
-            prc = 0
+            errors.append("Prices must be numeric")
+            p_may = p_men = p_esp = 0
             
         is_duplicate = False
         if name.lower() in existing_names or (sku and sku.lower() in existing_skus):
@@ -132,7 +140,9 @@ async def import_products_preview(
                 sku=sku,
                 name=name,
                 quantity=qty,
-                price=prc
+                price_mayoreo=p_may,
+                price_menudeo=p_men,
+                price_especial=p_esp
             ),
             is_valid=is_valid,
             errors=errors,
@@ -171,8 +181,10 @@ async def import_products_commit(
             ).first()
              
         if product:
-            product.price = row.price
-            if row.sku: product.sku = row.sku
+            product.sku = row.sku
+            product.price_mayoreo = row.price_mayoreo
+            product.price_menudeo = row.price_menudeo
+            product.price_especial = row.price_especial
             product.updated_by_user_id = current_user.id
             product.updated_at = datetime.now(timezone.utc)
             db.add(product)
@@ -182,7 +194,10 @@ async def import_products_commit(
                 tenant_id=tenant_id,
                 name=row.name,
                 sku=row.sku,
-                price=row.price,
+                price_mayoreo=row.price_mayoreo,
+                price_menudeo=row.price_menudeo,
+                price_especial=row.price_especial,
+                price=row.price_menudeo, # Default legacy price to menudeo
                 created_by_user_id=current_user.id
             )
             db.add(product)
