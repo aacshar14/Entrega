@@ -65,59 +65,62 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchContext = async (overrideId?: string) => {
-    console.log('[DEBUG AUTH] fetchContext started', { overrideId, activeTenantId });
     try {
       const data = await apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined);
       
-      console.log('[DEBUG AUTH] /me response', { 
-        role: data.user?.platform_role, 
+      console.log('[AUTH DEBUG]', {
+        role: data.user?.platform_role,
         memberships: data.memberships?.length,
-        active_tenant_from_api: data.active_tenant?.id 
+        active_tenant: data.active_tenant?.id,
+        overrideId,
+        currentActiveId: activeTenantId
       });
 
-      const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
+      const isAdmin = data.user?.platform_role === 'admin';
+      const membershipCount = data.memberships?.length || 0;
+      const isAdminWithMultiple = isAdmin && membershipCount > 1;
 
-      // 1. MANDATORY SELECTOR PRIORITY: If Admin + multiple tenants + NO explicit session selection
+      // 1. HARD STOP for admin with multiple tenants (and no explicit session selection)
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
-        console.log('[DEBUG AUTH] Admin selector branch forced.');
+        console.log('[AUTH DEBUG] Admin with multiple tenants detected. REDIRECTING TO SELECTOR.');
         setUser(data.user);
         setMemberships(data.memberships || []);
-        setActiveTenant(null); // Force no active tenant
-        
+        setActiveTenant(null);
+        setActiveTenantId(null);
+
         if (!pathname.startsWith('/select-tenant')) {
-          router.push('/select-tenant');
+          router.replace('/select-tenant');
         }
-        return; // HALT HERE
+        return; // HALT
       }
 
-      // 2. ASSIGNMENT: Proceed only if selection is made or not admin-with-multiple
+      // 2. Normal Assignment
       setUser(data.user);
-      setActiveTenant(data.active_tenant);
       setMemberships(data.memberships || []);
+      setActiveTenant(data.active_tenant);
       
+      // Persist tenant ID if we have a resolved tenant (and it's not the case of an unselected multi-admin)
       if (data.active_tenant?.id) {
-        console.log('[DEBUG AUTH] Persisting selection:', data.active_tenant.id);
         setActiveTenantId(data.active_tenant.id);
       }
 
-      // 3. AUTO-ROUTING
-      if (data.active_tenant) {
-        console.log('[DEBUG AUTH] Entering routing logic for:', data.active_tenant.slug);
+      // 3. AUTO-ROUTING (Guard redirects with isAdminWithMultiple check)
+      if (data.active_tenant && (!isAdminWithMultiple || overrideId || activeTenantId)) {
+        console.log('[AUTH DEBUG] Routing for active tenant:', data.active_tenant.slug);
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
-          router.push('/onboarding');
-        } else if (data.active_tenant.ready && pathname.startsWith('/onboarding')) {
-          router.push('/dashboard');
+          router.replace('/onboarding');
+        } else if (data.active_tenant.ready && (pathname.startsWith('/onboarding') || pathname === '/')) {
+          router.replace('/dashboard');
         }
       }
     } catch (error: any) {
       console.error('Failed to fetch tenant context:', error);
       
-      // Handle 401/403 explicitly
       if (error.status === 401 || error.status === 403) {
         setUser(null);
         setActiveTenant(null);
         if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
-          router.push('/landing');
+          router.replace('/landing');
         }
       }
     } finally {
