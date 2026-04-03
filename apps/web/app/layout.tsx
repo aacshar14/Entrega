@@ -35,7 +35,7 @@ const menuItems = [
 function UI_Shell({ children }) {
   const pathname = usePathname();
   const { user, activeTenant, isLoading } = useTenant();
-  
+
   // No shell for landing or login
   const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
   if (isPublicPath) return children;
@@ -55,6 +55,14 @@ function UI_Shell({ children }) {
 
   // If loading finished but no user, and NOT on public path, show nothing (Provider will redirect)
   if (!user) return null;
+
+  // STRICT GUARD: If authenticated but no tenant selected yet, 
+  // only allow access to '/select-tenant' or '/onboarding'
+  // (This prevents manual navigation to dashboard bypass)
+  const isSetupPath = pathname.startsWith('/select-tenant') || pathname.startsWith('/onboarding');
+  if (!activeTenant && !isSetupPath) {
+    return null; // Don't render dashboard if no tenant is active
+  }
 
   const displayUser = {
     name: user.full_name || 'Usuario',
