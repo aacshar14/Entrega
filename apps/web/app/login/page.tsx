@@ -28,8 +28,10 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ login correcto → ir al dashboard (el Provider resolverá si falta seleccionar tenant)
-    router.push('/dashboard'); 
+    // ✅ login correcto: el Provider escuchará el evento SIGNED_IN 
+    // y resolverá el contexto automáticamente. No forzamos ruta aquí.
+    // (Solo reseteamos loading si por algún motivo no se ha redirigido en 2 segundos)
+    setTimeout(() => setLoading(false), 2000);
   };
 
   return (
