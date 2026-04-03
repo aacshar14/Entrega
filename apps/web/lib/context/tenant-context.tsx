@@ -68,46 +68,38 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined);
       
-      console.log('[AUTH DEBUG]', {
+      console.log('[AUTH DEBUG] Context resolved:', {
         role: data.user?.platform_role,
         memberships: data.memberships?.length,
         active_tenant: data.active_tenant?.id,
-        overrideId,
-        currentActiveId: activeTenantId
+        pathname
       });
 
       const isAdmin = data.user?.platform_role === 'admin';
       const membershipCount = data.memberships?.length || 0;
       const isAdminWithMultiple = isAdmin && membershipCount > 1;
 
-      // 1. HARD STOP for admin with multiple tenants (and no explicit override)
-      if (isAdminWithMultiple && !overrideId) {
-        console.log('[AUTH DEBUG] Admin with multiple tenants detected. REDIRECTING TO SELECTOR.');
-        setUser(data.user);
-        setMemberships(data.memberships || []);
-        setActiveTenant(null);
-        setActiveTenantId(null);
-        setIsLoading(false);
-
-        if (!pathname.startsWith('/select-tenant')) {
-          router.replace('/select-tenant');
-        }
-        return; // HALT
-      }
-
-      // 2. Normal Assignment
+      // Update state
       setUser(data.user);
       setMemberships(data.memberships || []);
       setActiveTenant(data.active_tenant);
-      
-      // Persist tenant ID if we have a resolved tenant (and it's not the case of an unselected multi-admin)
       if (data.active_tenant?.id) {
         setActiveTenantId(data.active_tenant.id);
       }
 
-      // 3. AUTO-ROUTING (Guard redirects with isAdminWithMultiple check)
-      if (data.active_tenant && (!isAdminWithMultiple || overrideId || activeTenantId)) {
-        console.log('[AUTH DEBUG] Routing for active tenant:', data.active_tenant.slug);
+      // --- CENTRALIZED ROUTING AUTHORITY ---
+      
+      // 1. Admin with multiple tenants and no selection -> Force Selector
+      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
+        if (!pathname.startsWith('/select-tenant')) {
+          router.replace('/select-tenant');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Tenant logic if active
+      if (data.active_tenant) {
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.replace('/onboarding');
         } else if (data.active_tenant.ready && (pathname.startsWith('/onboarding') || pathname === '/')) {
@@ -115,11 +107,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error: any) {
-      console.error('Failed to fetch tenant context:', error);
-      
+      console.error('Failed to resolve context:', error);
       if (error.status === 401 || error.status === 403) {
-        setUser(null);
-        setActiveTenant(null);
+        handleManualLogout();
         if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
           router.replace('/landing');
         }
@@ -136,48 +126,38 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       try {
         const supabase = getSupabaseClient();
         
-        // Listen for auth changes
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('[AUTH DEBUG] Auth Event:', event);
           if (event === 'SIGNED_OUT') {
             handleManualLogout();
             router.replace('/landing');
           } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            if (session) {
-              await fetchContext();
-            }
+            if (session) await fetchContext();
           }
         });
         subscription = data.subscription;
 
-        // Initial load check
         const { data: { session } } = await supabase.auth.getSession();
-        
-        console.log('[AUTH DEBUG] Initial session check:', session ? 'SESSION_EXISTS' : 'NO_SESSION');
-
         if (session) {
           await fetchContext();
         } else {
           setIsLoading(false);
-          // HARD REDIRECT TO LANDING if no session exists and we are not on public pages
           const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
-          if (!isPublic) {
-            console.log('[AUTH DEBUG] No session on non-public path. Redirecting to landing.');
+          if (!isPublic && pathname !== '/') {
             router.replace('/landing');
           }
         }
       } catch (err) {
-        console.error('Supabase initialization failed:', err);
+        console.error('Provider initialization failed:', err);
         setIsLoading(false);
       }
     };
 
     initialize();
-
     return () => {
       if (subscription) subscription.unsubscribe();
     };
-  }, []); // Static initialization - avoid redirect loops triggered by pathname
+  }, []); 
 
   const switchTenant = (tenantId: string) => {
     setActiveTenantId(tenantId);
