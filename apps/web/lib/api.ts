@@ -9,6 +9,8 @@ export async function apiRequest(
   body: any = null,
   activeTenantId?: string
 ) {
+  // Normalize path: ensure it has a trailing slash to avoid 307 redirects on preflight
+  const normalizedPath = path.endsWith('/') ? path : `${path}/`;
   const { data: { session } } = await getSupabaseClient().auth.getSession();
   const token = session?.access_token;
 
@@ -29,7 +31,7 @@ export async function apiRequest(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
       method,
       headers,
       body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
