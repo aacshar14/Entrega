@@ -1,20 +1,9 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/client';
 
-let supabaseInstance: SupabaseClient | null = null;
-
+/**
+ * @deprecated Use createClient from '@/utils/supabase/client' directly for browser-side
+ * or from '@/utils/supabase/server' for server-side.
+ */
 export const getSupabaseClient = () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Supabase environment variables (URL/Key) are required for getSupabaseClient()");
-    }
-
-    if (!supabaseInstance) {
-        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-    }
-    return supabaseInstance;
+    return createClient();
 };
-
-// Also keep a legacy 'supabase' proxy or getter if we don't want to break everything at once
-// but the user wants to REPLACE all imports, so I'll just export the factory.

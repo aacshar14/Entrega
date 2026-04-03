@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase';
+import { createClient } from '@/utils/supabase/client';
 
 const API_BASE_URL = '/api/v1';
 
@@ -8,14 +8,14 @@ export async function apiRequest(
   body: any = null,
   activeTenantId?: string
 ) {
-  // Normalize endpoint: ensure it starts with / and has no trailing slash unless it's just /
-  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  if (cleanEndpoint.length > 1 && cleanEndpoint.endsWith('/')) {
-    cleanEndpoint = cleanEndpoint.slice(0, -1);
-  }
+  // Robust normalization: starts with /, NO trailing slashes ever
+  const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
 
-  const { data: { session } } = await getSupabaseClient().auth.getSession();
+  const { data: { session } } = await createClient().auth.getSession();
   const token = session?.access_token;
+  
+  console.log(`[API REQUEST] Endpoint: ${endpoint} -> URL: ${url} | Token Present: ${!!token}`);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -28,8 +28,6 @@ export async function apiRequest(
   if (activeTenantId) {
     headers['X-Tenant-Id'] = activeTenantId;
   }
-
-  const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   console.log(`[API DEBUG] ${method} ${url}`, { body, tenant: activeTenantId });
 
