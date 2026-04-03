@@ -4,12 +4,10 @@ let supabaseInstance: SupabaseClient | null = null;
 
 export const getSupabaseClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        // Only throw if NOT in build environment, but user wants explicit validation
-        // During build-time static generation we might still hit this, so we'll throw a clear error
-        throw new Error("Supabase environment variables (URL/AnonKey) are required for getSupabaseClient()");
+        throw new Error("Supabase environment variables (URL/Key) are required for getSupabaseClient()");
     }
 
     if (!supabaseInstance) {
