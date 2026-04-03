@@ -11,14 +11,12 @@ export default function RootPage() {
   useEffect(() => {
     // Wait for the provider to finish initial session/context loading
     if (!isLoading) {
-      if (user) {
-        // Authenticated: Provider should have handled redirects, 
-        // but as a safety jump from root:
-        router.replace('/dashboard');
-      } else {
+      if (!user) {
         // Unauthenticated: go to landing
         router.replace('/landing');
       }
+      // If user exists, we stay neutral and let TenantProvider 
+      // perform the correct redirect (/dashboard, /select-tenant, etc.)
     }
   }, [isLoading, user, router]);
 
