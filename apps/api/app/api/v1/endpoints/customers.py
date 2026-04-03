@@ -15,6 +15,9 @@ router = APIRouter()
 
 # Schema for preview/commit
 class CustomerImportRow(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     initial_balance: Optional[float] = 0.0
     notes: Optional[str] = None
     tier: str = "menudeo"
