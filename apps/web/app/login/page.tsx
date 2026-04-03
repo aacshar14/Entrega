@@ -28,8 +28,8 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ login correcto → ir a app
-    router.push('/dashboard'); // ajusta si tu home es otro
+    // ✅ login correcto → ir a la raíz para que el Provider resuelva
+    router.push('/'); 
   };
 
   return (

@@ -129,35 +129,33 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let subscription: { unsubscribe: () => void } | null = null;
+
     const initialize = async () => {
       try {
         const supabase = getSupabaseClient();
         
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN') {
-            fetchContext();
-          } else if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setActiveTenant(null);
-            setMemberships([]);
-            router.push('/landing');
+        const { data } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('[AUTH DEBUG] Auth Event:', event);
+          if (event === 'SIGNED_OUT') {
+            handleManualLogout();
+            router.replace('/landing');
           }
         });
+        subscription = data.subscription;
 
         // Initial load check
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          fetchContext();
+          await fetchContext();
         } else {
           setIsLoading(false);
           // Redirect to landing if on protected page without session
-          if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
-            router.push('/landing');
+          if (!pathname.startsWith('/landing') && !pathname.startsWith('/login') && pathname !== '/') {
+            router.replace('/landing');
           }
         }
-        
-        return () => subscription.unsubscribe();
       } catch (err) {
         console.error('Supabase initialization failed:', err);
         setIsLoading(false);
@@ -165,7 +163,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     };
 
     initialize();
-  }, [activeTenantId, pathname]);
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
+  }, [pathname]);
 
   const switchTenant = (tenantId: string) => {
     setActiveTenantId(tenantId);
