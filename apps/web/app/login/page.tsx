@@ -17,21 +17,24 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      // ✅ login correcto → recarga completa de la app para asegurar estado limpio
+      window.location.href = '/'; 
+    } catch (err: any) {
+      setError(err?.message || 'Error al iniciar sesión');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // ✅ login correcto: el Provider escuchará el evento SIGNED_IN 
-    // y resolverá el contexto automáticamente. No forzamos ruta aquí.
-    // (Solo reseteamos loading si por algún motivo no se ha redirigido en 2 segundos)
-    setTimeout(() => setLoading(false), 2000);
   };
 
   return (
