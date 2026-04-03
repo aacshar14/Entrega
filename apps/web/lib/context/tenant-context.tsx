@@ -68,16 +68,22 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setActiveTenantId(data.active_tenant.id);
       }
 
+      const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
+      
+      // 1. Force Selection for Admins with multiple options IF no explicit selection exists
+      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
+        if (!pathname.startsWith('/select-tenant')) {
+          router.push('/select-tenant');
+          return;
+        }
+      }
+
+      // 2. Normal routing once tenant is resolved
       if (data.active_tenant) {
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.push('/onboarding');
         } else if (data.active_tenant.ready && pathname.startsWith('/onboarding')) {
           router.push('/dashboard');
-        }
-      } else if (data.user?.platform_role === 'admin' && data.memberships?.length > 1) {
-        // Platform Admin with multiple options and NO active tenant selected
-        if (!pathname.startsWith('/select-tenant')) {
-          router.push('/select-tenant');
         }
       }
     } catch (error: any) {
