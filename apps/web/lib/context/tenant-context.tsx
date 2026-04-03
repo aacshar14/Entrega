@@ -67,26 +67,32 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const fetchContext = async (overrideId?: string) => {
     try {
       const data = await apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined);
+      
+      const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
+      
+      // 1. Force Selection for Admins with multiple options IF no explicit selection exists
+      // We check !overrideId because switchTenant passes it explicitly
+      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
+        setUser(data.user);
+        setMemberships(data.memberships || []);
+        setActiveTenant(null); // Ensure no tenant is active yet
+        
+        if (!pathname.startsWith('/select-tenant')) {
+          router.push('/select-tenant');
+        }
+        return; // Halt further routing
+      }
+
+      // 2. Normal assignment for non-admins, or admins with a selection
       setUser(data.user);
       setActiveTenant(data.active_tenant);
-      setMemberships(data.memberships);
+      setMemberships(data.memberships || []);
       
       // Update activeTenantId to persist state across re-renders
       if (data.active_tenant?.id) {
         setActiveTenantId(data.active_tenant.id);
       }
 
-      const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
-      
-      // 1. Force Selection for Admins with multiple options IF no explicit selection exists
-      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
-        if (!pathname.startsWith('/select-tenant')) {
-          router.push('/select-tenant');
-          return;
-        }
-      }
-
-      // 2. Normal routing once tenant is resolved
       if (data.active_tenant) {
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.push('/onboarding');
