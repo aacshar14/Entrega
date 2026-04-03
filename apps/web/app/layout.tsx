@@ -1,5 +1,6 @@
 import { Providers } from '../lib/context/providers';
 import MainLayout from '../components/main-layout';
+import './globals.css';
 
 export const metadata = {
   title: 'EntréGA Dashboard',

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlmodel import Session, select
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_membership, get_active_tenant
+from app.core.dependencies import get_current_user, get_active_membership, get_active_tenant, require_roles
 from app.models.models import User, Tenant, TenantUser, TenantInfo
 from uuid import UUID
 from datetime import datetime, timezone

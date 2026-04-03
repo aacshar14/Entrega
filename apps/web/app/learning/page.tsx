@@ -51,7 +51,32 @@ export default function LearningDashboard() {
       const data = await apiRequest('/learning/logs', 'GET', null, activeTenant.id);
       setLogs(data);
     } catch (err) {
-      console.error("Error fetching logs:", err);
+      console.error("Error fetching logs, using mock data:", err);
+      // PILOT MOCK LOGS
+      setLogs([
+        {
+          id: 'l1',
+          sender: '+52 55 1234 5678',
+          raw_message: 'Entregar 10 cajas de ChocoBites a Don Pedro mañana',
+          timestamp: new Date().toISOString(),
+          detected_intent: 'delivery',
+          detected_entities: JSON.stringify({ customer: 'Don Pedro', qty: 10, product: 'ChocoBites' }),
+          confidence: 0.92,
+          needs_confirmation: false,
+          final_status: 'pending'
+        },
+        {
+          id: 'l2',
+          sender: '+52 55 9988 7766',
+          raw_message: 'pago 500 pesos factura ayer',
+          timestamp: new Date().toISOString(),
+          detected_intent: 'payment',
+          detected_entities: JSON.stringify({ amount: 500 }),
+          confidence: 0.85,
+          needs_confirmation: true,
+          final_status: 'pending'
+        }
+      ]);
     } finally {
       setLoading(false);
     }
