@@ -18,10 +18,12 @@ export async function apiRequest(
     headers['Content-Type'] = 'application/json';
   }
 
+  // Enforce Authorization (Supabase token)
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Enforce Multi-tenant isolation header
   if (activeTenantId) {
     headers['X-Tenant-Id'] = activeTenantId;
   }
@@ -33,10 +35,22 @@ export async function apiRequest(
       body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
     });
 
+    // Handle 401/403 explicitly for better UI feedback
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => 'No error body');
-      console.error(`[API ERROR] ${method} ${path} -> ${response.status}`, errorBody);
-      throw new Error(`API Error ${response.status}: ${errorBody || response.statusText}`);
+      let errorDetail = '';
+      try {
+        const errJson = await response.json();
+        errorDetail = errJson.detail || JSON.stringify(errJson);
+      } catch {
+        errorDetail = await response.text().catch(() => response.statusText);
+      }
+
+      console.error(`[API ERROR] ${method} ${path} -> ${response.status}`, errorDetail);
+      
+      const error: any = new Error(errorDetail || `API Error ${response.status}`);
+      error.status = response.status;
+      error.path = path;
+      throw error;
     }
 
     return await response.json();

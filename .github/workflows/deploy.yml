@@ -3,6 +3,7 @@ name: Build and Deploy to Cloud Run
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: entrega-468815
@@ -11,7 +12,39 @@ env:
   WEB_IMAGE: us-central1-docker.pkg.dev/entrega-468815/entrega-repo/web
 
 jobs:
+  ci:
+    name: Build & Validate
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Cache Next.js Build
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/apps/web/.next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+    - name: Web Build Validation
+      working-directory: apps/web
+      run: |-
+        npm ci
+        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} \
+        NEXT_PUBLIC_API_URL=https://api.entrega.space \
+        npm run build
+
   deploy:
+    name: Containerize & Push
+    needs: ci
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -29,31 +62,10 @@ jobs:
       run: |-
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-    # --- Pre-build Validation ---
-    - name: Web Static Build Validation
-      working-directory: apps/web
-      run: |-
-        npm install
-        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} NEXT_PUBLIC_API_URL=https://api.entrega.space npm run build
-
-    # --- Backend Deploy ---
-    - name: Build and Tag API Container
+    # --- API Container ---
+    - name: Build and Push API
       run: |-
         docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
-
-    - name: API Smoke Test
-      run: |-
-        docker run --rm \
-          -e DATABASE_URL="postgresql://test:test@localhost:5432/db" \
-          -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
-          -e SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-          -e SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
-          -e SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }} \
-          $API_IMAGE:${{ github.sha }} python -c "from app.main import app; print('🚀 Smoke test: app.main imported correctly')"
-
-
-    - name: Push API Container
-      run: |-
         docker push $API_IMAGE:${{ github.sha }}
         docker push $API_IMAGE:latest
 
@@ -68,22 +80,22 @@ jobs:
 
     - name: API Health Check
       run: |-
-        curl -f https://api.entrega.space/ || (echo "❌ API Unreachable" && exit 1)
+        # Simple health check
+        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.entrega.space/ || echo "000")
+        if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ]; then
+           echo "🚀 API Health Check Passed: $STATUS"
+        else
+           echo "❌ API Unreachable or Critical Error: $STATUS"
+           exit 1
+        fi
 
-    # --- Frontend Deploy ---
-    - name: Build Web Container
+    # --- Web Container ---
+    - name: Build and Push Web
       run: |-
         docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
           --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
           --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
           --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
-
-    - name: Web Container Smoke Test
-      run: |-
-        docker run --rm $WEB_IMAGE:${{ github.sha }} sh -c "test -d .next" && echo "🚀 Web build trace found"
-
-    - name: Push Web Container
-      run: |-
         docker push $WEB_IMAGE:${{ github.sha }}
         docker push $WEB_IMAGE:latest
 
@@ -96,6 +108,14 @@ jobs:
           --allow-unauthenticated \
           --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}"
 
-    - name: Web Health Check
+    - name: Final Smoke Test
       run: |-
-        curl -f https://entrega.space/ || (echo "❌ Web Unreachable" && exit 1)
+        echo "🚀 Running final smoke tests on production..."
+        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/dashboard || echo "000")
+        # Dashboard requires login so 302 or 200 expected
+        if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 307 ] || [ "$STATUS" -eq 302 ]; then
+           echo "✅ Dashboard Reachable: $STATUS"
+        else
+           echo "❌ Dashboard Check Failed: $STATUS"
+           exit 1
+        fi

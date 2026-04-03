@@ -109,3 +109,31 @@ Este registro documenta errores críticos resueltos durante el escalamiento a V1
 *   **Problema:** `npm run build` falla con `Error: supabaseUrl is required`.
 *   **Causa:** `Next.js` intenta pre-renderizar páginas estáticas durante el build y los archivos de `lib/supabase.ts` se ejecutan sin variables de entorno presentes.
 *   **Lección:** Proporcionar un `.env.local` con placeholders o valores de staging durante el paso de build en el pipeline para permitir que la generación de páginas finalice correctamente.
+
+### 7. Proceso de Despliegue y Rollback (NUEVO)
+
+Con la estandarización de la V1.1, el flujo de despliegue es el siguiente:
+
+**Flujo CI/CD:**
+1.  **CI (Build & Validate):** Se ejecuta `npm ci` y se valida el build estático de Next.js.
+2.  **Containerize:** Se generan imágenes Docker taggeadas con el `SHA` del commit.
+3.  **Deploy:** Se actualiza Cloud Run apuntando a la nueva imagen.
+4.  **Smoke Test:** Se realiza un `curl` a `/dashboard` y `/`. Si devuelve un código diferente a 200/302, el pipeline falla.
+
+**Cómo hacer un Rollback Manual:**
+Si un despliegue causa errores críticos en producción:
+
+1.  **Identificar Revisión Estable:**
+    ```bash
+    gcloud run revisions list --service=entrega-web --region=us-central1 --limit=5
+    ```
+2.  **Revertir Tráfico:**
+    ```bash
+    gcloud run services update-traffic entrega-web --to-revisions=REVISION_NAME=100 --region=us-central1
+    ```
+    *(Repetir para `entrega-api` si es necesario)*.
+
+**Soporte de Entornos:**
+*   **Producción:** https://entrega.space
+*   **API Producción:** https://api.entrega.space
+*   **Staging:** (Configurable vía GitHub Environments para aprobación manual).

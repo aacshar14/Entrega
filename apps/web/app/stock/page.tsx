@@ -70,10 +70,14 @@ export default function StockPage() {
       setError(null);
       
       const data = await apiRequest('/products/stock', 'GET', null, activeTenant?.id);
-      setProducts(data || []);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Error fetching stock:', err);
-      setError(err.message || 'Error al cargar el inventario');
+      if (err.status === 401 || err.status === 403) {
+         setError('No tienes permisos para ver el inventario o tu sesión ha expirado.');
+      } else {
+         setError(err.message || 'Error al cargar el inventario');
+      }
     } finally {
       setLoading(false);
     }
@@ -109,7 +113,7 @@ export default function StockPage() {
 
       const data = await apiRequest('/products/import/preview', 'POST', formData, activeTenant?.id);
       
-      // Harden data shape
+      // Defensive parsing
       const hardenedData = {
         ...data,
         rows: Array.isArray(data?.rows) ? data.rows : []
@@ -119,7 +123,11 @@ export default function StockPage() {
       setStep('preview');
     } catch (err: any) {
       console.error('Error uploading CSV:', err);
-      setError(err.message || 'Error al procesar el archivo CSV');
+      if (err.status === 403) {
+        setError('Acceso denegado: No tienes permisos para realizar importaciones.');
+      } else {
+        setError(err.message || 'Error al procesar el archivo CSV. Verifica el formato.');
+      }
     } finally {
       setIsUploading(false);
     }
