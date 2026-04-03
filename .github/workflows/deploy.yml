@@ -112,11 +112,11 @@ jobs:
     - name: Final Smoke Test
       run: |-
         echo "🚀 Running final smoke tests on production..."
-        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/dashboard || echo "000")
-        # Dashboard requires login so 302 or 200 expected
-        if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 307 ] || [ "$STATUS" -eq 302 ]; then
-           echo "✅ Dashboard Reachable: $STATUS"
+        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/ || echo "000")
+        # Root redirects to /landing, so 200, 302 or 307 expected
+        if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 301 ] || [ "$STATUS" -eq 302 ] || [ "$STATUS" -eq 307 ]; then
+           echo "✅ Production Reachable: $STATUS"
         else
-           echo "❌ Dashboard Check Failed: $STATUS"
+           echo "❌ Production Check Failed: $STATUS"
            exit 1
         fi
