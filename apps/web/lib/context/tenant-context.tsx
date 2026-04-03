@@ -65,24 +65,34 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchContext = async (overrideId?: string) => {
+    console.log('[DEBUG AUTH] fetchContext started', { overrideId, activeTenantId });
     try {
       const data = await apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined);
       
+      console.log('[DEBUG AUTH] /me response', { 
+        role: data.user?.platform_role, 
+        memberships: data.memberships?.length,
+        active_tenant_from_api: data.active_tenant?.id 
+      });
+
       const isAdminWithMultiple = data.user?.platform_role === 'admin' && (data.memberships?.length || 0) > 1;
       
       // 1. Force Selection for Admins with multiple options IF no explicit selection exists
       // We check !overrideId because switchTenant passes it explicitly
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
+        console.log('[DEBUG AUTH] Admin with multiple tenants detected. FORCING SELECTOR.');
         setUser(data.user);
         setMemberships(data.memberships || []);
         setActiveTenant(null); // Ensure no tenant is active yet
         
         if (!pathname.startsWith('/select-tenant')) {
+          console.log('[DEBUG AUTH] Redirecting to /select-tenant');
           router.push('/select-tenant');
         }
         return; // Halt further routing
       }
 
+      console.log('[DEBUG AUTH] Proceeding with normal tenant assignment');
       // 2. Normal assignment for non-admins, or admins with a selection
       setUser(data.user);
       setActiveTenant(data.active_tenant);
@@ -90,10 +100,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       
       // Update activeTenantId to persist state across re-renders
       if (data.active_tenant?.id) {
+        console.log('[DEBUG AUTH] Setting activeTenantId:', data.active_tenant.id);
         setActiveTenantId(data.active_tenant.id);
       }
 
       if (data.active_tenant) {
+        console.log('[DEBUG AUTH] Auto-routing check for active tenant');
         if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
           router.push('/onboarding');
         } else if (data.active_tenant.ready && pathname.startsWith('/onboarding')) {
