@@ -152,13 +152,17 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         // Initial load check
         const { data: { session } } = await supabase.auth.getSession();
+        
+        console.log('[AUTH DEBUG] Initial session check:', session ? 'SESSION_EXISTS' : 'NO_SESSION');
+
         if (session) {
           await fetchContext();
         } else {
           setIsLoading(false);
-          // Redirect to landing if on protected page (including root) without session
-          const isPublicPath = pathname.startsWith('/landing') || pathname.startsWith('/login');
-          if (!isPublicPath) {
+          // HARD REDIRECT TO LANDING if no session exists and we are not on public pages
+          const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
+          if (!isPublic) {
+            console.log('[AUTH DEBUG] No session on non-public path. Redirecting to landing.');
             router.replace('/landing');
           }
         }
