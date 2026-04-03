@@ -87,22 +87,33 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setActiveTenantId(data.active_tenant.id);
       }
 
-      // --- CENTRALIZED ROUTING AUTHORITY ---
+      // --- CENTRALIZED ROUTING AUTHORITY (PHASE 2 - STRICT) ---
       
-      // 1. Admin with multiple tenants and no selection -> Force Selector
+      // 1. Unauthenticated -> Handled in initialize() / catch block
+
+      // 2. Admin with multiple tenants and no selection -> Force Selector
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
         if (!pathname.startsWith('/select-tenant')) {
           router.replace('/select-tenant');
         }
         setIsLoading(false);
-        return;
+        return; // HALT
       }
 
-      // 2. Tenant logic if active
+      // 3. Active Tenant Onboarding/Dashboard Gates
       if (data.active_tenant) {
-        if (!data.active_tenant.ready && !pathname.startsWith('/onboarding')) {
+        const isNotReady = !data.active_tenant.ready;
+        const isOnboarding = pathname.startsWith('/onboarding');
+        const isProtectedAppRoute = !['/landing', '/login', '/select-tenant', '/'].includes(pathname);
+
+        if (isNotReady && isProtectedAppRoute && !isOnboarding) {
+          // If not ready and on a dashboard/stock/etc. route -> force onboarding
           router.replace('/onboarding');
-        } else if (data.active_tenant.ready && (pathname.startsWith('/onboarding') || pathname === '/')) {
+        } else if (!isNotReady && isOnboarding) {
+          // If ready but somehow stuck on onboarding -> go to dashboard
+          router.replace('/dashboard');
+        } else if (!isNotReady && pathname === '/') {
+          // If ready and hit root -> go to dashboard
           router.replace('/dashboard');
         }
       }

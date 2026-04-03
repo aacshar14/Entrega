@@ -36,11 +36,10 @@ function UI_Shell({ children }) {
   const pathname = usePathname();
   const { user, activeTenant, isLoading } = useTenant();
 
-  // No shell for landing or login
+  // 2. AuthGate (Phase 2 Strict): Block everything not public if no session
   const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
   if (isPublicPath) return children;
 
-  // Protected route loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#F8FAFC] gap-4">
@@ -48,20 +47,19 @@ function UI_Shell({ children }) {
           <div className="w-16 h-16 border-4 border-slate-100 rounded-full"></div>
           <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <p className="text-slate-500 font-black text-xs uppercase tracking-widest animate-pulse">Protegiendo tu sesión</p>
+        <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest animate-pulse">Protegiendo tu sesión</p>
       </div>
     );
   }
 
-  // If loading finished but no user, and NOT on public path, show nothing (Provider will redirect)
+  // 3. User block (Single Source of Truth)
   if (!user) return null;
 
-  // STRICT GUARD: If authenticated but no tenant selected yet, 
-  // only allow access to '/select-tenant' or '/onboarding'
-  // (This prevents manual navigation to dashboard bypass)
-  const isSetupPath = pathname.startsWith('/select-tenant') || pathname.startsWith('/onboarding');
-  if (!activeTenant && !isSetupPath) {
-    return null; // Don't render dashboard if no tenant is active
+  // 4. Tenant Selection Guard
+  const isTenantSetupPath = pathname.startsWith('/select-tenant') || pathname.startsWith('/onboarding');
+  if (!activeTenant && !isTenantSetupPath) {
+    // If authenticated but no active tenant, you can't be on dashboard/stock/etc.
+    return null; 
   }
 
   const displayUser = {
