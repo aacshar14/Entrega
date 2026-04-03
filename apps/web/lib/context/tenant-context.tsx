@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../supabase';
+import { getSupabaseClient } from '../supabase';
 import { apiRequest } from '../api';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -81,7 +81,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = getSupabaseClient().auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
         fetchContext();
       } else if (event === 'SIGNED_OUT') {
@@ -93,7 +93,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSupabaseClient().auth.getSession().then(({ data: { session } }) => {
       if (session) {
         fetchContext();
       } else {

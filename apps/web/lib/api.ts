@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -8,7 +8,7 @@ export async function apiRequest(
   body: any = null,
   activeTenantId?: string
 ) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await getSupabaseClient().auth.getSession();
   const token = session?.access_token;
 
   const headers: Record<string, string> = {};

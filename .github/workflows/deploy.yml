@@ -29,6 +29,13 @@ jobs:
       run: |-
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
+    # --- Pre-build Validation ---
+    - name: Web Static Build Validation
+      working-directory: apps/web
+      run: |-
+        npm install
+        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} NEXT_PUBLIC_API_URL=https://api.entrega.space npm run build
+
     # --- Backend Deploy ---
     - name: Build and Tag API Container
       run: |-
@@ -55,7 +62,14 @@ jobs:
     # --- Frontend Deploy ---
     - name: Build Web Container
       run: |-
-        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space
+        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
+          --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+    - name: Web Container Smoke Test
+      run: |-
+        docker run --rm $WEB_IMAGE:${{ github.sha }} sh -c "test -d .next" && echo "🚀 Web build trace found"
 
     - name: Push Web Container
       run: |-
@@ -69,4 +83,4 @@ jobs:
           --region $REGION \
           --platform managed \
           --allow-unauthenticated \
-          --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space"
+          --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
