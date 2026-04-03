@@ -137,11 +137,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const supabase = getSupabaseClient();
         
         // Listen for auth changes
-        const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('[AUTH DEBUG] Auth Event:', event);
           if (event === 'SIGNED_OUT') {
             handleManualLogout();
             router.replace('/landing');
+          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (session) {
+              await fetchContext();
+            }
           }
         });
         subscription = data.subscription;

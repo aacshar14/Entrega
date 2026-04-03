@@ -9,20 +9,23 @@ export default function RootPage() {
   const { user, isLoading } = useTenant();
 
   useEffect(() => {
-    // 1. If we are at root, we prioritize the landing experience for neutrality.
-    // 2. Only if the session is already fully loaded and we have a user/tenant,
-    // we jump to dashboard. Otherwise, go to landing.
+    // Wait for the provider to finish initial session/context loading
     if (!isLoading) {
       if (user) {
-        // Resolved authenticated user: TenantProvider already manages redirects, 
-        // but if we are still at root, let's jump.
+        // Authenticated: Provider should have handled redirects, 
+        // but as a safety jump from root:
         router.replace('/dashboard');
       } else {
+        // Unauthenticated: go to landing
         router.replace('/landing');
       }
     }
   }, [isLoading, user, router]);
 
-  // Clean, white minimalist entry - no heavy loaders here to avoid the "loop" perception
-  return <div className="min-h-screen bg-white" />;
+  // Neutral entry point
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+       <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 }

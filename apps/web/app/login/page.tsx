@@ -28,8 +28,8 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ login correcto → ir a la raíz para que el Provider resuelva
-    router.push('/'); 
+    // ✅ login correcto → ir al dashboard (el Provider resolverá si falta seleccionar tenant)
+    router.push('/dashboard'); 
   };
 
   return (
