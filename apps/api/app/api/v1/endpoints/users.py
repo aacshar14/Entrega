@@ -47,7 +47,33 @@ async def get_me(
     Returns current user profile, active tenant context, and all memberships.
     Calculates real-time onboarding progress for the pilot activation flow.
     """
-    # Fetch all user memberships
+    # 1. Resolve memberships based on platform role
+    if current_user.platform_role == "admin":
+        # Platform Admins see ALL tenants
+        tenants_db = db.exec(select(Tenant)).all()
+        membership_infos = []
+        active_tenant_info = None
+        
+        for t in tenants_db:
+            t_info = get_tenant_info(db, t)
+            m_info = MembershipInfo(
+                tenant=t_info,
+                role="owner", # Admin is effectively owner of all
+                is_default=t.slug == "entrega"
+            )
+            membership_infos.append(m_info)
+            
+            # If the admin has selected a tenant via X-Tenant-Id, use it as active
+            if active_membership and t.id == active_membership.tenant_id:
+                active_tenant_info = t_info
+                
+        return MeResponse(
+            user=current_user,
+            active_tenant=active_tenant_info,
+            memberships=membership_infos
+        )
+
+    # 2. Standard User Resolution
     memberships_db = db.exec(
         select(TenantUser, Tenant)
         .join(Tenant)

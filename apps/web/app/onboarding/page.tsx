@@ -43,6 +43,29 @@ export default function OnboardingPage() {
     }
   }, [activeTenant]);
 
+  const handleCreateBusiness = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Basic slug generator
+      const slug = formData.business_name
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+      
+      if (!slug) throw new Error("Nombre de negocio inválido");
+
+      await apiRequest('/tenants/', 'POST', { name: formData.business_name, slug });
+      await refreshUser();
+      setStep(2);
+    } catch (err: any) {
+      setError(err.message || "Error al crear negocio");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateBusinessName = async () => {
     if (!activeTenant) return;
     setLoading(true);
@@ -103,7 +126,10 @@ export default function OnboardingPage() {
 
   const prevStep = () => setStep((s) => (s - 1) as OnboardingStep);
 
-  return (activeTenant && (
+  const isCreationMode = !activeTenant;
+  const currentBusinessName = activeTenant?.name || "Nuevo Negocio";
+
+  return (
     <div className="min-h-screen bg-[#EBEEF2] flex flex-col p-6 animate-in fade-in duration-700">
       
       {/* Header */}
@@ -113,7 +139,7 @@ export default function OnboardingPage() {
          </div>
          <div className="text-center">
             <h1 className="text-2xl font-black text-[#1D3146] tracking-tighter italic">EntréGA Academy</h1>
-            <p className="text-xs text-[#56CCF2] font-black uppercase tracking-[0.2em] mt-1">Programa de Activación {activeTenant.name}</p>
+            <p className="text-xs text-[#56CCF2] font-black uppercase tracking-[0.2em] mt-1">Programa de Activación {currentBusinessName}</p>
          </div>
       </div>
 
@@ -171,8 +197,12 @@ export default function OnboardingPage() {
                   />
                </div>
                
-               <button onClick={handleUpdateBusinessName} disabled={!formData.business_name || loading} className="w-full mt-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl shadow-[#1D3146]/20 flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30">
-                  {loading ? <Loader2 className="animate-spin text-white" /> : "Continuar"}
+               <button 
+                  onClick={isCreationMode ? handleCreateBusiness : handleUpdateBusinessName} 
+                  disabled={!formData.business_name || loading} 
+                  className="w-full mt-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl shadow-[#1D3146]/20 flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30"
+               >
+                  {loading ? <Loader2 className="animate-spin text-white" /> : (isCreationMode ? "Crear Negocio" : "Continuar")}
                   <ArrowRight size={20} />
                </button>
             </div>
@@ -294,19 +324,19 @@ export default function OnboardingPage() {
                <p className="text-sm text-slate-500 mb-8 font-medium italic">Habilita avisos automáticos a tus clientes.</p>
                
                 <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-center">
-                   {activeTenant.whatsapp_status === 'connected' ? (
+                   {activeTenant?.whatsapp_status === 'connected' ? (
                       <div className="animate-in zoom-in-95 duration-500">
                          <div className="w-16 h-16 bg-[#56CCF2]/20 text-[#56CCF2] rounded-full flex items-center justify-center mx-auto mb-4">
                             <CheckCircle2 size={32} />
                          </div>
                          <h3 className="text-sm font-black text-[#1D3146] uppercase tracking-tight">¡WhatsApp Conectado!</h3>
-                         <p className="text-[10px] text-slate-400 font-bold mt-1">{activeTenant.whatsapp_account_name || activeTenant.name}</p>
-                         <p className="text-xs font-black text-[#1D3146] mt-2 underline decoration-[#56CCF2]">{activeTenant.whatsapp_display_number || formData.whatsapp}</p>
+                         <p className="text-[10px] text-slate-400 font-bold mt-1">{activeTenant?.whatsapp_account_name || activeTenant?.name}</p>
+                         <p className="text-xs font-black text-[#1D3146] mt-2 underline decoration-[#56CCF2]">{activeTenant?.whatsapp_display_number || formData.whatsapp}</p>
                          
                          <button 
                            onClick={() => {
                               setFormData({...formData, whatsapp: ''});
-                              apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id).then(() => refreshUser());
+                              if (activeTenant) apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id).then(() => refreshUser());
                            }}
                            className="mt-4 text-[10px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
                          >
@@ -328,7 +358,7 @@ export default function OnboardingPage() {
                               try {
                                  // Mocking the Meta OAuth popup/code exchange
                                  const mockCode = 'meta_auth_code_' + Math.random().toString(36).substring(7);
-                                 await apiRequest('/whatsapp/auth/exchange', 'POST', { code: mockCode }, activeTenant.id);
+                                 if (activeTenant) await apiRequest('/whatsapp/auth/exchange', 'POST', { code: mockCode }, activeTenant.id);
                                  await refreshUser();
                               } catch (err: any) {
                                  setError("Error al conectar con Meta: " + err.message);
@@ -359,7 +389,7 @@ export default function OnboardingPage() {
                    </button>
                    <button 
                      onClick={() => setStep(5)} 
-                     disabled={activeTenant.whatsapp_status !== 'connected'} 
+                     disabled={activeTenant?.whatsapp_status !== 'connected'} 
                      className="flex-grow py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30"
                    >
                       Finalizar Configuración
@@ -379,22 +409,22 @@ export default function OnboardingPage() {
                   <p className="text-[#56CCF2] text-sm font-black uppercase tracking-[0.2em] mb-10">Has completado la EntréGA Academy</p>
                   
                   <div className="w-full space-y-3 mb-12">
-                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant.clients_imported ? 'opacity-100' : 'opacity-40'}`}>
+                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant?.clients_imported ? 'opacity-100' : 'opacity-40'}`}>
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]">Base de Clientes</span>
-                        <CheckCircle2 size={16} className={activeTenant.clients_imported ? 'text-[#56CCF2]' : 'text-white/20'} />
+                        <CheckCircle2 size={16} className={activeTenant?.clients_imported ? 'text-[#56CCF2]' : 'text-white/20'} />
                      </div>
-                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant.stock_imported ? 'opacity-100' : 'opacity-40'}`}>
+                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant?.stock_imported ? 'opacity-100' : 'opacity-40'}`}>
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]">Gestión de Stock</span>
-                        <CheckCircle2 size={16} className={activeTenant.stock_imported ? 'text-[#56CCF2]' : 'text-white/20'} />
+                        <CheckCircle2 size={16} className={activeTenant?.stock_imported ? 'text-[#56CCF2]' : 'text-white/20'} />
                      </div>
-                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant.business_whatsapp_connected ? 'opacity-100' : 'opacity-40'}`}>
+                     <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant?.business_whatsapp_connected ? 'opacity-100' : 'opacity-40'}`}>
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#56CCF2]">WhatsApp Operativo</span>
-                        <CheckCircle2 size={16} className={activeTenant.business_whatsapp_connected ? 'text-[#56CCF2]' : 'text-white/20'} />
+                        <CheckCircle2 size={16} className={activeTenant?.business_whatsapp_connected ? 'text-[#56CCF2]' : 'text-white/20'} />
                      </div>
                   </div>
 
                   <Link href="/dashboard" className="w-full py-6 bg-[#56CCF2] text-[#1D3146] font-black rounded-2xl flex items-center justify-center gap-3 shadow-2xl shadow-[#56CCF2]/20 hover:scale-105 transition-all text-sm uppercase tracking-[0.2em]">
-                     Activar {activeTenant.name}
+                     Activar {activeTenant?.name || "Negocio"}
                      <Zap size={20} fill="currentColor" />
                   </Link>
                </div>
@@ -409,5 +439,5 @@ export default function OnboardingPage() {
       </div>
 
     </div>
-  )) || null;
+  );
 }

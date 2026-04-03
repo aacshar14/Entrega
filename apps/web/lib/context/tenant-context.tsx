@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getSupabaseClient } from '../supabase';
+import { createClient } from '@/utils/supabase/client';
 import { apiRequest } from '../api';
 import { useRouter, usePathname } from 'next/navigation';
 import SessionTimeout from './session-timeout';
@@ -107,26 +107,43 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       // --- CENTRALIZED ROUTING AUTHORITY (PHASE 2 - STRICT) ---
       
-      // 1. Admin with multiple tenants and no selection -> Force Selector
+      const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
+      const isOnboardingPath = pathname.startsWith('/onboarding');
+      const isSelectTenantPath = pathname.startsWith('/select-tenant');
+
+      // 1. New User / No Membership Guard -> Force Onboarding
+      if (membershipCount === 0 && data.user) {
+        if (!isPublicPath && !isOnboardingPath) {
+          console.log('[AUTH DEBUG] No memberships found. Redirecting to onboarding.');
+          router.replace('/onboarding');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Admin with multiple tenants and no selection -> Force Selector
       if (isAdminWithMultiple && !overrideId && !activeTenantId) {
-        if (!pathname.startsWith('/select-tenant')) {
+        if (!isSelectTenantPath && !isPublicPath) {
+          console.log('[AUTH DEBUG] Admin with multiple tenants. Redirecting to selector.');
           router.replace('/select-tenant');
         }
         setIsLoading(false);
         return; // HALT
       }
 
-      // 2. Active Tenant Onboarding/Dashboard Gates
+      // 3. Active Tenant Onboarding/Dashboard Gates
       if (data.active_tenant) {
-        const isNotReady = !data.active_tenant.ready;
-        const isOnboarding = pathname.startsWith('/onboarding');
-        const isProtectedAppRoute = !['/landing', '/login', '/select-tenant', '/'].includes(pathname);
+        const isReady = data.active_tenant.ready;
+        const isNotReady = !isReady;
+        const isProtectedAppRoute = !isPublicPath && !isSelectTenantPath && !isOnboardingPath;
 
-        if (isNotReady && isProtectedAppRoute && !isOnboarding) {
+        if (isNotReady && isProtectedAppRoute) {
+          console.log('[AUTH DEBUG] Tenant not ready. Redirecting to onboarding.');
           router.replace('/onboarding');
-        } else if (!isNotReady && isOnboarding) {
+        } else if (isReady && isOnboardingPath) {
+          console.log('[AUTH DEBUG] Tenant ready but on onboarding. Redirecting to dashboard.');
           router.replace('/dashboard');
-        } else if (!isNotReady && pathname === '/') {
+        } else if (isReady && pathname === '/') {
           router.replace('/dashboard');
         }
       }
@@ -134,8 +151,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to resolve context:', error);
       if (error.message === 'TIMEOUT_ME_RESOLUTION' || error.status === 401 || error.status === 403) {
         handleManualLogout();
-        if (!pathname.startsWith('/landing') && !pathname.startsWith('/login')) {
-          router.replace('/landing');
+        if (!pathname.startsWith('/login')) {
+          router.replace('/login');
         }
       }
     } finally {
@@ -148,13 +165,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
     const initialize = async () => {
       try {
-        const supabase = getSupabaseClient();
+        const supabase = createClient();
         
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('[AUTH DEBUG] Auth Event:', event);
           if (event === 'SIGNED_OUT') {
             handleManualLogout();
-            router.replace('/landing');
+            router.replace('/login');
           } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             if (session) await fetchContext();
           }
@@ -169,8 +186,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           console.log('[AUTH DEBUG] No active session, releasing loader.');
           setIsLoading(false);
           const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
-          if (!isPublic && pathname !== '/') {
-            router.replace('/landing');
+          if (!isPublic) {
+            router.replace('/login');
           }
         }
       } catch (err) {
