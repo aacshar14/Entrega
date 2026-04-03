@@ -26,6 +26,7 @@ interface Tenant {
   whatsapp_status: string;
   whatsapp_display_number?: string;
   whatsapp_account_name?: string;
+  whatsapp_app_id?: string;
 }
 
 interface Membership {
@@ -92,7 +93,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         ready: true,
         whatsapp_status: 'connected',
         whatsapp_display_number: '+52 1 55 1234 5678',
-        whatsapp_account_name: 'ChocoBites México'
+        whatsapp_account_name: 'ChocoBites México',
+        whatsapp_app_id: '904555555555555'
       };
       
       setUser(mockUser);

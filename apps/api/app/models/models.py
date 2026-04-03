@@ -24,6 +24,7 @@ class TenantInfo(BaseModel):
     whatsapp_status: str = "disconnected"
     whatsapp_display_number: Optional[str] = None
     whatsapp_account_name: Optional[str] = None
+    whatsapp_app_id: Optional[str] = None
 
 class MembershipInfo(BaseModel):
     tenant: TenantInfo
@@ -65,6 +66,7 @@ class Tenant(SQLModel, table=True):
     
     # Meta WhatsApp Business Account (WABA) Info
     whatsapp_status: str = Field(default="disconnected") 
+    whatsapp_app_id: Optional[str] = None
     whatsapp_connected_at: Optional[datetime] = None
     
     created_at: datetime = Field(default_factory=get_utc_now)
