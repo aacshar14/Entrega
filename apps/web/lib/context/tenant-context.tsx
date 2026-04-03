@@ -39,6 +39,7 @@ interface Membership {
 interface TenantContextType {
   user: User | null;
   activeTenant: Tenant | null;
+  activeRole: 'owner' | 'operator' | null;
   memberships: Membership[];
   isLoading: boolean;
   switchTenant: (tenantId: string) => void;
@@ -50,6 +51,7 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [activeTenant, setActiveTenant] = useState<Tenant | null>(null);
+  const [activeRole, setActiveRole] = useState<'owner' | 'operator' | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTenantId, setActiveTenantId] = useState<string | null>(null);
@@ -85,6 +87,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setActiveTenant(data.active_tenant);
       if (data.active_tenant?.id) {
         setActiveTenantId(data.active_tenant.id);
+        
+        // Resolve active role
+        const activeMembership = data.memberships?.find(
+          (m: Membership) => m.tenant.id === data.active_tenant.id
+        );
+        setActiveRole(activeMembership?.role || null);
+      } else {
+        setActiveRole(null);
       }
 
       // --- CENTRALIZED ROUTING AUTHORITY (PHASE 2 - STRICT) ---
@@ -171,7 +181,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, []); 
 
   const switchTenant = (tenantId: string) => {
-    setActiveTenantId(tenantId);
+    setActiveTenant(null);
+    setActiveRole(null);
+    setMemberships([]);
+    setActiveTenantId(null);
     setIsLoading(true);
     fetchContext(tenantId);
   };
@@ -179,7 +192,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   return (
     <TenantContext.Provider value={{ 
       user, 
-      activeTenant, 
+      activeTenant,
+      activeRole,
       memberships, 
       isLoading, 
       switchTenant,

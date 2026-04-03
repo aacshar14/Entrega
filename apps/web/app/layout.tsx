@@ -28,15 +28,21 @@ const menuItems = [
     { icon: Package, label: 'Inventario', href: '/stock' },
     { icon: Layout, label: 'Operaciones', href: '/operations' },
     { icon: CreditCard, label: 'Pagos', href: '/payments' },
-    { icon: Clock, label: 'Movimientos', href: '/operations' }, // Point to operations for now
-    { icon: FileText, label: 'Reportes', href: '/reports/weekly' }, // Fix 404
+    { icon: Clock, label: 'Movimientos', href: '/operations' },
+    { icon: FileText, label: 'Reportes', href: '/reports/weekly', ownerOnly: true },
 ];
 
 function UI_Shell({ children }) {
   const pathname = usePathname();
-  const { user, activeTenant, isLoading } = useTenant();
+  const { user, activeTenant, activeRole, isLoading } = useTenant();
 
-  // 2. AuthGate (Phase 2 Strict): Block everything not public if no session
+  // 1. Protection for Owner-Only routes
+  const isOwnerOnlyRoute = menuItems.find(i => i.href === pathname)?.ownerOnly;
+  if (isOwnerOnlyRoute && activeRole !== 'owner' && !isLoading) {
+    return null; // The Provider should have redirected, but as a shell gate: stay blank
+  }
+
+  // No shell for landing or login
   const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
   if (isPublicPath) return children;
 
@@ -85,21 +91,23 @@ function UI_Shell({ children }) {
         </div>
 
         <nav className="flex-grow px-4 space-y-1">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-sm group ${
-                  isActive ? 'bg-[#56CCF2] text-[#1D3146] shadow-lg shadow-[#56CCF2]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <item.icon size={20} className={isActive ? 'text-[#1D3146]' : 'text-slate-500 group-hover:text-[#56CCF2]'} />
-                {item.label}
-              </Link>
-            );
-          })}
+          {menuItems
+            .filter(item => !item.ownerOnly || activeRole === 'owner')
+            .map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-sm group ${
+                    isActive ? 'bg-[#56CCF2] text-[#1D3146] shadow-lg shadow-[#56CCF2]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <item.icon size={20} className={isActive ? 'text-[#1D3146]' : 'text-slate-500 group-hover:text-[#56CCF2]'} />
+                  {item.label}
+                </Link>
+              );
+            })}
         </nav>
 
         <div className="p-8 border-t border-white/5">
