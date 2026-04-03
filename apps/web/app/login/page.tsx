@@ -18,21 +18,25 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('[AUTH DEBUG] Attempting login for:', email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('[AUTH DEBUG] Login error:', error.message);
         setError(error.message);
+        setLoading(false);
         return;
       }
 
-      // ✅ login correcto → recarga completa de la app para asegurar estado limpio
-      window.location.href = '/'; 
+      console.log('[AUTH DEBUG] Login success, forcing hard redirect to root...');
+      // ✅ Usamos assign a nivel de ventana para asegurar re-bootstrap completo
+      window.location.assign('/'); 
     } catch (err: any) {
+      console.error('[AUTH DEBUG] Unexpected login exception:', err);
       setError(err?.message || 'Error al iniciar sesión');
-    } finally {
       setLoading(false);
     }
   };
@@ -71,7 +75,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="text-red-500 text-sm text-center">
+          <div className="text-red-500 text-sm text-center font-bold tracking-tight bg-red-50 p-3 rounded-xl">
             {error}
           </div>
         )}
@@ -79,9 +83,9 @@ export default function LoginPage() {
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-2xl font-bold"
+          className="w-full bg-[#1D3146] text-[#56CCF2] p-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-slate-100 hover:scale-[1.02] transition-all disabled:opacity-50"
         >
-          {loading ? 'Entrando...' : 'Iniciar Sesión'}
+          {loading ? 'Preparando Entrada...' : 'Iniciar Sesión'}
         </button>
 
       </div>
