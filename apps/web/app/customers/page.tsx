@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+// Updated for ChocoBites Tier Pricing V1.1
 import { 
   Users, 
   Upload, 
