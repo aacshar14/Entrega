@@ -1,63 +1,57 @@
 import { getSupabaseClient } from './supabase';
 
-// Leverage Next.js rewrites for proxying to avoid CORS and Mixed Content errors in production
 const API_BASE_URL = '/api/v1';
 
 export async function apiRequest(
-  path: string, 
+  endpoint: string, 
   method = 'GET', 
   body: any = null,
   activeTenantId?: string
 ) {
-  // Normalize path: ensure it has a trailing slash to avoid 307 redirects on preflight
-  const normalizedPath = path.endsWith('/') ? path : `${path}/`;
+  // Normalize endpoint: ensure it starts with / and has no trailing slash unless it's just /
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (cleanEndpoint.length > 1 && cleanEndpoint.endsWith('/')) {
+    cleanEndpoint = cleanEndpoint.slice(0, -1);
+  }
+
   const { data: { session } } = await getSupabaseClient().auth.getSession();
   const token = session?.access_token;
 
-  const headers: Record<string, string> = {};
-  
-  if (!(body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
 
-  // Enforce Authorization (Supabase token)
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Enforce Multi-tenant isolation header
   if (activeTenantId) {
     headers['X-Tenant-Id'] = activeTenantId;
   }
 
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
+
+  console.log(`[API DEBUG] ${method} ${url}`, { body, tenant: activeTenantId });
+
   try {
-    const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
+    const response = await fetch(url, {
       method,
       headers,
-      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
+      body: body ? JSON.stringify(body) : null,
     });
 
-    // Handle 401/403 explicitly for better UI feedback
     if (!response.ok) {
-      let errorDetail = '';
-      try {
-        const errJson = await response.json();
-        errorDetail = errJson.detail || JSON.stringify(errJson);
-      } catch {
-        errorDetail = await response.text().catch(() => response.statusText);
-      }
-
-      console.error(`[API ERROR] ${method} ${path} -> ${response.status}`, errorDetail);
-      
-      const error: any = new Error(errorDetail || `API Error ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`[API DEBUG] Error ${response.status} on ${url}:`, errorData);
+      const error: any = new Error(errorData.detail || 'Error en la petición al API');
       error.status = response.status;
-      error.path = path;
       throw error;
     }
 
+    if (response.status === 204) return null;
     return await response.json();
   } catch (error: any) {
-    console.error(`[API FETCH FAILED] ${method} ${path}:`, error.message);
+    console.error(`[API DEBUG] Fetch failed for ${url}:`, error);
     throw error;
   }
 }
