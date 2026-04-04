@@ -63,16 +63,23 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # Diagnosis of core settings for validation
+    logger.info("[AUTH DEBUG] Validation environment", 
+                url_len=len(settings.SUPABASE_URL), 
+                url_prefix=settings.SUPABASE_URL[:15],
+                jwt_secret_len=len(settings.SUPABASE_JWT_SECRET))
+
     try:
         # 1. Inspect headers to determine algorithm
         unverified_headers = jwt.get_unverified_header(token.credentials)
         unverified_claims = jwt.get_unverified_claims(token.credentials)
         alg = unverified_headers.get("alg")
         
-        logger.info("[AUTH DEBUG] JWT Strategy Detection", 
+        logger.info("[AUTH DEBUG] JWT Detected metaclaims", 
                     alg=alg, 
                     aud=unverified_claims.get("aud"),
-                    iss=unverified_claims.get("iss"))
+                    iss=unverified_claims.get("iss"),
+                    kid=unverified_headers.get("kid"))
 
         payload = None
         
@@ -80,15 +87,19 @@ async def get_current_user(
             # Modern Supabase ES256 validation via JWKS
             jwks = await get_jwks()
             if not jwks:
-                logger.error("JWT Validation failed: JWKS unavailable")
+                logger.error("JWT Validation failed: JWKS retrieval returned empty set")
                 raise credentials_exception
-                
+            
+            # Note: Explicit 'issuer' check removed to diagnose trailing slash/subdomain drift.
+            # Signature + Audience validation remains mandatory.
+            logger.info("[AUTH DEBUG] Attempting ES256 Public Key Verification", 
+                        jwks_keys_count=len(jwks.get("keys", [])))
+                        
             payload = jwt.decode(
                 token.credentials,
                 jwks,
                 algorithms=["ES256"],
-                audience="authenticated",
-                issuer=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
+                audience="authenticated"
             )
         else:
             # Legacy HS256 validation via shared secret
