@@ -37,7 +37,7 @@ class ProductImportPreviewResponse(BaseModel):
 class ProductImportCommitRequest(BaseModel):
     rows: List[ProductImportRow]
 
-@router.get("/", response_model=List[Product])
+@router.get("", response_model=List[Product])
 async def list_products(
     db: Session = Depends(get_session),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -233,7 +233,7 @@ async def import_products_commit(
     db.commit()
     return {"status": "success", "created": created_count, "updated": updated_count}
 
-@router.post("/", response_model=Product)
+@router.post("", response_model=Product)
 async def create_product(
     name: str,
     price: float,
