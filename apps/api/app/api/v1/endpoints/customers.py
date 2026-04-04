@@ -39,7 +39,7 @@ class ImportPreviewResponse(BaseModel):
 class ImportCommitRequest(BaseModel):
     rows: List[CustomerImportRow]
 
-@router.get("/", response_model=List[Customer])
+@router.get("", response_model=List[Customer])
 async def list_customers(
     db: Session = Depends(get_session),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -50,7 +50,7 @@ async def list_customers(
     ).all()
     return customers
 
-@router.post("/", response_model=Customer)
+@router.post("", response_model=Customer)
 async def create_customer(
     name: str,
     phone_number: str,
