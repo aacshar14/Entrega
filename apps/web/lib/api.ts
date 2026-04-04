@@ -1,25 +1,30 @@
 import { createClient } from '@/utils/supabase/client';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function apiRequest(
-  endpoint: string, 
-  method = 'GET', 
+  endpoint: string,
+  method = 'GET',
   body: any = null,
   activeTenantId?: string
 ) {
-  // Robust normalization: starts with /, NO trailing slashes ever
   const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   const { data: { session } } = await createClient().auth.getSession();
   const token = session?.access_token;
-  
-  console.log(`[API REQUEST] Endpoint: ${endpoint} -> URL: ${url} | Token Present: ${!!token}`);
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
+
+  if (!(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -29,27 +34,104 @@ export async function apiRequest(
     headers['X-Tenant-Id'] = activeTenantId;
   }
 
-  console.log(`[API DEBUG] ${method} ${url}`, { body, tenant: activeTenantId });
+  const maxAttempts = 2;
 
-  try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : null,
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const startedAt = performance.now();
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`[API DEBUG] Error ${response.status} on ${url}:`, errorData);
-      const error: any = new Error(errorData.detail || 'Error en la petición al API');
-      error.status = response.status;
+    try {
+      console.log('[API REQUEST]', {
+        method,
+        endpoint,
+        url,
+        attempt,
+        hasToken: !!token,
+        tenantId: activeTenantId || null,
+      });
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
+      });
+
+      const durationMs = Math.round(performance.now() - startedAt);
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!response.ok) {
+        let errorPayload: any = null;
+
+        if (contentType.includes('application/json')) {
+          errorPayload = await response.json().catch(() => null);
+        } else {
+          errorPayload = await response.text().catch(() => null);
+        }
+
+        console.error('[API RESPONSE ERROR]', {
+          method,
+          url,
+          status: response.status,
+          durationMs,
+          attempt,
+          errorPayload,
+        });
+
+        // Non-retryable status codes (e.g., 401 Unauthorized, 403 Forbidden, 404 Not Found, 422 Validation Error)
+        const nonRetryable = [400, 401, 403, 404, 422].includes(response.status);
+
+        const error: any = new Error(
+          (errorPayload && errorPayload.detail) ||
+          (typeof errorPayload === 'string' ? errorPayload : null) ||
+          `API request failed with status ${response.status}`
+        );
+        error.status = response.status;
+        error.payload = errorPayload;
+
+        if (nonRetryable || attempt === maxAttempts) {
+          throw error;
+        }
+
+        await sleep(300); // Wait before retry
+        continue;
+      }
+
+      console.log('[API RESPONSE OK]', {
+        method,
+        url,
+        status: response.status,
+        durationMs,
+        attempt,
+      });
+
+      if (response.status === 204) return null;
+
+      if (contentType.includes('application/json')) {
+        return await response.json();
+      }
+
+      return await response.text();
+    } catch (error: any) {
+      const durationMs = Math.round(performance.now() - startedAt);
+
+      console.error('[API FETCH FAILURE]', {
+        method,
+        url,
+        attempt,
+        durationMs,
+        message: error?.message,
+        status: error?.status || null,
+      });
+
+      // Retry on network errors or non-client-side error status codes
+      const retryableStatus = error?.status && ![400, 401, 403, 404, 422].includes(error.status);
+      const retryableNetwork = !error?.status;
+
+      if (attempt < maxAttempts && (retryableStatus || retryableNetwork)) {
+        await sleep(300);
+        continue;
+      }
+
       throw error;
     }
-
-    if (response.status === 204) return null;
-    return await response.json();
-  } catch (error: any) {
-    console.error(`[API DEBUG] Fetch failed for ${url}:`, error);
-    throw error;
   }
 }
