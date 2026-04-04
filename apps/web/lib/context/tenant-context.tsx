@@ -114,9 +114,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const isReady = data.active_tenant.ready;
         if (!isReady && !isPublic && !isSelector && !isOnboarding) {
           router.replace('/onboarding');
-        } else if (isReady && (isOnboarding || pathname === '/')) {
+        } else if (isReady && (isOnboarding || pathname === '/' || pathname === '/login')) {
           router.replace('/dashboard');
         }
+      }
+      
+      // Fallback: if we are on root and somehow didn't redirect
+      if (pathname === '/' && data.active_tenant) {
+         router.replace(data.active_tenant.ready ? '/dashboard' : '/onboarding');
       }
     } catch (error: any) {
       console.error('[TENANT CONTEXT] Resolution Error:', error);

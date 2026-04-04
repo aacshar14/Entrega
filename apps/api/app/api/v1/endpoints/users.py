@@ -66,6 +66,11 @@ async def get_me(
             # If the admin has selected a tenant via X-Tenant-Id, use it as active
             if active_membership and t.id == active_membership.tenant_id:
                 active_tenant_info = t_info
+        
+        # fallback: if no active tenant, but we have memberships, pick default or first
+        if not active_tenant_info and membership_infos:
+            default_m = next((m for m in membership_infos if m.is_default), membership_infos[0])
+            active_tenant_info = default_m.tenant
                 
         return MeResponse(
             user=current_user,
