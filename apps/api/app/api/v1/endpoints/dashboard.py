@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func, desc
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_tenant
-from app.models.models import User, Tenant, Customer, Product, Payment, CustomerBalance
+from app.models.models import User, Tenant, Customer, Product, Payment, CustomerBalance, StockBalance
 from typing import List, Dict, Any
 
 router = APIRouter()
@@ -37,20 +37,22 @@ async def get_dashboard_summary(
     # Absolute value for UI
     total_debt_abs = abs(float(total_debt))
     
-    # 3. Stock Status
+    # 3. Stock Status (Low stock < 10)
     low_stock_count = db.exec(
-        select(func.count(Product.id))
-        .where(Product.tenant_id == tenant_id)
-        .where(Product.quantity <= 10)
+        select(func.count(StockBalance.id))
+        .where(StockBalance.tenant_id == tenant_id)
+        .where(StockBalance.quantity <= 10)
     ).one()
     
     # 4. Top Stock (First 5 products)
-    top_stock = db.exec(
-        select(Product)
+    top_stock_query = (
+        select(Product.name, StockBalance.quantity)
+        .join(StockBalance, Product.id == StockBalance.product_id)
         .where(Product.tenant_id == tenant_id)
-        .order_by(desc(Product.quantity))
+        .order_by(desc(StockBalance.quantity))
         .limit(5)
-    ).all()
+    )
+    top_stock_results = db.exec(top_stock_query).all()
     
     # 5. Top Debtors (First 5 customers by balance)
     top_debtors = db.exec(
@@ -70,7 +72,7 @@ async def get_dashboard_summary(
             "low_stock_count": low_stock_count,
         },
         "stock": [
-            {"name": p.name, "quantity": p.quantity} for p in top_stock
+            {"name": name, "quantity": qty} for name, qty in top_stock_results
         ],
         "debtors": [
             {"name": c.name, "amount": abs(float(cb.balance))} for c, cb in top_debtors if cb.balance < 0
