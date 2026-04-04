@@ -9,7 +9,7 @@ const nextConfig = {
       '@supabase/functions-js'
     ],
     async rewrites() {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space';
       return [
         {
           source: '/api/:path*',
