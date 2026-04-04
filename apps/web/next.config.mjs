@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    transpilePackages: ['@supabase/ssr', '@supabase/supabase-js'],
     async rewrites() {
-      const apiUrl = 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       return [
         {
           source: '/api/:path*',
