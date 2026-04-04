@@ -68,10 +68,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setActiveTenantId(null);
   }, []);
 
-  const fetchContext = useCallback(async (overrideId?: string) => {
+  const fetchContext = useCallback(async (overrideId?: string, accessToken?: string) => {
     try {
       const targetId = overrideId || activeTenantId || undefined;
-      const data = await apiRequest('/me', 'GET', null, targetId) as any;
+      console.log('[API] Resolving /me context', { targetId, hasInputToken: !!accessToken });
+      const data = await apiRequest('me', 'GET', null, targetId, accessToken) as any;
       
       console.log('[TENANT CONTEXT] Context resolved:', {
         role: data.user?.platform_role,
@@ -146,9 +147,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         router.replace('/login');
       } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         if (session && !authIsReady.current) {
-          console.log('[AUTH BOOTSTRAP] Event-driven context resolution');
+          console.log('[AUTH BOOTSTRAP] Event-driven context resolution', { event });
           authIsReady.current = true;
-          await fetchContext();
+          await fetchContext(undefined, session.access_token);
         }
       }
     });
@@ -159,7 +160,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         if (!authIsReady.current) {
           console.log('[AUTH BOOTSTRAP] Session found in storage, bootstrapping context');
           authIsReady.current = true;
-          await fetchContext();
+          await fetchContext(undefined, session.access_token);
         }
       } else {
         console.log('[AUTH BOOTSTRAP] No session found');

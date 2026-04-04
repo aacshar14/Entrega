@@ -10,7 +10,8 @@ export async function apiRequest(
   endpoint: string,
   method = 'GET',
   body: any = null,
-  activeTenantId?: string
+  activeTenantId?: string,
+  accessToken?: string
 ) {
   const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
@@ -20,8 +21,16 @@ export async function apiRequest(
      url,
   });
 
-  const { data: { session } } = await createClient().auth.getSession();
-  const token = session?.access_token;
+  // Resolve token: provided or from session
+  let token = accessToken;
+  if (!token) {
+    console.log('[API TOKEN] Resolving token from session storage...');
+    const { data: { session } } = await createClient().auth.getSession();
+    token = session?.access_token;
+    console.log('[API TOKEN] Resolution complete', { hasToken: !!token });
+  } else {
+    console.log('[API TOKEN] Using provided accessToken');
+  }
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
@@ -45,7 +54,7 @@ export async function apiRequest(
     const startedAt = performance.now();
 
     try {
-      console.log('[API REQUEST]', {
+      console.log('[API INITIATING FETCH]', {
         method,
         endpoint,
         url,
