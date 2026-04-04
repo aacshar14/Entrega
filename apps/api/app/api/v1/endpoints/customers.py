@@ -259,6 +259,24 @@ async def delete_customer(
     if not customer or customer.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Customer not found")
     
+    # Clean up dependencies
+    # 1. Balances
+    db.exec(
+        select(CustomerBalance).where(CustomerBalance.customer_id == id)
+    ).all()
+    # Actually just delete them
+    db.execute(f"DELETE FROM customer_balances WHERE customer_id = '{id}'")
+    
+    # 2. Aliases
+    db.execute(f"DELETE FROM customer_aliases WHERE customer_id = '{id}'")
+    
+    # 3. Handle movements (either delete or nullify)
+    # For now, let's nullify to keep the movement but remove the customer link
+    db.execute(f"UPDATE inventory_movements SET customer_id = NULL WHERE customer_id = '{id}'")
+    
+    # 4. Handle payments
+    db.execute(f"DELETE FROM payments WHERE customer_id = '{id}'")
+    
     db.delete(customer)
     db.commit()
     return {"status": "success"}
