@@ -15,6 +15,11 @@ export async function apiRequest(
   const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
+  console.log('[API BASE URL CHECK]', {
+     env: process.env.NEXT_PUBLIC_API_URL,
+     url,
+  });
+
   const { data: { session } } = await createClient().auth.getSession();
   const token = session?.access_token;
 
