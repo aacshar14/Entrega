@@ -54,7 +54,8 @@ async def global_exception_handler(request, exc):
                  path=request.url.path,
                  error=str(exc), 
                  trace=traceback.format_exc())
-    return JSONResponse(
+    
+    response = JSONResponse(
         status_code=500,
         content={
             "detail": str(exc),
@@ -62,6 +63,19 @@ async def global_exception_handler(request, exc):
             "path": request.url.path
         }
     )
+    
+    # Manually add CORS headers for 500 responses 
+    # to avoid masking the real error as a CORS block
+    origin = request.headers.get("origin")
+    if origin in [
+        "http://localhost:3000",
+        "https://entrega.space",
+        "https://app.entrega.space"
+    ]:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+    return response
 
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)

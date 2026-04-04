@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import uuid4, UUID
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 from pydantic import BaseModel
 
 def get_utc_now():
@@ -115,10 +115,13 @@ class TenantUser(SQLModel, table=True):
 
 class Customer(SQLModel, table=True):
     __tablename__ = "customers"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "phone_number", name="uq_customer_tenant_phone"),
+    )
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenants.id")
     name: str = Field(index=True)
-    phone_number: str = Field(unique=True, index=True)
+    phone_number: str = Field(index=True)
     email: Optional[str] = None
     address: Optional[str] = None
     notes: Optional[str] = None
