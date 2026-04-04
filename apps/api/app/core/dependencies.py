@@ -86,15 +86,19 @@ async def get_current_user(
         if alg == "ES256":
             # Modern Supabase ES256 validation via JWKS
             jwks = await get_jwks()
-            if not jwks:
-                logger.error("JWT Validation failed: JWKS retrieval returned empty set")
+            if not jwks or "keys" not in jwks:
+                logger.error("JWT Validation failed: JWKS retrieval returned empty or invalid set", jwks_keys=list(jwks.keys()) if jwks else None)
                 raise credentials_exception
             
-            # Note: Explicit 'issuer' check removed to diagnose trailing slash/subdomain drift.
-            # Signature + Audience validation remains mandatory.
-            logger.info("[AUTH DEBUG] Attempting ES256 Public Key Verification", 
-                        jwks_keys_count=len(jwks.get("keys", [])))
-                        
+            # Diagnostic for KID matching
+            received_kid = unverified_headers.get("kid")
+            available_kids = [k.get("kid") for k in jwks.get("keys", [])]
+            
+            logger.info("[AUTH DEBUG] Public Key Resolution", 
+                        received_kid=received_kid, 
+                        available_kids=available_kids,
+                        matched=(received_kid in available_kids))
+
             payload = jwt.decode(
                 token.credentials,
                 jwks,
@@ -102,7 +106,7 @@ async def get_current_user(
                 audience="authenticated"
             )
         else:
-            # Legacy HS256 validation via shared secret
+            # Fallback to HS256 Legacy
             raw_secret = settings.SUPABASE_JWT_SECRET.strip()
             import base64
             try:
@@ -116,24 +120,28 @@ async def get_current_user(
                 algorithms=["HS256"],
                 audience="authenticated"
             )
-
+            
         if not payload:
+            logger.error("JWT Validation failed: Decoded payload is null")
             raise credentials_exception
             
         supabase_uid: str = payload.get("sub")
         email: str = payload.get("email")
         
-        logger.info("[AUTH DEBUG] JWT Verified", sub=supabase_uid, email=email)
+        logger.info("[AUTH DEBUG] JWT SUCCESS", sub=supabase_uid, email=email)
 
         if not supabase_uid:
-            logger.error("JWT Validation failed: 'sub' claim missing")
+            logger.error("JWT Validation failed: 'sub' claim missing from payload")
             raise credentials_exception
 
     except JWTError as e:
-        logger.error("JWT Validation failed", error=str(e), headers=unverified_headers if 'unverified_headers' in locals() else None)
+        logger.error("JWT VERIFICATION FAILED (Jose Exception)", 
+                     error_class=type(e).__name__,
+                     error_message=str(e),
+                     received_alg=unverified_headers.get("alg") if 'unverified_headers' in locals() else None)
         raise credentials_exception
     except Exception as e:
-        logger.error("Unexpected error during JWT validation", error=str(e))
+        logger.error("SYSTEM ERROR DURING JWT VALIDATION", error_class=type(e).__name__, error_message=str(e))
         raise credentials_exception
 
     # Identity Resolution
