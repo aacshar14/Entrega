@@ -65,7 +65,9 @@ async def list_products_stock(
             "id": p.id,
             "name": p.name,
             "sku": p.sku,
-            "price": p.price,
+            "price_menudeo": p.price_menudeo,
+            "price_mayoreo": p.price_mayoreo,
+            "price_especial": p.price_especial,
             "quantity": q if q is not None else 0.0
         }
         for p, q in results
