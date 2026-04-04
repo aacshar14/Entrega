@@ -259,8 +259,10 @@ async def create_product(
 async def update_product(
     id: UUID,
     name: Optional[str] = None,
-    price: Optional[float] = None,
     sku: Optional[str] = None,
+    price_menudeo: Optional[float] = None,
+    price_mayoreo: Optional[float] = None,
+    price_especial: Optional[float] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -272,10 +274,15 @@ async def update_product(
     
     if name is not None:
         product.name = name
-    if price is not None:
-        product.price = price
     if sku is not None:
         product.sku = sku
+    if price_menudeo is not None:
+        product.price_menudeo = price_menudeo
+        product.price = price_menudeo # Sync legacy price
+    if price_mayoreo is not None:
+        product.price_mayoreo = price_mayoreo
+    if price_especial is not None:
+        product.price_especial = price_especial
         
     product.updated_by_user_id = current_user.id
     product.updated_at = datetime.now(timezone.utc)
@@ -284,3 +291,18 @@ async def update_product(
     db.commit()
     db.refresh(product)
     return product
+
+@router.delete("/{id}")
+async def delete_product(
+    id: UUID,
+    db: Session = Depends(get_session),
+    active_tenant: Tenant = Depends(get_active_tenant)
+):
+    """Delete a product for the active tenant."""
+    product = db.get(Product, id)
+    if not product or product.tenant_id != active_tenant.id:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    db.delete(product)
+    db.commit()
+    return {"status": "success"}

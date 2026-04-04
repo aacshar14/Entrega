@@ -247,3 +247,18 @@ async def update_customer(
     db.commit()
     db.refresh(customer)
     return customer
+
+@router.delete("/{id}")
+async def delete_customer(
+    id: UUID,
+    db: Session = Depends(get_session),
+    active_tenant: Tenant = Depends(get_active_tenant)
+):
+    """Delete a customer for the active tenant."""
+    customer = db.get(Customer, id)
+    if not customer or customer.tenant_id != active_tenant.id:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    db.delete(customer)
+    db.commit()
+    return {"status": "success"}
