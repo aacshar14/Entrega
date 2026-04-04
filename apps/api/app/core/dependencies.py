@@ -22,6 +22,13 @@ async def get_current_user(
     """Validates Supabase JWT and retrieves the local global User model."""
     from app.core.logging import logger
     
+    # Diagnosis of secret wiring
+    raw_secret = settings.SUPABASE_JWT_SECRET.strip()
+    logger.info("[AUTH DEBUG] Secret metadata", 
+                length=len(raw_secret), 
+                prefix=raw_secret[:3], 
+                suffix=raw_secret[-3:] if len(raw_secret) > 3 else "...")
+
     try:
         if not token:
             logger.error("Authentication failed: No token provided in headers")
@@ -38,6 +45,16 @@ async def get_current_user(
         )
         
         try:
+            # 1. Inspect headers without verification for diagnosis
+            unverified_headers = jwt.get_unverified_header(token.credentials)
+            unverified_claims = jwt.get_unverified_claims(token.credentials)
+            
+            logger.info("[AUTH DEBUG] Attempting JWT validation", 
+                        alg=unverified_headers.get("alg"),
+                        aud=unverified_claims.get("aud"),
+                        iss=unverified_claims.get("iss"),
+                        exp=unverified_claims.get("exp"))
+
             # Check if we are using an ES256 JWK from modern Supabase projects
             raw_secret = settings.SUPABASE_JWT_SECRET.strip()
             if raw_secret.startswith('{'):
@@ -60,12 +77,18 @@ async def get_current_user(
                 algorithms=[algorithm],
                 audience="authenticated"
             )
+            
+            logger.info("[AUTH DEBUG] JWT valid", sub=payload.get("sub"), email=payload.get("email"))
+
             supabase_uid: str = payload.get("sub")
             if supabase_uid is None:
                 logger.error("JWT Validation failed: 'sub' claim missing")
                 raise credentials_exception
         except JWTError as e:
-            logger.error("JWT Validation failed", error=str(e), algorithm=algorithm if 'algorithm' in locals() else "unknown")
+            logger.error("JWT Validation failed", 
+                         error=str(e), 
+                         algorithm=algorithm if 'algorithm' in locals() else "unknown",
+                         received_headers=unverified_headers if 'unverified_headers' in locals() else None)
             raise credentials_exception
 
         statement = select(User).where(User.auth_provider_id == supabase_uid)
