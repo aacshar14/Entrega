@@ -305,6 +305,16 @@ async def delete_product(
     if not product or product.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
     
+    # Clean up dependencies
+    # 1. Stock Balances
+    db.execute(f"DELETE FROM stock_balances WHERE product_id = '{id}'")
+    
+    # 2. Inventory Movements
+    db.execute(f"DELETE FROM inventory_movements WHERE product_id = '{id}'")
+    
+    # 3. Aliases
+    db.execute(f"DELETE FROM product_aliases WHERE product_id = '{id}'")
+    
     db.delete(product)
     db.commit()
     return {"status": "success"}
