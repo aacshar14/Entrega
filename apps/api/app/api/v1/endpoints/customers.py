@@ -129,13 +129,26 @@ async def import_customers_preview(
         total += 1
         errors = []
         
-        # Flexible Header Mapping
-        name = (row.get("name") or row.get("Nombre") or "").strip()
-        phone = (row.get("phone") or row.get("Teléfono") or row.get("Telefono") or "").strip()
-        email = (row.get("email") or row.get("Correo") or "").strip()
-        initial_balance = (row.get("initial_balance") or row.get("Saldo") or "0").strip()
-        notes = (row.get("notes") or row.get("Notas") or "").strip()
-        tier = (row.get("tier") or row.get("Nivel") or "menudeo").strip().lower()
+    # Get keys with fuzzy matching for case-insensitivity and extra spaces
+    keys = {k.strip().lower(): k for k in reader.fieldnames}
+    
+    def get_val(fuzzy_list):
+        for fl in fuzzy_list:
+            if fl.lower() in keys:
+                return (row.get(keys[fl.lower()]) or "").strip()
+        return None
+
+    for i, row in enumerate(reader, 1):
+        total += 1
+        errors = []
+        
+        # Robust Mapping
+        name = get_val(["name", "nombre", "cliente"]) or ""
+        phone = get_val(["phone", "teléfono", "telefono", "celular"])
+        email = get_val(["email", "correo", "mail"])
+        initial_balance = get_val(["initial_balance", "saldo", "deuda"]) or "0"
+        notes = get_val(["notes", "notas", "comentario"]) or ""
+        tier = (get_val(["tier", "nivel", "nivel de precio"]) or "menudeo").lower()
         
         if not name:
             errors.append("Name is required")
@@ -204,7 +217,7 @@ async def import_customers_commit(
         existing = db.exec(
             select(Customer).where(
                 (Customer.tenant_id == tenant_id) & 
-                ((Customer.name.lower() == row.name.lower()) | (Customer.phone_number == row.phone))
+                ((func.lower(Customer.name) == row.name.lower()) | (Customer.phone_number == row.phone))
             )
         ).first()
         

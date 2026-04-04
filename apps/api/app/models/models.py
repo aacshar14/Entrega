@@ -25,6 +25,8 @@ class TenantInfo(BaseModel):
     whatsapp_display_number: Optional[str] = None
     whatsapp_account_name: Optional[str] = None
     whatsapp_app_id: Optional[str] = None
+    timezone: str = "UTC"
+    currency: str = "MXN"
 
 class MembershipInfo(BaseModel):
     tenant: TenantInfo

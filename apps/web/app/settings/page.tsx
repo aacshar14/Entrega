@@ -27,9 +27,35 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     name: activeTenant?.name || '',
     whatsapp: activeTenant?.business_whatsapp_number || '',
-    timezone: 'America/Mexico_City',
-    currency: 'MXN'
+    timezone: activeTenant?.timezone || 'America/Mexico_City',
+    currency: activeTenant?.currency || 'MXN'
   });
+
+  const [metaFormData, setMetaFormData] = useState({
+    waba_id: '',
+    phone_id: '',
+    token: ''
+  });
+
+  const [team, setTeam] = useState<any[]>([]);
+  const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
+  const [showManualMeta, setShowManualMeta] = useState(false);
+
+  const fetchTeam = async () => {
+    if (!activeTenant) return;
+    try {
+      const data = await apiRequest('/users/', 'GET', null, activeTenant.id);
+      setTeam(data || []);
+    } catch (err) {
+      console.error("Error fetching team:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTenant) {
+      fetchTeam();
+    }
+  }, [activeTenant]);
 
   useEffect(() => {
     // Load Meta SDK for WhatsApp Embedded Signup
@@ -41,7 +67,7 @@ export default function SettingsPage() {
       script.onload = () => {
         (window as any).fbAsyncInit = function() {
           (window as any).FB.init({
-            appId      : activeTenant?.whatsapp_app_id || '904555555555555', // Should match WHATSAPP_APP_ID
+            appId      : activeTenant?.whatsapp_app_id || '904555555555555', 
             cookie     : true,
             xfbml      : true,
             version    : 'v19.0'
@@ -51,6 +77,47 @@ export default function SettingsPage() {
       document.body.appendChild(script);
     }
   }, [activeTenant]);
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTenant) return;
+    setLoading(true);
+    try {
+      await apiRequest('/users/', 'POST', {
+        email: newUser.email,
+        full_name: newUser.name,
+        role: newUser.role
+      }, activeTenant.id);
+      setNewUser({ email: '', name: '', role: 'operator' });
+      await fetchTeam();
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualMeta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTenant) return;
+    setLoading(true);
+    try {
+      await apiRequest('/whatsapp/auth/setup/manual', 'POST', {
+        waba_id: metaFormData.waba_id,
+        phone_number_id: metaFormData.phone_id,
+        access_token: metaFormData.token
+      }, activeTenant.id);
+      setSuccess(true);
+      setShowManualMeta(false);
+      await refreshUser();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const launchWhatsAppOnboarding = () => {
     if (!(window as any).FB) {
@@ -96,7 +163,9 @@ export default function SettingsPage() {
     try {
       await apiRequest('/tenants/active', 'PATCH', {
         name: formData.name,
-        business_whatsapp_number: formData.whatsapp
+        business_whatsapp_number: formData.whatsapp,
+        timezone: formData.timezone,
+        currency: formData.currency
       }, activeTenant.id);
       await refreshUser();
       setSuccess(true);
@@ -145,7 +214,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
          
-         {/* Business Identitiy */}
+         {/* Business Identity */}
          <form onSubmit={handleSave} className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100 grid md:grid-cols-2 gap-8">
             <h3 className="md:col-span-2 text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
                <Building2 size={16} /> Identidad del Negocio
@@ -159,6 +228,7 @@ export default function SettingsPage() {
                   className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Ej: ChocoBites"
                   title="Nombre del negocio"
                />
             </div>
@@ -185,6 +255,79 @@ export default function SettingsPage() {
             </div>
          </form>
 
+         {/* Team Management */}
+         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
+               <SettingsIcon size={16} /> Gestión de Equipo (Chocobites)
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+               {/* Current Team */}
+               <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Miembros Activos</h4>
+                  <div className="space-y-2">
+                     {team.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-[#1D3146] rounded-xl flex items-center justify-center text-[#56CCF2] font-black text-xs">
+                                 {user.full_name?.charAt(0) || 'U'}
+                              </div>
+                              <div>
+                                 <p className="text-sm font-black text-[#1D3146]">{user.full_name}</p>
+                                 <p className="text-[10px] text-slate-400 font-bold">{user.email}</p>
+                              </div>
+                           </div>
+                           <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                              user.role === 'owner' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'
+                           }`}>
+                              {user.role}
+                           </span>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Add Member Form */}
+               <form onSubmit={handleAddUser} className="space-y-4 bg-[#EBEEF2]/50 p-6 rounded-[2rem] border border-dashed border-slate-200">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] ml-2">Invitar Nuevo Miembro</h4>
+                  <input 
+                     type="email" 
+                     placeholder="Correo Electrónico"
+                     className="w-full h-14 px-5 bg-white border-none rounded-xl text-xs font-bold text-[#1D3146] outline-none shadow-sm"
+                     value={newUser.email}
+                     onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                     required
+                     title="Email del nuevo usuario"
+                  />
+                  <input 
+                     type="text" 
+                     placeholder="Nombre Completo"
+                     className="w-full h-14 px-5 bg-white border-none rounded-xl text-xs font-bold text-[#1D3146] outline-none shadow-sm"
+                     value={newUser.name}
+                     onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                     required
+                     title="Nombre del nuevo usuario"
+                  />
+                  <select 
+                     className="w-full h-14 px-5 bg-white border-none rounded-xl text-xs font-bold text-[#1D3146] outline-none shadow-sm appearance-none"
+                     value={newUser.role}
+                     onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                     title="Rol del nuevo usuario"
+                  >
+                     <option value="owner">Owner (Acceso Total)</option>
+                     <option value="operator">Operador (Solo Registros)</option>
+                  </select>
+                  <button 
+                     type="submit"
+                     disabled={loading}
+                     className="w-full py-4 bg-[#56CCF2] text-[#1D3146] font-black rounded-xl text-xs uppercase tracking-widest hover:brightness-105 active:scale-95 transition-all shadow-lg shadow-[#56CCF2]/20"
+                  >
+                     {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : "Agregar al Equipo"}
+                  </button>
+               </form>
+            </div>
+         </div>
+
          {/* WhatsApp Section */}
          <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-8">
@@ -199,53 +342,112 @@ export default function SettingsPage() {
                </div>
             </div>
 
-            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8">
-               <div className="flex items-center gap-6">
-                  <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${
-                     activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600 shadow-emerald-200/50' : 'bg-blue-100 text-blue-600 shadow-blue-200/50'
-                  }`}>
-                     <MessageCircle size={32} />
+            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col items-stretch gap-6">
+               <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-4">
+                  <div className="flex items-center gap-6">
+                     <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${
+                        activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600 shadow-emerald-200/50' : 'bg-blue-100 text-blue-600 shadow-blue-200/50'
+                     }`}>
+                        <MessageCircle size={32} />
+                     </div>
+                     <div>
+                        <h4 className="text-lg font-black text-[#1D3146] tracking-tight">
+                           {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Oficial') : 'Automatización WhatsApp'}
+                        </h4>
+                        <p className="text-sm text-slate-400 font-medium max-w-sm mt-1">
+                           {activeTenant.whatsapp_status === 'connected' 
+                              ? `Número activo: ${activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number}` 
+                              : 'Conecta tu cuenta para enviar notificaciones automáticas de pedidos y pagos.'}
+                        </p>
+                     </div>
                   </div>
-                  <div>
-                     <h4 className="text-lg font-black text-[#1D3146] tracking-tight">
-                        {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Oficial') : 'Automatización WhatsApp'}
-                     </h4>
-                     <p className="text-sm text-slate-400 font-medium max-w-sm mt-1">
-                        {activeTenant.whatsapp_status === 'connected' 
-                           ? `Número activo: ${activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number}` 
-                           : 'Conecta tu cuenta para enviar notificaciones automáticas de pedidos y pagos.'}
-                     </p>
+                  
+                  <div className="flex items-center gap-3">
+                     <button 
+                        type="button"
+                        onClick={() => setShowManualMeta(!showManualMeta)}
+                        className="px-6 py-4 font-black rounded-2xl text-[10px] uppercase tracking-widest transition-all bg-white text-[#1D3146] border border-slate-200 hover:bg-slate-50"
+                     >
+                        Config. Manual (Tokens)
+                     </button>
+                     <button 
+                        type="button"
+                        onClick={async () => {
+                           if (activeTenant.whatsapp_status === 'connected') {
+                              if (confirm('¿Deseas desconectar WhatsApp? Se detendrán todas las automatizaciones.')) {
+                                 setLoading(true);
+                                 try {
+                                    await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
+                                    await refreshUser();
+                                 } finally {
+                                    setLoading(false);
+                                 }
+                              }
+                              return;
+                           }
+                           launchWhatsAppOnboarding();
+                        }}
+                        disabled={loading}
+                        className={`px-8 py-4 font-black rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 shadow-xl ${
+                           activeTenant.whatsapp_status === 'connected' 
+                           ? 'bg-white text-rose-500 border border-rose-100 hover:bg-rose-50' 
+                           : 'bg-[#25D366] text-white hover:scale-105 shadow-[#25D366]/20'
+                        }`}
+                     >
+                        {loading ? <Loader2 size={16} className="animate-spin" /> : (
+                           activeTenant.whatsapp_status === 'connected' ? 'Desconectar Servicio' : 'Conectar con Meta'
+                        )}
+                     </button>
                   </div>
                </div>
-               
-               <button 
-                  type="button"
-                  onClick={async () => {
-                     if (activeTenant.whatsapp_status === 'connected') {
-                        if (confirm('¿Deseas desconectar WhatsApp? Se detendrán todas las automatizaciones.')) {
-                           setLoading(true);
-                           try {
-                              await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
-                              await refreshUser();
-                           } finally {
-                              setLoading(false);
-                           }
-                        }
-                        return;
-                     }
-                     launchWhatsAppOnboarding();
-                  }}
-                  disabled={loading}
-                  className={`px-8 py-4 font-black rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 shadow-xl ${
-                     activeTenant.whatsapp_status === 'connected' 
-                     ? 'bg-white text-rose-500 border border-rose-100 hover:bg-rose-50' 
-                     : 'bg-[#25D366] text-white hover:scale-105 shadow-[#25D366]/20'
-                  }`}
-               >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : (
-                     activeTenant.whatsapp_status === 'connected' ? 'Desconectar Servicio' : 'Conectar con Meta'
-                  )}
-               </button>
+
+               {/* Manual Meta Form */}
+               {showManualMeta && (
+                  <form onSubmit={handleManualMeta} className="p-8 bg-white rounded-3xl border border-[#1D3146]/10 space-y-6 animate-in slide-in-from-top-4">
+                     <h4 className="text-xs font-black text-[#1D3146] flex items-center gap-2">
+                        <Smartphone size={14} className="text-[#56CCF2]" /> Configuración Manual de Meta
+                     </h4>
+                     <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">WABA ID</label>
+                           <input 
+                              className="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-[#56CCF2]"
+                              value={metaFormData.waba_id}
+                              onChange={(e) => setMetaFormData({...metaFormData, waba_id: e.target.value})}
+                              placeholder="ID de la Business Account"
+                              required
+                              title="WABA ID de Meta"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Phone Number ID</label>
+                           <input 
+                              className="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-[#56CCF2]"
+                              value={metaFormData.phone_id}
+                              onChange={(e) => setMetaFormData({...metaFormData, phone_id: e.target.value})}
+                              placeholder="ID del número de teléfono"
+                              required
+                              title="Phone Number ID de Meta"
+                           />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">System User Access Token</label>
+                           <input 
+                              type="password"
+                              className="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-[#56CCF2]"
+                              value={metaFormData.token}
+                              onChange={(e) => setMetaFormData({...metaFormData, token: e.target.value})}
+                              placeholder="EAA..."
+                              required
+                              title="Meta Access Token"
+                           />
+                        </div>
+                     </div>
+                     <button type="submit" className="w-full py-4 bg-[#1D3146] text-white font-black rounded-xl text-[10px] uppercase tracking-widest">
+                        Guardar Configuración de Meta
+                     </button>
+                  </form>
+               )}
             </div>
          </div>
 
@@ -261,9 +463,10 @@ export default function SettingsPage() {
                      className="bg-transparent border-none outline-none w-full appearance-none font-bold text-sm"
                      value={formData.timezone}
                      onChange={(e) => setFormData({...formData, timezone: e.target.value})}
+                     title="Zona horaria"
                   >
-                     <option value="America/Mexico_City">Ciudad de México (GMT-6)</option>
-                     <option value="America/Bogota">Bogotá (GMT-5)</option>
+                     <option value="America/Mexico_City" className="text-slate-900">Ciudad de México (GMT-6)</option>
+                     <option value="America/Bogota" className="text-slate-900">Bogotá (GMT-5)</option>
                   </select>
                </div>
             </div>
@@ -276,9 +479,10 @@ export default function SettingsPage() {
                      className="bg-transparent border-none outline-none w-full appearance-none font-bold text-sm"
                      value={formData.currency}
                      onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                     title="Moneda"
                   >
-                     <option value="MXN">Peso Mexicano (MXN)</option>
-                     <option value="USD">Dólar (USD)</option>
+                     <option value="MXN" className="text-slate-900">Peso Mexicano (MXN)</option>
+                     <option value="USD" className="text-slate-900">Dólar (USD)</option>
                   </select>
                </div>
             </div>

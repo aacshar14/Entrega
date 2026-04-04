@@ -56,8 +56,8 @@ def upgrade():
     op.create_index(op.f('ix_users_auth_provider_id'), 'users', ['auth_provider_id'], unique=True)
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
 
-    # Tenant Members (Memberships)
-    op.create_table('tenant_members',
+    # Tenant Users (Memberships)
+    op.create_table('tenant_users',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('tenant_id', sa.UUID(), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
@@ -69,8 +69,8 @@ def upgrade():
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_tenant_members_tenant_id'), 'tenant_members', ['tenant_id'], unique=False)
-    op.create_index(op.f('ix_tenant_members_user_id'), 'tenant_members', ['user_id'], unique=False)
+    op.create_index(op.f('ix_tenant_users_tenant_id'), 'tenant_users', ['tenant_id'], unique=False)
+    op.create_index(op.f('ix_tenant_users_user_id'), 'tenant_users', ['user_id'], unique=False)
 
     # WhatsApp Config
     op.create_table('whatsapp_configs',
@@ -209,6 +209,6 @@ def downgrade():
     op.drop_table('products')
     op.drop_table('customers')
     op.drop_table('whatsapp_configs')
-    op.drop_table('tenant_members')
+    op.drop_table('tenant_users')
     op.drop_table('users')
     op.drop_table('tenants')

@@ -145,3 +145,34 @@ def disconnect_whatsapp(active_tenant_id: UUID = Depends(get_active_tenant_id)):
         
         session.commit()
         return {"status": "disconnected"}
+
+@router.post("/setup/manual")
+async def setup_whatsapp_manual(
+    waba_id: str = Body(..., embed=True),
+    phone_number_id: str = Body(..., embed=True),
+    access_token: str = Body(..., embed=True),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """Manually configure WhatsApp Cloud API tokens for Chocobites"""
+    encrypted = encrypt_token(access_token)
+    
+    with Session(get_engine()) as session:
+        tenant = session.get(Tenant, active_tenant_id)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+        
+        tenant.whatsapp_status = "connected"
+        tenant.business_whatsapp_connected = True
+        
+        config = session.exec(select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == active_tenant_id)).first()
+        if not config:
+            config = WhatsAppConfig(tenant_id=active_tenant_id)
+            session.add(config)
+            
+        config.waba_id = waba_id
+        config.phone_number_id = phone_number_id
+        config.encrypted_access_token = encrypted
+        config.updated_at = datetime.now(timezone.utc)
+        
+        session.commit()
+        return {"status": "success", "message": "Configuración manual de Meta guardada"}

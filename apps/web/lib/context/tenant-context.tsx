@@ -28,6 +28,8 @@ interface Tenant {
   whatsapp_display_number?: string;
   whatsapp_account_name?: string;
   whatsapp_app_id?: string;
+  timezone?: string;
+  currency?: string;
 }
 
 interface Membership {
@@ -48,6 +50,12 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+/**
+ * EntréGA Multi-Tenant Context Provider
+ * 
+ * Manages the global state for the signed-in user and their active tenant context.
+ * Performs automatic identity resolution and routing logic on boot.
+ */
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [activeTenant, setActiveTenant] = useState<Tenant | null>(null);
@@ -71,18 +79,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const fetchContext = useCallback(async (overrideId?: string, accessToken?: string) => {
     try {
       const targetId = overrideId || activeTenantId || undefined;
-      console.log('[API] Resolving /me context', { targetId, hasInputToken: !!accessToken });
       const data = await apiRequest('me', 'GET', null, targetId, accessToken) as any;
       
-      console.log('[TENANT CONTEXT] Context resolved:', {
-        role: data.user?.platform_role,
-        tenant: data.active_tenant?.slug || 'none'
-      });
-
       const isAdmin = data.user?.platform_role === 'admin';
       const mCount = data.memberships?.length || 0;
 
-      // Update State
+      // Persist Resolved Context
       setUser(data.user);
       setMemberships(data.memberships || []);
       setActiveTenant(data.active_tenant);
@@ -95,22 +97,22 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setActiveRole(null);
       }
 
-      // --- ROUTING LOGIC ---
+      // --- ROUTING ENGINE ---
       const isPublic = ['/landing', '/login', '/'].includes(pathname);
       const isOnboarding = pathname.startsWith('/onboarding');
       const isSelector = pathname.startsWith('/select-tenant');
 
-      if (!data.user) return; // Wait for auth session
+      if (!data.user) return; // Wait for session
 
-      // Scenario A: New User -> Onboarding
+      // Rule 1: No tenants found -> Force Onboarding
       if (mCount === 0 && !isPublic && !isOnboarding) {
         router.replace('/onboarding');
       } 
-      // Scenario B: Admin needing selection
+      // Rule 2: Multi-tenant Admin with no selection -> Force Selector
       else if (isAdmin && mCount > 1 && !targetId && !isSelector && !isPublic) {
         router.replace('/select-tenant');
       }
-      // Scenario C: Active Tenant Status (Gates)
+      // Rule 3: Single context management (Onboarding vs Dashboard)
       else if (data.active_tenant) {
         const isReady = data.active_tenant.ready;
         if (!isReady && !isPublic && !isSelector && !isOnboarding) {
@@ -120,52 +122,49 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      // Fallback: if we are on root and somehow didn't redirect
+      // Safety: Handle root landing redirect
       if (pathname === '/' && data.active_tenant) {
          router.replace(data.active_tenant.ready ? '/dashboard' : '/onboarding');
       }
     } catch (error: any) {
-      console.error('[TENANT CONTEXT] Resolution Error:', error);
       if (error.status === 401 || error.status === 403) {
         handleManualLogout();
         if (!pathname.startsWith('/login')) router.replace('/login');
+      } else {
+        console.error('[TENANT CONTEXT ERROR]', error);
       }
     } finally {
       setIsLoading(false);
     }
   }, [activeTenantId, pathname, router, handleManualLogout]);
 
+  // Ref guard to prevent double-bootstrap in concurrent re-renders
   const authIsReady = React.useRef(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AUTH EVENT]', event, { hasSession: !!session });
-      
       if (event === 'SIGNED_OUT') {
         authIsReady.current = false;
         handleManualLogout();
         router.replace('/login');
       } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         if (session && !authIsReady.current) {
-          console.log('[AUTH BOOTSTRAP] Event-driven context resolution', { event });
           authIsReady.current = true;
           await fetchContext(undefined, session.access_token);
         }
       }
     });
 
-    // Initial silent check (critical for SSR/Reload stalls)
+    // Proactive check for SSR-compatible session recovery
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         if (!authIsReady.current) {
-          console.log('[AUTH BOOTSTRAP] Session found in storage, bootstrapping context');
           authIsReady.current = true;
           await fetchContext(undefined, session.access_token);
         }
       } else {
-        console.log('[AUTH BOOTSTRAP] No session found');
         setIsLoading(false);
-        const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
+        const isPublic = ['/landing', '/login', '/'].includes(pathname);
         if (!isPublic) router.replace('/login');
       }
     });

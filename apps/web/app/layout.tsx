@@ -70,7 +70,7 @@ function UI_Shell({ children }) {
 
   const displayUser = {
     name: user.full_name || 'Usuario',
-    role: user.platform_role === 'admin' ? 'Plataforma Admin' : 'Operador'
+    role: user.platform_role === 'admin' ? 'Plataforma Admin' : (activeRole === 'owner' ? 'Dueño / Admin' : 'Operador')
   };
 
   const displayTenant = {

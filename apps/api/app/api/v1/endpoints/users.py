@@ -34,6 +34,8 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         clients_imported=has_customers,
         stock_imported=has_products,
         business_whatsapp_connected=has_wa,
+        timezone=tenant.timezone,
+        currency=tenant.currency,
         ready=has_customers and has_products # Business rule: customers + stock = ready
     )
 
@@ -106,19 +108,27 @@ async def get_me(
         memberships=membership_infos
     )
 
-@router.get("/", response_model=List[User], dependencies=[Depends(require_roles(["owner"]))])
+@router.get("/", response_model=List[dict], dependencies=[Depends(require_roles(["owner"]))])
 async def list_users(
     db: Session = Depends(get_session),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
-    """List all users for the tenant (owner only)."""
-    # Get all users linked to this tenant
-    users = db.exec(
-        select(User)
+    """List all users for the tenant with their roles (owner only)."""
+    users_db = db.exec(
+        select(User, TenantUser.tenant_role, TenantUser.is_active)
         .join(TenantUser)
         .where(TenantUser.tenant_id == active_tenant_id)
     ).all()
-    return users
+    
+    # Return mapping
+    response = []
+    for u, role, active in users_db:
+        # Extend the user object for the response
+        u_dict = u.model_dump()
+        u_dict["role"] = role
+        u_dict["is_active"] = active
+        response.append(u_dict)
+    return response
 
 @router.post("/", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def create_user(

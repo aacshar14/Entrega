@@ -1,0 +1,14 @@
+Connecting to: aws-1-us-east-1.pooler.supabase.com:6543/postgres
+
+--- TENANTS ---
+ID: 00000000-0000-0000-0000-000000000001 | Slug: chocobites | Name: ChocoBites
+
+--- USERS ---
+ID: c5ba5b11-9b59-46a9-9e80-05e56bfb0443 | Email: admin@entrega.space | Auth ID: None
+ID: 3f9802da-6146-4cc0-964e-1c22c1a3f6a6 | Email: test@entrega.space | Auth ID: None
+ID: d867c0e9-1434-4cf2-8cd7-7e1529cead12 | Email: owner@chocobites.mx | Auth ID: None
+
+--- TENANT_USERS ---
+User: admin@entrega.space -> Tenant: chocobites | Role: owner
+User: test@entrega.space -> Tenant: chocobites | Role: operator
+User: owner@chocobites.mx -> Tenant: chocobites | Role: owner

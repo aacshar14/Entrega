@@ -28,10 +28,16 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('[DIAGNOSTIC] Supabase Params:', {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING',
+        key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ? 'PRESENT' : 'MISSING',
+        url_prefix: (process.env.NEXT_PUBLIC_SUPABASE_URL || '').substring(0, 15)
+      });
+
       if (isRegister) {
         console.log('[AUTH] Registering:', email);
         const { error, data } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: window.location.origin,
@@ -43,14 +49,14 @@ export default function LoginPage() {
         setError('¡Cuenta creada! Revisa tu email para confirmar.');
         setLoading(false);
       } else {
-        console.log('[AUTH] Logging in:', email);
+        console.log('[AUTH] Logging in:', email.trim());
         const { error, data } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: email.trim(),
+          password: password,
         });
         
         if (error) {
-          console.error('[AUTH ERROR BODY]', error);
+          console.error('[AUTH ERROR BODY]', JSON.stringify(error, null, 2));
           throw error;
         }
 

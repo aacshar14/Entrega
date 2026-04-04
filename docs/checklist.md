@@ -32,6 +32,7 @@ Ya he preparado el sistema para recibir estas variables. Por favor, tenlas lista
 - [x] Modelos Multi-tenant iniciales.
 - [x] Endpoints base de dominio (Stock, Pagos, Clientes).
 - [x] Lógica de Negocio en `parser_service.py` (Draft V1).
+- [x] Sincronización de Esquema DB (Alembic Migrations).
 - [ ] Registro de entrega -> Resta Stock y Suma Deuda (Enlazado al Webhook).
 - [ ] Registro de pago -> Resta Deuda (Enlazado al Webhook).
 - [ ] Generación de Reporte Semanal real (aggregates de SQL).
@@ -40,8 +41,8 @@ Ya he preparado el sistema para recibir estas variables. Por favor, tenlas lista
 
 - [x] Layout Base y Diseño Premium.
 - [x] Dashboard de Pilotaje.
-- [ ] Conexión real con API (SWR o React Query).
-- [ ] Manejo de Estados y Auth (Supabase Auth).
+- [x] Conexión real con API (vía apiRequest).
+- [x] Manejo de Estados y Auth (Supabase SSR Pattern).
 
 ## 🚀 Despliegue & Git
 

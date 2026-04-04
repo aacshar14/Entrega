@@ -14,13 +14,16 @@ from sqlmodel import Session, select
 
 security = HTTPBearer(auto_error=False)
 
-# Simple in-memory cache for JWKS
+# Simple in-memory cache for Supabase JWKS (signing keys)
 JWKS_CACHE: Dict[str, Any] = {}
 JWKS_LAST_FETCH = 0
 JWKS_TTL = 3600  # 1 hour
 
 def build_es256_public_key_from_jwk(jwk: dict):
-    """Converts a Supabase JWK dict into a usable EC public key."""
+    """
+    EntréGA Security:
+    Converts a Supabase JWK dict into a usable EC public key for ES256 signature verification.
+    """
     x = base64url_decode(jwk["x"].encode())
     y = base64url_decode(jwk["y"].encode())
 
@@ -32,12 +35,17 @@ def build_es256_public_key_from_jwk(jwk: dict):
     return public_numbers.public_key()
 
 async def get_jwks():
+    """
+    Fetches the JSON Web Key Set (JWKS) from Supabase.
+    Keys are cached for 1 hour to optimize performance.
+    """
     global JWKS_CACHE, JWKS_LAST_FETCH
     
     current_time = time.time()
     if JWKS_CACHE and (current_time - JWKS_LAST_FETCH < JWKS_TTL):
         return JWKS_CACHE
         
+    # discovery endpoint path according to OIDC standards
     jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
     async with httpx.AsyncClient() as client:
         try:
@@ -48,8 +56,8 @@ async def get_jwks():
             return JWKS_CACHE
         except Exception as e:
             from app.core.logging import logger
-            logger.error("Failed to fetch JWKS from Supabase", url=jwks_url, error=str(e))
-            return JWKS_CACHE # Return stale cache if fetch fails
+            logger.error("SYSTEM ERROR: Failed to fetch JWKS from Supabase", url=jwks_url, error=str(e))
+            return JWKS_CACHE 
 
 def get_db():
     from app.core.db import engine
@@ -60,11 +68,15 @@ async def get_current_user(
     token: Optional[HTTPAuthorizationCredentials] = Security(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Validates Supabase JWT and retrieves the local global User model."""
+    """
+    EntréGA Authentication Layer:
+    1. Validates the incoming Supabase access token (ES256 via JWKS).
+    2. Resolves the global User profile using the 'sub' claim (auth_provider_id).
+    3. Auto-provisions new profiles for valid identities if not already present.
+    """
     from app.core.logging import logger
     
     if not token:
-        logger.error("Authentication failed: No token provided in headers")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -78,91 +90,77 @@ async def get_current_user(
     )
 
     try:
-        # 1. Inspect headers to determine algorithm and resolve metadata
+        # 1. Inspect metadata without verification to resolve signing key
         unverified_headers = jwt.get_unverified_header(token.credentials)
         unverified_claims = jwt.get_unverified_claims(token.credentials)
         alg = unverified_headers.get("alg")
-        
-        logger.info("[AUTH DEBUG] JWT Detected metaclaims", 
-                    alg=alg, 
-                    aud=unverified_claims.get("aud"),
-                    iss=unverified_claims.get("iss"),
-                    kid=unverified_headers.get("kid"))
+        received_kid = unverified_headers.get("kid")
 
         if alg != "ES256":
-            logger.error("JWT Validation failed: Algorithm mismatch. Expected ES256.", received=alg)
+            logger.error("AUTH FAILURE: Unsupported JWT algorithm. EntréGA strictly requires ES256 (JWKS).", 
+                         received_alg=alg)
             raise credentials_exception
 
-        # Modern Supabase ES256 validation via JWKS
+        # 2. Fetch/Resolve signing keys
         jwks = await get_jwks()
         if not jwks or "keys" not in jwks:
-            logger.error("JWT Validation failed: JWKS retrieval returned empty or invalid set")
+            logger.error("AUTH ERROR: Supabase signing keys currently unavailable.")
             raise credentials_exception
         
-        # Manual Key Resolution based on KID
-        received_kid = unverified_headers.get("kid")
         available_keys = jwks.get("keys", [])
         target_jwk = next((k for k in available_keys if k.get("kid") == received_kid), None)
         
         if not target_jwk:
-            available_kids = [k.get("kid") for k in available_keys]
-            logger.error("[AUTH DEBUG] Public Key Resolution Failed", 
-                         received_kid=received_kid, 
-                         available_kids=available_kids)
+            logger.error("AUTH FAILURE: Signing key not found in JWKS.", kid=received_kid)
             raise credentials_exception
 
-        logger.info("[AUTH DEBUG] Public Key JWK Resolved", kid=received_kid)
-        
-        # Convert JWK to Real Public Key for reliable ES256 verification
+        # 3. Cryptographic Verification
+        # Convert JWK coordinates to a real EC Public Key for industrial-grade signature checking.
         public_key = build_es256_public_key_from_jwk(target_jwk)
 
-        # Use the built public key for validation
+        # Standard Supabase claims: aud='authenticated', iss='https://{ref}.supabase.co/auth/v1'
+        expected_issuer = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
+        
         payload = jwt.decode(
             token.credentials,
             public_key,
             algorithms=["ES256"],
-            audience=unverified_claims.get("aud") or "authenticated",
-            issuer=unverified_claims.get("iss")
+            audience="authenticated",
+            issuer=expected_issuer
         )
         
         if not payload:
-            logger.error("JWT Validation failed: Decoded payload is null")
             raise credentials_exception
             
         supabase_uid: str = payload.get("sub")
         email: str = payload.get("email")
-        
-        logger.info("[AUTH DEBUG] JWT SUCCESS", sub=supabase_uid, email=email)
 
-        if not supabase_uid:
-            logger.error("JWT Validation failed: 'sub' claim missing from payload")
+        if not supabase_uid or not email:
+            logger.error("AUTH FAILURE: Required claims (sub/email) missing from token.")
             raise credentials_exception
 
     except JWTError as e:
-        logger.error("JWT VERIFICATION FAILED (Jose Exception)", 
-                     error_class=type(e).__name__,
-                     error_message=str(e))
+        # Standard jose errors (expired, invalid signature, etc)
+        logger.error("AUTH FAILURE: JWT verification failed.", error=str(e))
         raise credentials_exception
     except Exception as e:
+        # Unexpected system or cryptography errors
         import traceback
-        logger.error("SYSTEM ERROR DURING JWT VALIDATION", 
-                     error_class=type(e).__name__, 
-                     error_message=str(e),
-                     trace=traceback.format_exc())
+        logger.error("SYSTEM ERROR: JWT validation crash.", error=str(e), trace=traceback.format_exc())
         raise credentials_exception
 
-    # Identity Resolution
+    # 4. Identity Mapping (Global EntréGA Context)
     statement = select(User).where(User.auth_provider_id == supabase_uid)
     user = db.exec(statement).first()
     
     if user is None:
-        # Sync via email if auth_provider_id is missing (pre-seeded users)
+        # Auto-Provisioning logic (e.g. for invited users or new signups)
         existing_user_stmt = select(User).where(User.email == email)
         user = db.exec(existing_user_stmt).first()
         
         if user:
-            logger.info("Existing user found by email. Linking auth_provider_id.", 
-                        email=email, supabase_uid=supabase_uid)
+            logger.info("IDENTITY LINK: Linking existing User profile to new auth_provider_id.", 
+                        email=email, sub=supabase_uid)
             user.auth_provider_id = supabase_uid
             db.add(user)
             db.commit()
@@ -172,7 +170,7 @@ async def get_current_user(
             user_metadata = payload.get("user_metadata", {})
             full_name = user_metadata.get("full_name") or user_metadata.get("name") or email.split('@')[0]
             
-            logger.info("Brand new user detected. Auto-creating profile.", email=email)
+            logger.info("PROVISIONING: Auto-creating new platform profile.", email=email)
             
             user = User(
                 id=uuid.uuid4(),

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Supabase Settings
     SUPABASE_URL: str = "https://your-project.supabase.co"
     SUPABASE_ANON_KEY: str = "your-anon-key"
-    SUPABASE_JWT_SECRET: str = "your-jwt-secret" # Used for JWT validation
+    SUPABASE_JWT_SECRET: str = "your-jwt-secret" # LEGACY: No longer used for ES256/JWKS production auth
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
