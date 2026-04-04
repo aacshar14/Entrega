@@ -100,12 +100,14 @@ async def import_products_preview(
     for i, row in enumerate(reader, 1):
         total += 1
         errors = []
-        name = row.get("name", "").strip()
-        sku = row.get("sku", "").strip()
-        quantity_str = row.get("quantity", "0").strip()
-        price_mayoreo_str = row.get("price_mayoreo", "0").strip()
-        price_menudeo_str = row.get("price_menudeo", "0").strip()
-        price_especial_str = row.get("price_especial", "0").strip()
+        
+        # Flexible Header Mapping
+        name = (row.get("name") or row.get("Nombre") or "").strip()
+        sku = (row.get("sku") or row.get("SKU") or "").strip()
+        quantity_str = (row.get("quantity") or row.get("Cantidad") or "0").strip()
+        price_mayoreo_str = (row.get("price_mayoreo") or row.get("Mayoreo") or "0").strip()
+        price_menudeo_str = (row.get("price_menudeo") or row.get("Menudeo") or "0").strip()
+        price_especial_str = (row.get("price_especial") or row.get("Especial") or "0").strip()
         
         if not name:
             errors.append("Product name is required")

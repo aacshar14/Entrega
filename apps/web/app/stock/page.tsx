@@ -347,15 +347,17 @@ export default function StockPage() {
 
          <div className="overflow-auto rounded-3xl border border-slate-50 shadow-sm flex-grow min-h-[400px]">
             <table className="w-full text-left border-collapse">
-               <thead className="bg-[#1D3146] text-white sticky top-0 z-10">
-                  <tr className="text-[10px] font-black uppercase tracking-widest text-white/70">
-                     <th className="px-8 py-5">Producto</th>
-                     <th className="px-4 py-5">SKU</th>
-                     <th className="px-4 py-5 text-center">Stock</th>
-                     <th className="px-4 py-5 text-right">Menudeo</th>
-                     <th className="pr-8 py-5 text-right">Acciones</th>
-                  </tr>
-               </thead>
+                <thead className="bg-[#1D3146] text-white sticky top-0 z-10">
+                   <tr className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                      <th className="px-8 py-5">Producto</th>
+                      <th className="px-4 py-5">SKU</th>
+                      <th className="px-4 py-5 text-center">Stock</th>
+                      <th className="px-4 py-5 text-right">Menudeo</th>
+                      <th className="px-4 py-5 text-right font-black text-[#56CCF2]">Mayoreo</th>
+                      <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
+                      <th className="pr-8 py-5 text-right">Acciones</th>
+                   </tr>
+                </thead>
                <tbody className="divide-y divide-slate-50">
                   {loading ? (
                     <tr><td colSpan={5} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} /></td></tr>
@@ -369,6 +371,8 @@ export default function StockPage() {
                           </span>
                        </td>
                        <td className="px-4 py-5 text-right font-black text-[#1D3146]">${p.price_menudeo.toFixed(2)}</td>
+                       <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_mayoreo.toFixed(2)}</td>
+                       <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_especial.toFixed(2)}</td>
                        <td className="pr-8 py-5 text-right relative">
                           <div className="flex items-center justify-end gap-2 text-slate-400">
                              <button 

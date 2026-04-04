@@ -116,7 +116,8 @@ export default function CustomersPage() {
         name: editingCustomer.name,
         phone_number: editingCustomer.phone_number,
         email: editingCustomer.email,
-        notes: editingCustomer.notes
+        notes: editingCustomer.notes,
+        tier: editingCustomer.tier
       }, activeTenant.id);
       
       setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
@@ -129,7 +130,7 @@ export default function CustomersPage() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = "name,phone,email,initial_balance,notes,tier\nAna,+528781111111,ana@email.com,650,Cliente frecuente,menudeo\nLuis,+528782222222,,300,,mayoreo";
+    const csvContent = "Nombre,Teléfono,Correo,Saldo,Notas,Nivel\nAna,+528781111111,ana@email.com,650,Cliente frecuente,menudeo\nLuis,+528782222222,,300,,mayoreo";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

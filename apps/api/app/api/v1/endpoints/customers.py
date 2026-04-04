@@ -104,11 +104,14 @@ async def import_customers_preview(
     for i, row in enumerate(reader, 1):
         total += 1
         errors = []
-        name = row.get("name", "").strip()
-        phone = row.get("phone", "").strip()
-        email = row.get("email", "").strip()
-        initial_balance = row.get("initial_balance", "0").strip()
-        notes = row.get("notes", "").strip()
+        
+        # Flexible Header Mapping
+        name = (row.get("name") or row.get("Nombre") or "").strip()
+        phone = (row.get("phone") or row.get("Teléfono") or row.get("Telefono") or "").strip()
+        email = (row.get("email") or row.get("Correo") or "").strip()
+        initial_balance = (row.get("initial_balance") or row.get("Saldo") or "0").strip()
+        notes = (row.get("notes") or row.get("Notas") or "").strip()
+        tier = (row.get("tier") or row.get("Nivel") or "menudeo").strip().lower()
         
         if not name:
             errors.append("Name is required")
@@ -145,7 +148,7 @@ async def import_customers_preview(
                 email=email,
                 initial_balance=bal,
                 notes=notes,
-                tier=row.get("tier", "menudeo").strip().lower() or "menudeo"
+                tier=tier if tier in ["mayoreo", "menudeo", "especial"] else "menudeo"
             ),
             is_valid=is_valid,
             errors=errors,
