@@ -1,11 +1,20 @@
 import { createClient } from '@/utils/supabase/client';
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1`;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * EntréGA API Client
+ * 
+ * Standardized request utility with:
+ * - Automatic absolute URL resolution
+ * - Intelligent session token injection
+ * - Lightweight retry policy for transient network failures
+ * - Structured error handling
+ */
 export async function apiRequest(
   endpoint: string,
   method = 'GET',
@@ -16,20 +25,11 @@ export async function apiRequest(
   const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
-  console.log('[API BASE URL CHECK]', {
-     env: process.env.NEXT_PUBLIC_API_URL,
-     url,
-  });
-
-  // Resolve token: provided or from session
+  // Resolve token: provided (bootstrap) or from active session
   let token = accessToken;
   if (!token) {
-    console.log('[API TOKEN] Resolving token from session storage...');
     const { data: { session } } = await createClient().auth.getSession();
     token = session?.access_token;
-    console.log('[API TOKEN] Resolution complete', { hasToken: !!token });
-  } else {
-    console.log('[API TOKEN] Using provided accessToken');
   }
 
   const headers: Record<string, string> = {
@@ -54,15 +54,6 @@ export async function apiRequest(
     const startedAt = performance.now();
 
     try {
-      console.log('[API INITIATING FETCH]', {
-        method,
-        endpoint,
-        url,
-        attempt,
-        hasToken: !!token,
-        tenantId: activeTenantId || null,
-      });
-
       const response = await fetch(url, {
         method,
         headers,
@@ -81,16 +72,17 @@ export async function apiRequest(
           errorPayload = await response.text().catch(() => null);
         }
 
-        console.error('[API RESPONSE ERROR]', {
+        // Operational logging for failures
+        console.error('[API FAILURE]', {
           method,
-          url,
+          endpoint,
           status: response.status,
           durationMs,
           attempt,
-          errorPayload,
+          detail: errorPayload?.detail || 'No detail provided'
         });
 
-        // Non-retryable status codes (e.g., 401 Unauthorized, 403 Forbidden, 404 Not Found, 422 Validation Error)
+        // Non-retryable status codes 
         const nonRetryable = [400, 401, 403, 404, 422].includes(response.status);
 
         const error: any = new Error(
@@ -105,18 +97,11 @@ export async function apiRequest(
           throw error;
         }
 
-        await sleep(300); // Wait before retry
+        await sleep(300 * attempt); 
         continue;
       }
 
-      console.log('[API RESPONSE OK]', {
-        method,
-        url,
-        status: response.status,
-        durationMs,
-        attempt,
-      });
-
+      // Success paths
       if (response.status === 204) return null;
 
       if (contentType.includes('application/json')) {
@@ -127,23 +112,24 @@ export async function apiRequest(
     } catch (error: any) {
       const durationMs = Math.round(performance.now() - startedAt);
 
-      console.error('[API FETCH FAILURE]', {
-        method,
-        url,
-        attempt,
-        durationMs,
-        message: error?.message,
-        status: error?.status || null,
-      });
-
-      // Retry on network errors or non-client-side error status codes
+      // Don't log if we are going to retry
       const retryableStatus = error?.status && ![400, 401, 403, 404, 422].includes(error.status);
       const retryableNetwork = !error?.status;
 
       if (attempt < maxAttempts && (retryableStatus || retryableNetwork)) {
-        await sleep(300);
+        await sleep(300 * attempt);
         continue;
       }
+
+      // Log terminal failure
+      console.error('[API TERMINAL ERROR]', {
+        method,
+        endpoint,
+        attempt,
+        durationMs,
+        message: error?.message,
+        status: error?.status || 'Network Error',
+      });
 
       throw error;
     }
