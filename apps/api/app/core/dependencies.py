@@ -1,6 +1,8 @@
 from fastapi import Depends, HTTPException, Security, status, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from jose.utils import base64url_decode
+from cryptography.hazmat.primitives.asymmetric import ec
 from uuid import UUID
 from typing import Optional, List, Any, Dict
 import httpx
@@ -16,6 +18,18 @@ security = HTTPBearer(auto_error=False)
 JWKS_CACHE: Dict[str, Any] = {}
 JWKS_LAST_FETCH = 0
 JWKS_TTL = 3600  # 1 hour
+
+def build_es256_public_key_from_jwk(jwk: dict):
+    """Converts a Supabase JWK dict into a usable EC public key."""
+    x = base64url_decode(jwk["x"].encode())
+    y = base64url_decode(jwk["y"].encode())
+
+    public_numbers = ec.EllipticCurvePublicNumbers(
+        int.from_bytes(x, "big"),
+        int.from_bytes(y, "big"),
+        ec.SECP256R1()
+    )
+    return public_numbers.public_key()
 
 async def get_jwks():
     global JWKS_CACHE, JWKS_LAST_FETCH
@@ -63,14 +77,8 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Diagnosis of core settings for validation
-    logger.info("[AUTH DEBUG] Validation environment", 
-                url_len=len(settings.SUPABASE_URL), 
-                url_prefix=settings.SUPABASE_URL[:15],
-                jwt_secret_len=len(settings.SUPABASE_JWT_SECRET))
-
     try:
-        # 1. Inspect headers to determine algorithm
+        # 1. Inspect headers to determine algorithm and resolve metadata
         unverified_headers = jwt.get_unverified_header(token.credentials)
         unverified_claims = jwt.get_unverified_claims(token.credentials)
         alg = unverified_headers.get("alg")
@@ -81,55 +89,42 @@ async def get_current_user(
                     iss=unverified_claims.get("iss"),
                     kid=unverified_headers.get("kid"))
 
-        payload = None
+        if alg != "ES256":
+            logger.error("JWT Validation failed: Algorithm mismatch. Expected ES256.", received=alg)
+            raise credentials_exception
+
+        # Modern Supabase ES256 validation via JWKS
+        jwks = await get_jwks()
+        if not jwks or "keys" not in jwks:
+            logger.error("JWT Validation failed: JWKS retrieval returned empty or invalid set")
+            raise credentials_exception
         
-        if alg == "ES256":
-            # Modern Supabase ES256 validation via JWKS
-            jwks = await get_jwks()
-            if not jwks or "keys" not in jwks:
-                logger.error("JWT Validation failed: JWKS retrieval returned empty or invalid set", jwks_keys=list(jwks.keys()) if jwks else None)
-                raise credentials_exception
-            
-            # Manual Key Resolution based on KID
-            received_kid = unverified_headers.get("kid")
-            available_keys = jwks.get("keys", [])
-            target_key = next((k for k in available_keys if k.get("kid") == received_kid), None)
-            
-            if not target_key:
-                available_kids = [k.get("kid") for k in available_keys]
-                logger.error("[AUTH DEBUG] Public Key Resolution Failed", 
-                             received_kid=received_kid, 
-                             available_kids=available_kids)
-                raise credentials_exception
+        # Manual Key Resolution based on KID
+        received_kid = unverified_headers.get("kid")
+        available_keys = jwks.get("keys", [])
+        target_jwk = next((k for k in available_keys if k.get("kid") == received_kid), None)
+        
+        if not target_jwk:
+            available_kids = [k.get("kid") for k in available_keys]
+            logger.error("[AUTH DEBUG] Public Key Resolution Failed", 
+                         received_kid=received_kid, 
+                         available_kids=available_kids)
+            raise credentials_exception
 
-            logger.info("[AUTH DEBUG] Public Key Resolved Successfully", kid=received_kid)
-            
-            # Use the resolved key for ES256 validation
-            # Supabase tokens usually have: aud="authenticated", iss="https://{ref}.supabase.co/auth/v1"
-            payload = jwt.decode(
-                token.credentials,
-                target_key,
-                algorithms=["ES256"],
-                audience="authenticated",
-                issuer=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
-            )
-        else:
-            # Fallback to HS256 Legacy (Shared Secret)
-            raw_secret = settings.SUPABASE_JWT_SECRET.strip()
-            import base64
-            try:
-                decoded_secret = base64.b64decode(raw_secret)
-            except Exception:
-                decoded_secret = raw_secret
+        logger.info("[AUTH DEBUG] Public Key JWK Resolved", kid=received_kid)
+        
+        # Convert JWK to Real Public Key for reliable ES256 verification
+        public_key = build_es256_public_key_from_jwk(target_jwk)
 
-            payload = jwt.decode(
-                token.credentials, 
-                decoded_secret, 
-                algorithms=["HS256"],
-                audience="authenticated",
-                issuer=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
-            )
-            
+        # Use the built public key for validation
+        payload = jwt.decode(
+            token.credentials,
+            public_key,
+            algorithms=["ES256"],
+            audience=unverified_claims.get("aud") or "authenticated",
+            issuer=unverified_claims.get("iss")
+        )
+        
         if not payload:
             logger.error("JWT Validation failed: Decoded payload is null")
             raise credentials_exception
@@ -146,11 +141,14 @@ async def get_current_user(
     except JWTError as e:
         logger.error("JWT VERIFICATION FAILED (Jose Exception)", 
                      error_class=type(e).__name__,
-                     error_message=str(e),
-                     received_alg=unverified_headers.get("alg") if 'unverified_headers' in locals() else None)
+                     error_message=str(e))
         raise credentials_exception
     except Exception as e:
-        logger.error("SYSTEM ERROR DURING JWT VALIDATION", error_class=type(e).__name__, error_message=str(e))
+        import traceback
+        logger.error("SYSTEM ERROR DURING JWT VALIDATION", 
+                     error_class=type(e).__name__, 
+                     error_message=str(e),
+                     trace=traceback.format_exc())
         raise credentials_exception
 
     # Identity Resolution
