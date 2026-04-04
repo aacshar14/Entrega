@@ -1,31 +1,80 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, desc
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_tenant
-from app.models.models import User, Tenant, Customer, Product, Payment
+from app.models.models import User, Tenant, Customer, Product, Payment, CustomerBalance
+from typing import List, Dict, Any
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 async def get_dashboard_summary(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
 ):
     """
-    Returns a brief summary for the active tenant dashboard.
+    Returns a comprehensive summary for the active tenant dashboard.
     """
     tenant_id = active_tenant.id
     
-    # Example summary data:
+    # 1. Main Stats
     customer_count = db.exec(select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)).one()
     product_count = db.exec(select(func.count(Product.id)).where(Product.tenant_id == tenant_id)).one()
-    total_payments = db.exec(select(func.sum(Payment.amount)).where(Payment.tenant_id == tenant_id)).one() or 0.0
     
+    # 2. Financials
+    total_payments = db.exec(
+        select(func.sum(Payment.amount))
+        .where(Payment.tenant_id == tenant_id)
+    ).one() or 0.0
+    
+    total_debt = db.exec(
+        select(func.sum(CustomerBalance.balance))
+        .where(CustomerBalance.tenant_id == tenant_id)
+        .where(CustomerBalance.balance < 0) # Negative balance means they owe us
+    ).one() or 0.0
+    
+    # Absolute value for UI
+    total_debt_abs = abs(float(total_debt))
+    
+    # 3. Stock Status
+    low_stock_count = db.exec(
+        select(func.count(Product.id))
+        .where(Product.tenant_id == tenant_id)
+        .where(Product.quantity <= 10)
+    ).one()
+    
+    # 4. Top Stock (First 5 products)
+    top_stock = db.exec(
+        select(Product)
+        .where(Product.tenant_id == tenant_id)
+        .order_by(desc(Product.quantity))
+        .limit(5)
+    ).all()
+    
+    # 5. Top Debtors (First 5 customers by balance)
+    top_debtors = db.exec(
+        select(Customer, CustomerBalance)
+        .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
+        .where(Customer.tenant_id == tenant_id)
+        .order_by(CustomerBalance.balance) # Lowest (most negative) first
+        .limit(5)
+    ).all()
+
     return {
-        "customer_count": customer_count,
-        "product_count": product_count,
-        "total_payments": total_payments,
-        "message": f"Welcome back to EntréGA, {current_user.full_name}!",
-        "business": active_tenant.name
+        "stats": {
+            "customer_count": customer_count,
+            "product_count": product_count,
+            "total_payments": total_payments,
+            "total_debt": total_debt_abs,
+            "low_stock_count": low_stock_count,
+        },
+        "stock": [
+            {"name": p.name, "quantity": p.quantity} for p in top_stock
+        ],
+        "debtors": [
+            {"name": c.name, "amount": abs(float(cb.balance))} for c, cb in top_debtors if cb.balance < 0
+        ],
+        "welcome_message": f"¡Hola de nuevo, {current_user.full_name}!",
+        "business_name": active_tenant.name
     }

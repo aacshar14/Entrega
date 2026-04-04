@@ -79,7 +79,7 @@ async def import_products_preview(
 ):
     """Step 1: Preview CSV data for product/stock import."""
     content = await file.read()
-    string_io = io.StringIO(content.decode('utf-8'))
+    string_io = io.StringIO(content.decode('utf-8'), newline='')
     reader = csv.DictReader(string_io)
     
     existing_products = db.exec(

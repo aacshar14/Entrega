@@ -84,7 +84,7 @@ async def import_customers_preview(
 ):
     """Step 1: Preview CSV data for customer import."""
     content = await file.read()
-    string_io = io.StringIO(content.decode('utf-8'))
+    string_io = io.StringIO(content.decode('utf-8'), newline='')
     reader = csv.DictReader(string_io)
     
     # Get existing customers to detect duplicates

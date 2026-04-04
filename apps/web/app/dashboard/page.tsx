@@ -1,5 +1,6 @@
 'use client';
-import React from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Truck, 
   Banknote, 
@@ -7,187 +8,201 @@ import {
   Package,
   ChevronRight,
   Handshake,
-  Settings2
+  Loader2,
+  Users,
+  Wallet
 } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
+import { useTenant } from '@/lib/context/tenant-context';
+import Link from 'next/link';
+
+interface DashboardStats {
+  customer_count: number;
+  product_count: number;
+  total_payments: number;
+  total_debt: number;
+  low_stock_count: number;
+}
+
+interface DashboardData {
+  stats: DashboardStats;
+  stock: Array<{ name: string, quantity: number }>;
+  debtors: Array<{ name: string, amount: number }>;
+  welcome_message: string;
+  business_name: string;
+}
 
 export default function Dashboard() {
+  const { activeTenant } = useTenant();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboard = useCallback(async () => {
+    if (!activeTenant) return;
+    try {
+      setLoading(true);
+      const res = await apiRequest('dashboard', 'GET', null, activeTenant.id);
+      setData(res);
+    } catch (err) {
+      console.error('Dashboard fetch failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTenant]);
+
+  useEffect(() => {
+    if (activeTenant) {
+      fetchDashboard();
+    }
+  }, [activeTenant, fetchDashboard]);
+
+  if (loading || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[600px] gap-4">
+        <Loader2 className="animate-spin text-[#56CCF2]" size={48} />
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Actualizando datos reales...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 max-w-[1400px]">
-      {/* 4 Cards Principales (Colores sólidos y degradados suaves) */}
+    <div className="space-y-8 max-w-[1400px] animate-in fade-in duration-500">
+      {/* Welcome Header */}
+      <div className="mb-2">
+         <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">{data.welcome_message}</h1>
+         <p className="text-slate-500 font-medium italic mt-1">Hoy en {data.business_name || 'EntréGA'}</p>
+      </div>
+
+      {/* 4 Cards Principales */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-blue-500/10 transition-all hover:scale-[1.02]">
+        <div className="rounded-3xl p-7 bg-gradient-to-br from-[#1D3146] to-[#2B4764] text-white flex flex-col justify-between h-44 shadow-2xl shadow-[#1D3146]/20 transition-transform hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Entregas Hoy:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">15 <span className="text-sm font-medium opacity-70">productos</span></h3>
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Clientes Registrados</p>
+                 <h3 className="text-5xl font-black mt-2">{data.stats.customer_count}</h3>
               </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <Truck size={24} />
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <Users size={24} className="text-[#56CCF2]" />
               </div>
            </div>
-           <p className="text-[12px] font-medium opacity-70">30 productos totales</p>
+           <p className="text-[11px] font-bold text-[#56CCF2] flex items-center gap-1 uppercase tracking-widest">
+              Total Cartera Activa
+           </p>
         </div>
 
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-teal-500 to-teal-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-teal-500/10 transition-all hover:scale-[1.02]">
+        <div className="rounded-3xl p-7 bg-gradient-to-br from-[#56CCF2] to-[#45B8E0] text-white flex flex-col justify-between h-44 shadow-2xl shadow-[#56CCF2]/20 transition-transform hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Pagos Hoy:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">$5,200</h3>
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Pagos Recibidos (Histórico)</p>
+                 <h3 className="text-4xl font-black mt-2">${data.stats.total_payments.toLocaleString()}</h3>
               </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
+              <div className="bg-white/10 p-3 rounded-2xl">
                 <Banknote size={24} />
               </div>
            </div>
-           <p className="text-[12px] font-medium opacity-70">4 recibidos</p>
+           <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest">Flujo de Caja Total</p>
         </div>
 
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-rose-500 to-rose-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-rose-500/10 transition-all hover:scale-[1.02]">
+        <div className="rounded-3xl p-7 bg-gradient-to-br from-rose-500 to-rose-600 text-white flex flex-col justify-between h-44 shadow-2xl shadow-rose-500/20 transition-transform hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Clientes con Adeudo:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">3</h3>
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Saldo Pendiente (Adeudos)</p>
+                 <h3 className="text-4xl font-black mt-2">${data.stats.total_debt.toLocaleString()}</h3>
               </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
-                <AlertCircle size={24} />
+              <div className="bg-white/10 p-3 rounded-2xl">
+                <Wallet size={24} />
               </div>
            </div>
-           <p className="text-[12px] font-medium opacity-70">Total $8,750</p>
+           <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest italic flex items-center gap-1">
+              <AlertCircle size={12} /> Cuentas por Cobrar
+           </p>
         </div>
 
-        <div className="rounded-2xl p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex flex-col justify-between h-40 shadow-xl shadow-orange-500/10 transition-all hover:scale-[1.02]">
+        <div className="rounded-3xl p-7 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex flex-col justify-between h-44 shadow-2xl shadow-orange-500/20 transition-transform hover:scale-[1.02]">
            <div className="flex justify-between items-start">
               <div>
-                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Stock Bajo:</p>
-                 <h3 className="text-4xl font-extrabold mt-1">5</h3>
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Productos en Catálogo</p>
+                 <h3 className="text-5xl font-black mt-2">{data.stats.product_count}</h3>
               </div>
-              <div className="bg-white/20 p-2.5 rounded-xl">
+              <div className="bg-white/10 p-3 rounded-2xl">
                 <Package size={24} />
               </div>
            </div>
-           <p className="text-[12px] font-medium opacity-70 italic">Requiere atención</p>
+           <div className="flex items-center gap-2">
+             <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${data.stats.low_stock_count > 0 ? 'bg-white/20 text-white' : 'bg-green-500 text-white'}`}>
+                {data.stats.low_stock_count} Stock Bajo
+             </span>
+           </div>
         </div>
       </section>
 
-      {/* Grid de Contenido (Columnas 7/5) */}
+      {/* Grid de Contenido Real */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          
-         {/* Movimientos Recientes (Izquierda - 7/12) */}
+         {/* Movimientos Recientes (Placeholder for future sync) */}
          <div className="lg:col-span-7 space-y-8">
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Movimientos Recientes</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver todos <ChevronRight size={16} /></button>
+                  <h3 className="font-extrabold text-[#1D3146] text-xl tracking-tight">Actividad Reciente</h3>
+                  <button className="text-xs font-black uppercase tracking-widest text-[#56CCF2] hover:underline underline-offset-4">Historial Completo</button>
                </div>
                
-               <div className="p-6 pt-0 space-y-1">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mb-2">Hoy</p>
-                  {[
-                    { icon: Truck, label: 'Entrega a Juan', sub: '+15 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { icon: Handshake, label: 'Pago recibo Ana', sub: '$1,500', color: 'text-orange-500', bg: 'bg-orange-50' },
-                  ].map((m, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
-                       <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
-                             <m.icon className={m.color} size={22} />
-                          </div>
-                          <div>
-                             <p className="text-base font-bold text-slate-900">{m.label}</p>
-                          </div>
-                       </div>
-                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
-                    </div>
-                  ))}
-
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">Historico</p>
-                  {[
-                    { icon: Truck, label: 'Entrega a Carlos', sub: '+10 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { icon: Handshake, label: 'Pago recibo Luis', sub: '$2,000', color: 'text-orange-500', bg: 'bg-orange-50' },
-                  ].map((m, i) => (
-                    <div key={i+2} className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
-                       <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${m.bg}`}>
-                             <m.icon className={m.color} size={22} />
-                          </div>
-                          <div>
-                             <p className="text-base font-bold text-slate-900">{m.label}</p>
-                          </div>
-                       </div>
-                       <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
-                    </div>
-                  ))}
+               <div className="p-8 pt-0 space-y-2">
+                  <div className="bg-slate-50 p-10 rounded-3xl text-center border border-dashed border-slate-200">
+                      <Truck className="text-slate-200 mx-auto mb-4" size={40} />
+                      <p className="text-slate-400 font-bold text-sm">Próximamente: Rastreo de movimientos en tiempo real sincronizado con tus rutas.</p>
+                  </div>
                </div>
-            </div>
-
-            {/* Resumen Semanal */}
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8">
-                <h4 className="text-lg font-extrabold text-slate-800 mb-6">Resumen Semanal</h4>
-                <div className="grid grid-cols-3 gap-6">
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Entregas:</p>
-                      <h4 className="text-4xl font-black text-slate-900">45</h4>
-                   </div>
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-center">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pagos Recibidos:</p>
-                      <h4 className="text-4xl font-black text-emerald-500 leading-none">$12,800</h4>
-                   </div>
-                   <div className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col gap-1 text-right">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Saldo Pendiente:</p>
-                      <h4 className="text-4xl font-black text-rose-500 leading-none">$8,750</h4>
-                   </div>
-                </div>
             </div>
          </div>
 
-         {/* Derecha - Tablas de Stock y Adeudos */}
+         {/* Derecha - Tablas Reales de Almacén y Adeudos */}
          <div className="lg:col-span-5 space-y-8">
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Stock Actual</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver inventario <ChevronRight size={16} /></button>
+                  <h3 className="font-extrabold text-[#1D3146] text-xl tracking-tight">Stock Maestro</h3>
+                  <Link href="/stock" className="text-[10px] font-black uppercase text-[#56CCF2] tracking-widest">IR AL ALMACÉN</Link>
                </div>
                <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
-                     <span>Producto</span>
-                     <span className="text-right">Disponible</span>
+                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                     <span>PRODUCTO</span>
+                     <span className="text-right">DISPONIBLE</span>
                   </div>
-                  {[
-                    { n: 'ChocoBites Barra', q: '25' },
-                    { n: 'ChocoBites Mix', q: '12' },
-                    { n: 'Galleta Crunch', q: '8' },
-                    { n: 'Brownie Bites', q: '4' }
-                  ].map((p, i) => (
+                  {data.stock.length > 0 ? data.stock.map((p, i) => (
                     <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default">
-                       <span className="text-base font-bold text-slate-700">{p.n}</span>
-                       <span className="text-right text-lg font-black text-slate-900">{p.q}</span>
+                       <span className="text-base font-bold text-[#1D3146]">{p.name}</span>
+                       <span className={`text-right text-lg font-black ${p.quantity < 10 ? 'text-rose-500' : 'text-[#1D3146]'}`}>
+                          {p.quantity} <span className="text-[10px] uppercase tracking-tighter opacity-40">unid.</span>
+                       </span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="p-10 text-center text-slate-400 text-xs font-bold italic">No hay productos en inventario.</div>
+                  )}
                </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Adeudos por Cliente</h3>
-                  <button className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline underline-offset-4">Ver adeudos <ChevronRight size={16} /></button>
+                  <h3 className="font-extrabold text-[#1D3146] text-xl tracking-tight">Saldos de Clientes</h3>
+                  <Link href="/customers" className="text-[10px] font-black uppercase text-[#56CCF2] tracking-widest">VER CARTERA</Link>
                </div>
                <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">
-                     <span>Cliente</span>
-                     <span className="text-right">Saldo Pendiente</span>
+                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                     <span>CLIENTE</span>
+                     <span className="text-right">DEBE</span>
                   </div>
-                  {[
-                    { n: 'Ana López', a: '$3,500' },
-                    { n: 'Carlos Pérez', a: '$2,750' },
-                    { n: 'Luis García', a: '$2,500' }
-                  ].map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default text-lg">
-                       <span className="text-base font-bold text-slate-700">{p.n}</span>
-                       <span className="text-right font-black text-slate-900">{p.a}</span>
+                  {data.debtors.length > 0 ? data.debtors.map((p, i) => (
+                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default">
+                       <span className="text-base font-bold text-[#1D3146]">{p.name}</span>
+                       <span className="text-right font-black text-rose-500 text-xl">${p.amount.toLocaleString()}</span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="p-10 text-center text-slate-400 text-xs font-bold italic">Todos tus clientes están al día. ✨</div>
+                  )}
                </div>
             </div>
          </div>
       </div>
     </div>
-  )
+  );
 }
