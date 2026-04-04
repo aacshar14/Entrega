@@ -15,52 +15,69 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAuth = async () => {
+  const handleAuth = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // Quick validation
+    if (!email || !password) {
+      setError('Por favor completa todos los campos');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       if (isRegister) {
-        console.log('[AUTH DEBUG] Attempting registration for:', email);
-        const origin = window.location.origin;
-        const { error } = await supabase.auth.signUp({
+        console.log('[AUTH] Registering:', email);
+        const { error, data } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${origin}`,
-            data: {
-              full_name: fullName,
-            },
+            emailRedirectTo: window.location.origin,
+            data: { full_name: fullName },
           },
         });
         if (error) throw error;
-        console.log('[AUTH DEBUG] Registration success.');
+        console.log('[AUTH] Register success:', data.user?.id);
+        setError('¡Cuenta creada! Revisa tu email para confirmar.');
+        setLoading(false);
       } else {
-        console.log('[AUTH DEBUG] Attempting login for:', email);
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('[AUTH] Logging in:', email);
+        const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
-        console.log('[AUTH DEBUG] Login success.');
-      }
+        
+        if (error) {
+          console.error('[AUTH ERROR BODY]', error);
+          throw error;
+        }
 
-      console.log('[AUTH DEBUG] Auth success, forcing redirect...');
-      window.location.assign('/'); 
+        console.log('[AUTH] Login successful:', data.user?.id);
+        // Using assign for a hard refresh into the auth state
+        window.location.assign('/'); 
+      }
     } catch (err: any) {
-      console.error('[AUTH DEBUG] Auth exception:', err);
-      setError(err?.message || 'Error en la autenticación');
+      console.error('[AUTH EXCEPTION]', err);
+      // Detailed error reporting
+      const msg = err.message || err.error_description || 'Error en la autenticación';
+      setError(msg);
       setLoading(false);
     }
   };
 
   return (
     <div className="flex justify-center items-center h-[90vh]">
-      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 flex flex-col gap-8 animate-in fade-in zoom-in-95 duration-500">
-
+      <form 
+        onSubmit={handleAuth}
+        className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 flex flex-col gap-8 animate-in fade-in zoom-in-95 duration-500"
+      >
         <div className="text-center">
           <h2 className="text-4xl font-black text-[#1D3146] tracking-tighter italic">EntréGA</h2>
-          <p className="text-slate-400 font-medium mt-2">{isRegister ? 'Crea tu cuenta de propietario' : 'Gestión Inteligente de Logística'}</p>
+          <p className="text-slate-400 font-medium mt-2">
+            {isRegister ? 'Crea tu cuenta de propietario' : 'Gestión Inteligente de Logística'}
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -69,6 +86,7 @@ export default function LoginPage() {
               <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1.5 ml-1">Nombre Completo</label>
               <input
                 type="text"
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Leonardo Gonzalez"
@@ -81,6 +99,7 @@ export default function LoginPage() {
             <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1.5 ml-1">Email Corporativo</label>
             <input
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="leo@chocobites.mx"
@@ -92,6 +111,7 @@ export default function LoginPage() {
             <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1.5 ml-1">Password</label>
             <input
               type="password"
+              autoComplete={isRegister ? "new-password" : "current-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -108,7 +128,7 @@ export default function LoginPage() {
 
         <div className="space-y-4">
           <button
-            onClick={handleAuth}
+            type="submit"
             disabled={loading}
             className="w-full bg-[#1D3146] text-[#56CCF2] p-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-[#1D3146]/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
           >
@@ -116,14 +136,14 @@ export default function LoginPage() {
           </button>
 
           <button 
+            type="button"
             onClick={() => setIsRegister(!isRegister)}
             className="w-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-[#1D3146] transition-colors py-2"
           >
             {isRegister ? 'Ya tengo cuenta - Entrar' : '¿Nuevo aquí? - Crear Cuenta'}
           </button>
         </div>
-
-      </div>
+      </form>
     </div>
   );
 }
