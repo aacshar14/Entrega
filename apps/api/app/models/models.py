@@ -121,7 +121,7 @@ class Customer(SQLModel, table=True):
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenants.id")
     name: str = Field(index=True)
-    phone_number: str = Field(index=True)
+    phone_number: Optional[str] = Field(default=None, index=True)
     email: Optional[str] = None
     address: Optional[str] = None
     notes: Optional[str] = None
