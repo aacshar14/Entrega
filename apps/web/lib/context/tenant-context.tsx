@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { apiRequest } from '../api';
 import { useRouter, usePathname } from 'next/navigation';
@@ -58,168 +58,115 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = useMemo(() => createClient(), []);
 
-  const handleManualLogout = () => {
+  const handleManualLogout = useCallback(() => {
     setUser(null);
     setActiveTenant(null);
     setActiveRole(null);
     setMemberships([]);
     setActiveTenantId(null);
-  };
+  }, []);
 
-  const fetchContext = async (overrideId?: string) => {
+  const fetchContext = useCallback(async (overrideId?: string) => {
     try {
-      // Safety: if the API call hangs, we don't want to lock the UI forever
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT_ME_RESOLUTION')), 8000)
-      );
-
-      const data = await Promise.race([
-        apiRequest('/me', 'GET', null, overrideId || activeTenantId || undefined),
-        timeoutPromise
-      ]) as any;
+      const targetId = overrideId || activeTenantId || undefined;
+      const data = await apiRequest('/me', 'GET', null, targetId) as any;
       
-      console.log('[AUTH DEBUG] Context resolved successfully', {
+      console.log('[TENANT CONTEXT] Context resolved:', {
         role: data.user?.platform_role,
-        tenant: data.active_tenant?.id,
-        pathname
+        tenant: data.active_tenant?.slug || 'none'
       });
 
       const isAdmin = data.user?.platform_role === 'admin';
-      const membershipCount = data.memberships?.length || 0;
-      const isAdminWithMultiple = isAdmin && membershipCount > 1;
+      const mCount = data.memberships?.length || 0;
 
-      // Update state
+      // Update State
       setUser(data.user);
       setMemberships(data.memberships || []);
       setActiveTenant(data.active_tenant);
+      
       if (data.active_tenant?.id) {
         setActiveTenantId(data.active_tenant.id);
-        
-        // Resolve active role
-        const activeMembership = data.memberships?.find(
-          (m: Membership) => m.tenant.id === data.active_tenant.id
-        );
-        setActiveRole(activeMembership?.role || null);
+        const m = data.memberships?.find((m: any) => m.tenant.id === data.active_tenant.id);
+        setActiveRole(m?.role || (isAdmin ? 'owner' : null));
       } else {
         setActiveRole(null);
       }
 
-      // --- CENTRALIZED ROUTING AUTHORITY (PHASE 2 - STRICT) ---
-      
-      const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
-      const isOnboardingPath = pathname.startsWith('/onboarding');
-      const isSelectTenantPath = pathname.startsWith('/select-tenant');
+      // --- ROUTING LOGIC ---
+      const isPublic = ['/landing', '/login', '/'].includes(pathname);
+      const isOnboarding = pathname.startsWith('/onboarding');
+      const isSelector = pathname.startsWith('/select-tenant');
 
-      // 1. New User / No Membership Guard -> Force Onboarding
-      if (membershipCount === 0 && data.user) {
-        if (!isPublicPath && !isOnboardingPath) {
-          console.log('[AUTH DEBUG] No memberships found. Redirecting to onboarding.');
-          router.replace('/onboarding');
-        }
-        setIsLoading(false);
-        return;
+      if (!data.user) return; // Wait for auth session
+
+      // Scenario A: New User -> Onboarding
+      if (mCount === 0 && !isPublic && !isOnboarding) {
+        router.replace('/onboarding');
+      } 
+      // Scenario B: Admin needing selection
+      else if (isAdmin && mCount > 1 && !targetId && !isSelector && !isPublic) {
+        router.replace('/select-tenant');
       }
-
-      // 2. Admin with multiple tenants and no selection -> Force Selector
-      if (isAdminWithMultiple && !overrideId && !activeTenantId) {
-        if (!isSelectTenantPath && !isPublicPath) {
-          console.log('[AUTH DEBUG] Admin with multiple tenants. Redirecting to selector.');
-          router.replace('/select-tenant');
-        }
-        setIsLoading(false);
-        return; // HALT
-      }
-
-      // 3. Active Tenant Onboarding/Dashboard Gates
-      if (data.active_tenant) {
+      // Scenario C: Active Tenant Status (Gates)
+      else if (data.active_tenant) {
         const isReady = data.active_tenant.ready;
-        const isNotReady = !isReady;
-        const isProtectedAppRoute = !isPublicPath && !isSelectTenantPath && !isOnboardingPath;
-
-        if (isNotReady && isProtectedAppRoute) {
-          console.log('[AUTH DEBUG] Tenant not ready. Redirecting to onboarding.');
+        if (!isReady && !isPublic && !isSelector && !isOnboarding) {
           router.replace('/onboarding');
-        } else if (isReady && isOnboardingPath) {
-          console.log('[AUTH DEBUG] Tenant ready but on onboarding. Redirecting to dashboard.');
-          router.replace('/dashboard');
-        } else if (isReady && pathname === '/') {
+        } else if (isReady && (isOnboarding || pathname === '/')) {
           router.replace('/dashboard');
         }
       }
     } catch (error: any) {
-      console.error('Failed to resolve context:', error);
-      if (error.message === 'TIMEOUT_ME_RESOLUTION' || error.status === 401 || error.status === 403) {
+      console.error('[TENANT CONTEXT] Resolution Error:', error);
+      if (error.status === 401 || error.status === 403) {
         handleManualLogout();
-        if (!pathname.startsWith('/login')) {
-          router.replace('/login');
-        }
+        if (!pathname.startsWith('/login')) router.replace('/login');
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTenantId, pathname, router, handleManualLogout]);
 
   useEffect(() => {
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    const initialize = async () => {
-      try {
-        const supabase = createClient();
-        
-        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('[AUTH DEBUG] Auth Event:', event);
-          if (event === 'SIGNED_OUT') {
-            handleManualLogout();
-            router.replace('/login');
-          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            if (session) await fetchContext();
-          }
-        });
-        subscription = data.subscription;
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          console.log('[AUTH DEBUG] Active session found, fetching context...');
+    let authIsReady = false;
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AUTH EVENT]', event);
+      if (event === 'SIGNED_OUT') {
+        handleManualLogout();
+        router.replace('/login');
+      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+        if (session && !authIsReady) {
+          authIsReady = true;
           await fetchContext();
-        } else {
-          console.log('[AUTH DEBUG] No active session, releasing loader.');
-          setIsLoading(false);
-          const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
-          if (!isPublic) {
-            router.replace('/login');
-          }
         }
-      } catch (err) {
-        console.error('Provider initialization failed:', err);
-        setIsLoading(false);
       }
-    };
+    });
 
-    initialize();
-    return () => {
-      if (subscription) subscription.unsubscribe();
-    };
-  }, []); 
+    // Initial silent check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setIsLoading(false);
+        const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
+        if (!isPublic) router.replace('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase, fetchContext, handleManualLogout, pathname, router]);
 
   const switchTenant = (tenantId: string) => {
-    setActiveTenant(null);
-    setActiveRole(null);
-    setMemberships([]);
-    setActiveTenantId(tenantId);
     setIsLoading(true);
+    setActiveTenantId(tenantId);
     fetchContext(tenantId);
   };
 
   return (
     <TenantContext.Provider value={{ 
-      user, 
-      activeTenant,
-      activeRole,
-      memberships, 
-      isLoading, 
-      switchTenant,
-      refreshUser: fetchContext
+      user, activeTenant, activeRole, memberships, isLoading, 
+      switchTenant, refreshUser: () => fetchContext() 
     }}>
       {children}
       <SessionTimeout user={user} onLogout={handleManualLogout} />
@@ -229,8 +176,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
 export function useTenant() {
   const context = useContext(TenantContext);
-  if (context === undefined) {
-    throw new Error('useTenant must be used within a TenantProvider');
-  }
+  if (context === undefined) throw new Error('useTenant must be used within a TenantProvider');
   return context;
 }
