@@ -30,6 +30,7 @@ interface Customer {
   email?: string;
   tier: string;
   notes?: string;
+  balance?: number;
   created_at: string;
 }
 
@@ -419,7 +420,9 @@ export default function CustomersPage() {
                             </span>
                         </td>
                         <td className="px-6 py-5 font-black text-[#1D3146]">
-                            $0.00
+                            <span className={customer.balance && customer.balance < 0 ? 'text-red-500' : 'text-slate-600'}>
+                                ${Math.abs(customer.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </span>
                         </td>
                         <td className="pr-8 py-5 text-right relative">
                             <div className="flex items-center justify-end gap-2 text-slate-400">

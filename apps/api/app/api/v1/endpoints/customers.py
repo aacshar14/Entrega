@@ -40,16 +40,40 @@ class ImportPreviewResponse(BaseModel):
 class ImportCommitRequest(BaseModel):
     rows: List[CustomerImportRow]
 
-@router.get("", response_model=List[Customer])
+class CustomerResponse(BaseModel):
+    id: UUID
+    name: str
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    tier: str
+    balance: float = 0.0
+    created_at: datetime
+
+@router.get("", response_model=List[CustomerResponse])
 async def list_customers(
     db: Session = Depends(get_session),
     active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """List all customers for the active tenant."""
-    customers = db.exec(
-        select(Customer).where(Customer.tenant_id == active_tenant.id)
-    ).all()
-    return customers
+    """List all customers for the active tenant with their current balance."""
+    # Build query to join with CustomerBalance
+    query = (
+        select(Customer, CustomerBalance.balance)
+        .outerjoin(CustomerBalance, Customer.id == CustomerBalance.customer_id)
+        .where(Customer.tenant_id == active_tenant.id)
+    )
+    results = db.exec(query).all()
+    
+    response = []
+    for customer, balance in results:
+        resp = CustomerResponse(
+            **customer.model_dump(),
+            balance=float(balance) if balance is not None else 0.0
+        )
+        response.append(resp)
+        
+    return response
 
 @router.post("", response_model=Customer)
 async def create_customer(
@@ -173,61 +197,87 @@ async def import_customers_commit(
     """Step 2: Commit valid customer rows to the database."""
     tenant_id = active_tenant.id
     created_count = 0
-    skipped_duplicates = 0
+    updated_count = 0
     
-    existing_customers = db.exec(
-        select(Customer).where(Customer.tenant_id == tenant_id)
-    ).all()
-    existing_phones = {c.phone_number for c in existing_customers if c.phone_number}
-    existing_names = {c.name.lower() for c in existing_customers}
-
     for row in request.rows:
-        if row.name.lower() in existing_names or (row.phone and row.phone in existing_phones):
-            skipped_duplicates += 1
-            continue
-            
-        new_customer = Customer(
-            tenant_id=tenant_id,
-            name=row.name,
-            phone_number=row.phone,
-            email=row.email,
-            notes=row.notes,
-            tier=row.tier if row.tier in ["mayoreo", "menudeo", "especial"] else "menudeo",
-            created_by_user_id=current_user.id
-        )
-        db.add(new_customer)
-        db.flush()
-        
-        if row.initial_balance != 0:
-            new_balance = CustomerBalance(
-                tenant_id=tenant_id,
-                customer_id=new_customer.id,
-                balance=-row.initial_balance,
-                last_updated=datetime.now(timezone.utc)
+        # Search for existing customer
+        existing = db.exec(
+            select(Customer).where(
+                (Customer.tenant_id == tenant_id) & 
+                ((Customer.name.lower() == row.name.lower()) | (Customer.phone_number == row.phone))
             )
-            db.add(new_balance)
+        ).first()
+        
+        if existing:
+            # Update existing
+            existing.tier = row.tier if row.tier in ["mayoreo", "menudeo", "especial"] else "menudeo"
+            existing.email = row.email or existing.email
+            existing.notes = row.notes or existing.notes
+            existing.updated_at = datetime.now(timezone.utc)
+            db.add(existing)
             
-        created_count += 1
-        existing_names.add(row.name.lower())
-        if row.phone:
-            existing_phones.add(row.phone)
+            # Update or create balance
+            balance_record = db.exec(
+                select(CustomerBalance).where(CustomerBalance.customer_id == existing.id)
+            ).first()
+            
+            if balance_record:
+                balance_record.balance = -row.initial_balance
+                balance_record.last_updated = datetime.now(timezone.utc)
+                db.add(balance_record)
+            elif row.initial_balance != 0:
+                new_balance = CustomerBalance(
+                    tenant_id=tenant_id,
+                    customer_id=existing.id,
+                    balance=-row.initial_balance,
+                    last_updated=datetime.now(timezone.utc)
+                )
+                db.add(new_balance)
+            
+            updated_count += 1
+        else:
+            # Create new
+            new_customer = Customer(
+                tenant_id=tenant_id,
+                name=row.name,
+                phone_number=row.phone,
+                email=row.email,
+                notes=row.notes,
+                tier=row.tier if row.tier in ["mayoreo", "menudeo", "especial"] else "menudeo",
+                created_by_user_id=current_user.id
+            )
+            db.add(new_customer)
+            db.flush()
+            
+            if row.initial_balance != 0:
+                new_balance = CustomerBalance(
+                    tenant_id=tenant_id,
+                    customer_id=new_customer.id,
+                    balance=-row.initial_balance,
+                    last_updated=datetime.now(timezone.utc)
+                )
+                db.add(new_balance)
+            created_count += 1
             
     event = OnboardingEvent(
         tenant_id=tenant_id,
         event_type="customer_import",
-        metadata_json=f'{{"count": {created_count}, "duplicates_skipped": {skipped_duplicates}}}',
+        metadata_json=f'{{"created": {created_count}, "updated": {updated_count}}}',
         created_by_user_id=current_user.id
     )
     db.add(event)
     db.commit()
-    return {"status": "success", "created_count": created_count, "skipped_duplicates": skipped_duplicates}
+    return {"status": "success", "created": created_count, "updated": updated_count}
 
 @router.patch("/{id}", response_model=Customer)
 async def update_customer(
     id: UUID,
     name: Optional[str] = None,
     phone_number: Optional[str] = None,
+    email: Optional[str] = None,
     address: Optional[str] = None,
+    notes: Optional[str] = None,
+    tier: Optional[str] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -241,8 +291,14 @@ async def update_customer(
         customer.name = name
     if phone_number is not None:
         customer.phone_number = phone_number
+    if email is not None:
+        customer.email = email
     if address is not None:
         customer.address = address
+    if notes is not None:
+        customer.notes = notes
+    if tier is not None and tier in ["mayoreo", "menudeo", "especial"]:
+        customer.tier = tier
         
     customer.updated_by_user_id = current_user.id
     customer.updated_at = datetime.now(timezone.utc)
