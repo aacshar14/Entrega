@@ -90,23 +90,31 @@ async def get_current_user(
                 logger.error("JWT Validation failed: JWKS retrieval returned empty or invalid set", jwks_keys=list(jwks.keys()) if jwks else None)
                 raise credentials_exception
             
-            # Diagnostic for KID matching
+            # Manual Key Resolution based on KID
             received_kid = unverified_headers.get("kid")
-            available_kids = [k.get("kid") for k in jwks.get("keys", [])]
+            available_keys = jwks.get("keys", [])
+            target_key = next((k for k in available_keys if k.get("kid") == received_kid), None)
             
-            logger.info("[AUTH DEBUG] Public Key Resolution", 
-                        received_kid=received_kid, 
-                        available_kids=available_kids,
-                        matched=(received_kid in available_kids))
+            if not target_key:
+                available_kids = [k.get("kid") for k in available_keys]
+                logger.error("[AUTH DEBUG] Public Key Resolution Failed", 
+                             received_kid=received_kid, 
+                             available_kids=available_kids)
+                raise credentials_exception
 
+            logger.info("[AUTH DEBUG] Public Key Resolved Successfully", kid=received_kid)
+            
+            # Use the resolved key for ES256 validation
+            # Supabase tokens usually have: aud="authenticated", iss="https://{ref}.supabase.co/auth/v1"
             payload = jwt.decode(
                 token.credentials,
-                jwks,
+                target_key,
                 algorithms=["ES256"],
-                audience="authenticated"
+                audience="authenticated",
+                issuer=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
             )
         else:
-            # Fallback to HS256 Legacy
+            # Fallback to HS256 Legacy (Shared Secret)
             raw_secret = settings.SUPABASE_JWT_SECRET.strip()
             import base64
             try:
@@ -118,7 +126,8 @@ async def get_current_user(
                 token.credentials, 
                 decoded_secret, 
                 algorithms=["HS256"],
-                audience="authenticated"
+                audience="authenticated",
+                issuer=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
             )
             
         if not payload:
