@@ -38,7 +38,7 @@ async def get_jwks():
     if JWKS_CACHE and (current_time - JWKS_LAST_FETCH < JWKS_TTL):
         return JWKS_CACHE
         
-    jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/jwks.json"
+    jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(jwks_url)
