@@ -134,25 +134,35 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeTenantId, pathname, router, handleManualLogout]);
 
+  const authIsReady = React.useRef(false);
+
   useEffect(() => {
-    let authIsReady = false;
-    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AUTH EVENT]', event);
+      console.log('[AUTH EVENT]', event, { hasSession: !!session });
+      
       if (event === 'SIGNED_OUT') {
+        authIsReady.current = false;
         handleManualLogout();
         router.replace('/login');
       } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-        if (session && !authIsReady) {
-          authIsReady = true;
+        if (session && !authIsReady.current) {
+          console.log('[AUTH BOOTSTRAP] Event-driven context resolution');
+          authIsReady.current = true;
           await fetchContext();
         }
       }
     });
 
-    // Initial silent check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    // Initial silent check (critical for SSR/Reload stalls)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        if (!authIsReady.current) {
+          console.log('[AUTH BOOTSTRAP] Session found in storage, bootstrapping context');
+          authIsReady.current = true;
+          await fetchContext();
+        }
+      } else {
+        console.log('[AUTH BOOTSTRAP] No session found');
         setIsLoading(false);
         const isPublic = pathname.startsWith('/landing') || pathname.startsWith('/login');
         if (!isPublic) router.replace('/login');
