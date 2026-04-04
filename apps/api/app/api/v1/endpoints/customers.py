@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select, func
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_tenant
-from app.models.models import User, Tenant, Customer, CustomerBalance, OnboardingEvent
+from app.core.dependencies import get_current_user, get_active_tenant, require_tenant_role
+from app.models.models import User, Tenant, Customer, CustomerBalance, OnboardingEvent, CustomerAlias, Payment, InventoryMovement
+from sqlalchemy import text
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -252,30 +253,19 @@ async def update_customer(
 async def delete_customer(
     id: UUID,
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant)
+    active_tenant: Tenant = Depends(get_active_tenant),
+    _ = Depends(require_tenant_role(["owner"]))
 ):
-    """Delete a customer for the active tenant."""
+    """Delete a customer (Owner only). Deep cleanup of all linked records."""
     customer = db.get(Customer, id)
     if not customer or customer.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Customer not found")
     
     # Clean up dependencies
-    # 1. Balances
-    db.exec(
-        select(CustomerBalance).where(CustomerBalance.customer_id == id)
-    ).all()
-    # Actually just delete them
-    db.execute(f"DELETE FROM customer_balances WHERE customer_id = '{id}'")
-    
-    # 2. Aliases
-    db.execute(f"DELETE FROM customer_aliases WHERE customer_id = '{id}'")
-    
-    # 3. Handle movements (either delete or nullify)
-    # For now, let's nullify to keep the movement but remove the customer link
-    db.execute(f"UPDATE inventory_movements SET customer_id = NULL WHERE customer_id = '{id}'")
-    
-    # 4. Handle payments
-    db.execute(f"DELETE FROM payments WHERE customer_id = '{id}'")
+    db.execute(text("DELETE FROM customer_balances WHERE customer_id = :id"), {"id": id})
+    db.execute(text("DELETE FROM customer_aliases WHERE customer_id = :id"), {"id": id})
+    db.execute(text("UPDATE inventory_movements SET customer_id = NULL WHERE customer_id = :id"), {"id": id})
+    db.execute(text("DELETE FROM payments WHERE customer_id = :id"), {"id": id})
     
     db.delete(customer)
     db.commit()

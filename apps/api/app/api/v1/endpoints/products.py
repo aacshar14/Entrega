@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select, func
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_tenant
-from app.models.models import User, Tenant, Product, StockBalance, InventoryMovement
+from app.core.dependencies import get_current_user, get_active_tenant, require_tenant_role
+from app.models.models import User, Tenant, Product, StockBalance, InventoryMovement, ProductAlias
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel
+from sqlalchemy import text
 import csv
 import io
 
@@ -298,22 +299,18 @@ async def update_product(
 async def delete_product(
     id: UUID,
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant)
+    active_tenant: Tenant = Depends(get_active_tenant),
+    _ = Depends(require_tenant_role(["owner"]))
 ):
-    """Delete a product for the active tenant."""
+    """Delete a product (Owner only). Deep cleanup of all linked records."""
     product = db.get(Product, id)
     if not product or product.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
     
     # Clean up dependencies
-    # 1. Stock Balances
-    db.execute(f"DELETE FROM stock_balances WHERE product_id = '{id}'")
-    
-    # 2. Inventory Movements
-    db.execute(f"DELETE FROM inventory_movements WHERE product_id = '{id}'")
-    
-    # 3. Aliases
-    db.execute(f"DELETE FROM product_aliases WHERE product_id = '{id}'")
+    db.execute(text("DELETE FROM stock_balances WHERE product_id = :id"), {"id": id})
+    db.execute(text("DELETE FROM inventory_movements WHERE product_id = :id"), {"id": id})
+    db.execute(text("DELETE FROM product_aliases WHERE product_id = :id"), {"id": id})
     
     db.delete(product)
     db.commit()
