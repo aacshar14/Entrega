@@ -119,7 +119,8 @@ export default function StockPage() {
         sku: editingProduct.sku,
         price_menudeo: Number(editingProduct.price_menudeo),
         price_mayoreo: Number(editingProduct.price_mayoreo),
-        price_especial: Number(editingProduct.price_especial)
+        price_especial: Number(editingProduct.price_especial),
+        adjustment_quantity: (editingProduct as any).adjustment_quantity || 0
       }, activeTenant.id);
       
       setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
@@ -298,6 +299,25 @@ export default function StockPage() {
                              onChange={e => setEditingProduct({...editingProduct, price_especial: Number(e.target.value)})}
                            />
                         </div>
+                    </div>
+                    <div className="md:col-span-2 bg-[#56CCF2]/5 p-6 rounded-3xl border border-[#56CCF2]/10">
+                        <label className="block text-[10px] uppercase font-black text-[#56CCF2] tracking-widest mb-3 px-2">Ajustar Unidades (Stock)</label>
+                        <div className="flex items-center gap-4">
+                           <div className="flex-grow">
+                              <input 
+                                type="number" 
+                                placeholder="Ej: 10 o -5"
+                                className="w-full px-6 py-4 bg-white rounded-2xl border-2 border-[#56CCF2]/20 focus:border-[#56CCF2] outline-none font-black text-[#1D3146]"
+                                value={(editingProduct as any).adjustment_quantity || ''}
+                                onChange={e => setEditingProduct({...editingProduct, adjustment_quantity: Number(e.target.value)} as any)}
+                              />
+                           </div>
+                           <div className="text-right pr-4">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actual</p>
+                              <p className="text-xl font-black text-[#1D3146]">{editingProduct.quantity}</p>
+                           </div>
+                        </div>
+                        <p className="mt-2 text-[10px] font-medium text-slate-400 px-2 italic">Ingresa un valor positivo para sumar o negativo para restar del stock actual.</p>
                     </div>
                  </div>
                  <div className="flex gap-4 pt-4">

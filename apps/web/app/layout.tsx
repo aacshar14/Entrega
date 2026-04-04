@@ -110,7 +110,7 @@ function UI_Shell({ children }) {
             })}
         </nav>
 
-        <div className="p-8 border-t border-white/5">
+        <Link href="/settings" className="p-8 border-t border-white/5 hover:bg-white/5 transition-all block cursor-pointer">
            <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                  <Settings size={20} className="text-[#56CCF2]" />
@@ -120,7 +120,7 @@ function UI_Shell({ children }) {
                  <p className="text-xs font-bold text-white">Panel Central</p>
               </div>
            </div>
-        </div>
+        </Link>
       </aside>
 
       {/* Main Content Area */}

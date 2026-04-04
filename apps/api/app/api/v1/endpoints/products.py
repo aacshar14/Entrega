@@ -260,7 +260,7 @@ async def create_product(
     db.refresh(new_product)
     return new_product
 
-@router.patch("/{id}", response_model=Product)
+@router.patch("/{id}")
 async def update_product(
     id: UUID,
     name: Optional[str] = None,
@@ -268,11 +268,12 @@ async def update_product(
     price_menudeo: Optional[float] = None,
     price_mayoreo: Optional[float] = None,
     price_especial: Optional[float] = None,
+    adjustment_quantity: Optional[float] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """Update a product for the active tenant."""
+    """Update a product and optional stock for the active tenant."""
     product = db.get(Product, id)
     if not product or product.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -291,11 +292,50 @@ async def update_product(
         
     product.updated_by_user_id = current_user.id
     product.updated_at = datetime.now(timezone.utc)
-    
     db.add(product)
+
+    # Stock Adjustment
+    if adjustment_quantity is not None:
+        balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
+        if balance:
+            balance.quantity += adjustment_quantity
+            balance.updated_by_user_id = current_user.id
+            balance.last_updated = datetime.now(timezone.utc)
+        else:
+            balance = StockBalance(
+                tenant_id=active_tenant.id,
+                product_id=product.id,
+                quantity=adjustment_quantity,
+                updated_by_user_id=current_user.id
+            )
+        db.add(balance)
+        
+        # Log movement
+        movement = InventoryMovement(
+            tenant_id=active_tenant.id,
+            product_id=product.id,
+            quantity=adjustment_quantity,
+            type="adjustment",
+            description=f"Ajuste manual vía catálogo por {current_user.email}",
+            created_by_user_id=current_user.id
+        )
+        db.add(movement)
+
     db.commit()
     db.refresh(product)
-    return product
+    
+    # Return extended info
+    final_balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
+    
+    return {
+        "id": product.id,
+        "name": product.name,
+        "sku": product.sku,
+        "price_menudeo": product.price_menudeo,
+        "price_mayoreo": product.price_mayoreo,
+        "price_especial": product.price_especial,
+        "quantity": final_balance.quantity if final_balance else 0.0
+    }
 
 @router.delete("/{id}")
 async def delete_product(
