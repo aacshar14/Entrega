@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { AlertCircle, LogOut, Clock } from 'lucide-react';
 
 interface SessionTimeoutProps {
@@ -25,7 +25,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
   const COUNTDOWN_DURATION = (LOGOUT_TIME - WARNING_TIME) / 1000;
 
   const handleLogout = useCallback(async () => {
-    const supabase = getSupabaseClient();
+    const supabase = createClient();
     await supabase.auth.signOut();
     setShowWarning(false);
     onLogout();

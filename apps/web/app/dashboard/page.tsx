@@ -98,7 +98,7 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">22/04/2024</p>
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">Historico</p>
                   {[
                     { icon: Truck, label: 'Entrega a Carlos', sub: '+10 productos', color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { icon: Handshake, label: 'Pago recibo Luis', sub: '$2,000', color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -115,23 +115,10 @@ export default function Dashboard() {
                        <span className={`text-base font-black ${m.sub.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{m.sub}</span>
                     </div>
                   ))}
-
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mt-6 mb-2">21/04/2024</p>
-                  <div className="flex items-center justify-between p-4 hover:bg-slate-50/80 rounded-2xl transition-all cursor-pointer group">
-                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm bg-slate-100`}>
-                           <Settings2 className="text-slate-500" size={22} />
-                        </div>
-                        <div>
-                           <p className="text-base font-bold text-slate-900">Ajuste de Stock</p>
-                        </div>
-                     </div>
-                     <span className={`text-base font-black text-rose-500`}>-5 productos</span>
-                  </div>
                </div>
             </div>
 
-            {/* Resumen Semanal INDEPENDIENTE (como imagen) */}
+            {/* Resumen Semanal */}
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8">
                 <h4 className="text-lg font-extrabold text-slate-800 mb-6">Resumen Semanal</h4>
                 <div className="grid grid-cols-3 gap-6">
@@ -151,9 +138,8 @@ export default function Dashboard() {
             </div>
          </div>
 
-         {/* Derecha - Tablas de Stock y Adeudos (5/12) */}
+         {/* Derecha - Tablas de Stock y Adeudos */}
          <div className="lg:col-span-5 space-y-8">
-            {/* Stock Actual Table */}
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
                   <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Stock Actual</h3>
@@ -178,7 +164,6 @@ export default function Dashboard() {
                </div>
             </div>
 
-            {/* Adeudos por Cliente Table */}
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
                   <h3 className="font-extrabold text-slate-800 text-xl tracking-tight">Adeudos por Cliente</h3>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-// Updated for ChocoBites Tier Pricing V1.1
 import { 
   Users, 
   Upload, 
@@ -9,13 +8,10 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Loader2,
-  Trash2,
-  Filter,
   Plus,
   ArrowRight
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
-import { useTenant } from '@/lib/context/tenant-context';
 
 interface ImportRow {
   row_index: number;
@@ -25,7 +21,6 @@ interface ImportRow {
     email: string;
     initial_balance: number;
     notes: string;
-    tier: string;
   };
   is_valid: boolean;
   errors: string[];
@@ -48,10 +43,9 @@ export default function CustomersPage() {
   const [isCommitting, setIsCommitting] = useState(false);
   const [summary, setSummary] = useState<{ created: number; skipped: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { activeTenant } = useTenant();
 
   const downloadTemplate = () => {
-    const csvContent = "name,phone,email,initial_balance,notes,tier\nTienda Juan,+528781111111,juan@email.com,0,,mayoreo\nAbarrotes Ana,+528782222222,,0,,menudeo\nCliente Promo,+528783333333,,0,,especial";
+    const csvContent = "name,phone,email,initial_balance,notes\nAna,+528781111111,ana@email.com,650,Cliente frecuente\nLuis,+528782222222,,300,";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -74,19 +68,28 @@ export default function CustomersPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const data = await apiRequest('/customers/import/preview', 'POST', formData, activeTenant?.id);
-      
-      // Harden data shape
-      const hardenedData = {
-        ...data,
-        rows: Array.isArray(data?.rows) ? data.rows : []
-      };
+      // Using raw fetch for FormData as apiRequest currently assumes JSON
+      // But we still use our client to get the token for SSR compatibility
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
 
-      setPreview(hardenedData);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.entrega.space'}/api/v1/customers/import/preview`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+        },
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error('Error al procesar el archivo CSV');
+      
+      const data = await response.json();
+      setPreview(data);
       setStep('preview');
     } catch (err: any) {
       console.error('Error uploading CSV:', err);
-      setError(err.message || 'Error al procesar el archivo CSV');
+      setError(err.message);
     } finally {
       setIsUploading(false);
     }
@@ -99,13 +102,13 @@ export default function CustomersPage() {
     try {
       const validRows = preview.rows.filter(r => r.is_valid).map(r => r.data);
       
-      const data = await apiRequest('/customers/import/commit', 'POST', { rows: validRows }, activeTenant?.id);
+      const data = await apiRequest('/customers/import/commit', 'POST', { rows: validRows });
       
       setSummary({ created: data.created_count, skipped: data.skipped_duplicates });
       setStep('summary');
     } catch (err: any) {
        console.error('Error committing CSV:', err);
-       setError(err.message || 'Error al finalizar la importación');
+       setError(err.message);
     } finally {
       setIsCommitting(false);
     }
@@ -121,14 +124,6 @@ export default function CustomersPage() {
             </h1>
             <p className="text-slate-500 mt-1 font-medium">Administra tu cartera y realiza importaciones masivas.</p>
          </div>
-
-         {error && (
-            <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-rose-700 text-sm font-bold animate-in fade-in slide-in-from-top-4">
-               <AlertCircle size={20} />
-               {error}
-               <button onClick={() => setError(null)} className="ml-auto hover:scale-110 transition-transform">×</button>
-            </div>
-          )}
          
          <div className="flex gap-4">
             <button 
@@ -147,6 +142,13 @@ export default function CustomersPage() {
             </button>
          </div>
       </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-2xl font-bold flex items-center gap-3 border border-red-100">
+          <AlertCircle size={20} />
+          {error}
+        </div>
+      )}
 
       {step === 'list' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 p-10 text-center">
@@ -174,6 +176,7 @@ export default function CustomersPage() {
                 type="file" 
                 accept=".csv" 
                 className="absolute inset-0 opacity-0 cursor-pointer" 
+                aria-label="Seleccionar archivo CSV de clientes"
                 onChange={handleFileChange}
               />
               <div className="bg-[#56CCF2]/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
@@ -218,7 +221,6 @@ export default function CustomersPage() {
                        <th className="px-8 py-4">Fila</th>
                        <th className="px-4 py-4">Nombre</th>
                        <th className="px-4 py-4">Teléfono</th>
-                       <th className="px-4 py-4">Tier</th>
                        <th className="px-4 py-4">Status</th>
                     </tr>
                  </thead>
@@ -226,17 +228,8 @@ export default function CustomersPage() {
                     {preview.rows.map((row, idx) => (
                        <tr key={idx} className={`border-b border-slate-50 hover:bg-slate-50/80 transition-colors ${!row.is_valid ? 'bg-red-50/30' : ''}`}>
                           <td className="px-8 py-4 text-slate-400 font-mono text-xs">#{row.row_index}</td>
-                          <td className="px-4 py-4 font-bold text-[#1D3146] text-sm">{row.data?.name || '---'}</td>
-                          <td className="px-4 py-4 text-slate-500 text-sm">{row.data?.phone || 'N/A'}</td>
-                          <td className="px-4 py-4">
-                             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                                row.data?.tier === 'mayoreo' ? 'bg-blue-100 text-blue-700' :
-                                row.data?.tier === 'especial' ? 'bg-purple-100 text-purple-700' :
-                                'bg-slate-100 text-slate-700'
-                             }`}>
-                                {row.data?.tier || 'menudeo'}
-                             </span>
-                          </td>
+                          <td className="px-4 py-4 font-bold text-[#1D3146] text-sm">{row.data.name}</td>
+                          <td className="px-4 py-4 text-slate-500 text-sm">{row.data.phone || 'N/A'}</td>
                           <td className="px-4 py-4">
                              {row.is_valid ? (
                                 <div className="flex items-center gap-2">

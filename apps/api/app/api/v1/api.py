@@ -31,6 +31,7 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(balances.router, prefix="/balances", tags=["balances"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
-api_router.include_router(users.router, prefix="/me", tags=["me"])
+# Special mapping so /api/v1/me points to /api/v1/users/me implicitly 
+# or just allow the router to handle it at both levels.
+api_router.include_router(users.router, prefix="", tags=["users-me"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
- # Added /me as a shortcut too, although users.py has it too
