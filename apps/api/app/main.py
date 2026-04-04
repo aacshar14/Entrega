@@ -38,7 +38,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://entrega.space",
-        "https://*.entrega.space",
+        "https://app.entrega.space",
+        "https://api.entrega.space",
     ],
     allow_credentials=True,
     allow_methods=["*"],
