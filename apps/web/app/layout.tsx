@@ -16,11 +16,14 @@ import {
   Settings,
   ShieldCheck,
   TrendingUp,
-  Layout
+  Layout,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { Providers } from '../lib/context/providers';
 import { useTenant } from '../lib/context/tenant-context';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { createClient } from '../utils/supabase/client';
 
 const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -34,7 +37,15 @@ const menuItems = [
 
 function UI_Shell({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, activeTenant, activeRole, isLoading } = useTenant();
+  const [showUserMenu, setShowUserMenu] = React.useState(false);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   // 1. Protection for Owner-Only routes
   const isOwnerOnlyRoute = menuItems.find(i => i.href === pathname)?.ownerOnly;
@@ -144,18 +155,49 @@ function UI_Shell({ children }) {
                
                <div className="h-10 w-[1px] bg-slate-100"></div>
 
-               <div className="flex items-center gap-4 px-2 py-1 hover:bg-slate-50 rounded-xl transition-all cursor-pointer group">
-                  <div className="text-right">
-                     <p className="text-sm font-black text-[#1D3146] leading-none mb-1">{displayUser.name}</p>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{displayUser.role}</p>
+               <div className="relative">
+                  <div 
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-4 px-2 py-1 hover:bg-slate-50 rounded-xl transition-all cursor-pointer group"
+                  >
+                     <div className="text-right">
+                        <p className="text-sm font-black text-[#1D3146] leading-none mb-1">{displayUser.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{displayUser.role}</p>
+                     </div>
+                     <div className="relative">
+                       <div className="w-9 h-9 rounded-full bg-[#1D3146] flex items-center justify-center text-[#56CCF2] font-black text-xs border-2 border-slate-200 group-hover:border-[#56CCF2] transition-colors">
+                         {displayUser.name.charAt(0)}
+                       </div>
+                       <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-[0_0_8px_#56CCF2]"></span>
+                     </div>
+                     <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
                   </div>
-                  <div className="relative">
-                    <div className="w-9 h-9 rounded-full bg-[#1D3146] flex items-center justify-center text-[#56CCF2] font-black text-xs border-2 border-slate-200 group-hover:border-[#56CCF2] transition-colors">
-                      {displayUser.name.charAt(0)}
+
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-14 w-64 bg-white rounded-[2rem] shadow-2xl border border-slate-100 p-4 z-50 animate-in fade-in slide-in-from-top-4">
+                        <div className="p-4 bg-slate-50 rounded-2xl mb-4">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Empresa Activa</p>
+                           <p className="text-sm font-black text-[#1D3146]">{displayTenant.name}</p>
+                        </div>
+                        <div className="space-y-1">
+                           <Link 
+                             href="/settings"
+                             onClick={() => setShowUserMenu(false)}
+                             className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-[#56CCF2]/5 hover:text-[#56CCF2] rounded-xl transition-all"
+                           >
+                              <UserIcon size={18} />
+                              Mi Perfil
+                           </Link>
+                           <button 
+                             onClick={handleLogout}
+                             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                           >
+                              <LogOut size={18} />
+                              Cerrar Sesión
+                           </button>
+                        </div>
                     </div>
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-[0_0_8px_#56CCF2]"></span>
-                  </div>
-                  <ChevronDown size={14} className="text-slate-400" />
+                  )}
                </div>
             </div>
          </header>
