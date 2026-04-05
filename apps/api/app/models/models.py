@@ -7,42 +7,6 @@ from pydantic import BaseModel
 def get_utc_now():
     return datetime.now(timezone.utc)
 
-# --- Response & DTO Schemas (Top to avoid circular evaluation) ---
-
-class TenantInfo(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    logo_url: Optional[str] = None
-    status: str = "active"
-    onboarding_step: int = 1
-    business_whatsapp_number: Optional[str] = None
-    clients_imported: bool = False
-    stock_imported: bool = False
-    business_whatsapp_connected: bool = False
-    ready: bool = False
-    whatsapp_status: str = "disconnected"
-    whatsapp_display_number: Optional[str] = None
-    whatsapp_account_name: Optional[str] = None
-    whatsapp_app_id: Optional[str] = None
-    timezone: str = "UTC"
-    currency: str = "MXN"
-
-class MembershipInfo(BaseModel):
-    tenant: TenantInfo
-    role: str
-    is_default: bool
-
-class MeResponse(BaseModel):
-    user: "User"
-    active_tenant: Optional[TenantInfo] = None
-    memberships: List[MembershipInfo] = []
-
-class MessageCorrection(BaseModel):
-    intent: str
-    entities: dict
-    status: str = "corrected"
-
 # --- Database Tables (SQLModel) ---
 
 class Tenant(SQLModel, table=True):
@@ -263,3 +227,42 @@ class OnboardingEvent(SQLModel, table=True):
     metadata_json: Optional[str] = None
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=get_utc_now)
+
+# --- Response & DTO Schemas (Bottom to ensure all SQLModel classes are defined) ---
+
+class TenantInfo(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    logo_url: Optional[str] = None
+    status: str = "active"
+    onboarding_step: int = 1
+    business_whatsapp_number: Optional[str] = None
+    clients_imported: bool = False
+    stock_imported: bool = False
+    business_whatsapp_connected: bool = False
+    ready: bool = False
+    whatsapp_status: str = "disconnected"
+    whatsapp_display_number: Optional[str] = None
+    whatsapp_account_name: Optional[str] = None
+    whatsapp_app_id: Optional[str] = None
+    timezone: str = "UTC"
+    currency: str = "MXN"
+
+class MembershipInfo(BaseModel):
+    tenant: TenantInfo
+    role: str
+    is_default: bool
+
+class MeResponse(BaseModel):
+    user: User
+    active_tenant: Optional[TenantInfo] = None
+    memberships: List[MembershipInfo] = []
+
+class MessageCorrection(BaseModel):
+    intent: str
+    entities: dict
+    status: str = "corrected"
+
+# Force Pydantic v2 to rebuild models to resolve forward references
+MeResponse.model_rebuild()

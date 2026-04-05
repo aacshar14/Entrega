@@ -8,6 +8,7 @@ sqlalchemy==2.0.28
 sqlmodel==0.0.14
 psycopg2-binary==2.9.9
 python-jose[cryptography]==3.4.0
+cryptography==42.0.5
 supabase==2.4.1
 passlib[bcrypt]==1.7.4
 pyasn1==0.4.8
