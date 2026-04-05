@@ -65,6 +65,7 @@ jobs:
 
     # --- API Container ---
     - name: Build API
+      id: build-api
       run: |-
         docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
 
@@ -80,7 +81,7 @@ jobs:
 
     - name: Trivy Report API Image (Non-blocking HIGH)
       uses: aquasecurity/trivy-action@master
-      if: always()
+      if: always() && steps.build-api.outcome == 'success'
       with:
         image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
         format: 'sarif'
@@ -128,6 +129,7 @@ jobs:
 
     # --- Web Container ---
     - name: Build Web
+      id: build-web
       run: |-
         docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
           --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
@@ -147,7 +149,7 @@ jobs:
 
     - name: Trivy Report Web Image (Non-blocking HIGH)
       uses: aquasecurity/trivy-action@master
-      if: always()
+      if: always() && steps.build-web.outcome == 'success'
       with:
         image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
         format: 'sarif'

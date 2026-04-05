@@ -123,22 +123,25 @@ export default function PublicLanding() {
                     icon: Users, 
                     title: 'Formato Clientes (CSV)', 
                     desc: 'Plantilla estandarizada para cargar tu base de datos masivamente sin errores.',
-                    action: 'Descargar CSV'
+                    action: 'Descargar CSV',
+                    href: '/docs/customers-template'
                   },
                   { 
                     icon: Package, 
                     title: 'Control de Stock', 
                     desc: 'Estructura recomendada para sincronizar inventario inicial y precios.',
-                    action: 'Carga de CSV'
+                    action: 'Carga de CSV',
+                    href: '/docs/stock-template'
                   },
                   { 
                     icon: MessageCircle, 
                     title: 'WhatsApp Business', 
                     desc: 'Configuración paso a paso para conectar tu número oficial con Entrega.',
-                    action: 'Ver Tutorial'
+                    action: 'Ver Tutorial',
+                    href: '/docs/whatsapp-guide'
                   }
                ].map((card, i) => (
-                  <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-[#1D3146]/5 transition-all group cursor-pointer hover:-translate-y-2">
+                  <Link key={i} href={card.href} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-[#1D3146]/5 transition-all group cursor-pointer hover:-translate-y-2 block">
                      <div className="w-14 h-14 bg-[#1D3146] text-[#56CCF2] rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-[#1D3146]/20 group-hover:scale-110 transition-transform">
                         <card.icon size={28} />
                      </div>
@@ -147,7 +150,7 @@ export default function PublicLanding() {
                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#56CCF2] group-hover:gap-4 transition-all">
                         {card.action} <ChevronRight size={16} />
                      </div>
-                  </div>
+                  </Link>
                ))}
             </div>
             
