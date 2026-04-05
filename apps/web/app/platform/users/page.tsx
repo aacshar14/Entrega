@@ -37,6 +37,16 @@ export default function PlatformUsers() {
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const toggleUser = async (userId: string) => {
+    try {
+      await apiRequest(`admin/users/${userId}/toggle-active`, 'POST');
+      setUsers(users.map(u => u.id === userId ? { ...u, is_active: !u.is_active } : u));
+    } catch (err) {
+      console.error('Error toggling user:', err);
+      alert('Error al cambiar estado del usuario');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -108,17 +118,26 @@ export default function PlatformUsers() {
                    </div>
                 </td>
                 <td className="px-6 py-6">
-                   {u.is_active ? (
-                     <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold font-center">
-                        <UserCheck size={14} />
-                        Activo
-                     </div>
-                   ) : (
-                     <div className="flex items-center gap-2 text-rose-500 text-xs font-bold">
-                        <UserX size={14} />
-                        Baneado
-                     </div>
-                   )}
+                   <button 
+                    onClick={() => toggleUser(u.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      u.is_active 
+                        ? 'text-rose-600 bg-rose-50 hover:bg-rose-100' 
+                        : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                    }`}
+                   >
+                     {u.is_active ? (
+                       <>
+                         <UserX size={14} />
+                         Suspender
+                       </>
+                     ) : (
+                       <>
+                         <UserCheck size={14} />
+                         Reactivar
+                       </>
+                     )}
+                   </button>
                 </td>
                 <td className="pr-10 py-6 text-right">
                    <div className="flex items-center justify-end gap-2 text-xs text-slate-400 font-medium">

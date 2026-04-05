@@ -77,3 +77,41 @@ async def get_system_health(db: Session = Depends(get_session)):
         "timestamp": datetime.now(timezone.utc),
         "version": "1.1.0-alpha"
     }
+
+@router.patch("/users/{user_id}", dependencies=[Depends(require_platform_role(["admin"]))])
+async def update_global_user(
+    user_id: str,
+    full_name: str = None,
+    platform_role: str = None,
+    is_active: bool = None,
+    db: Session = Depends(get_session)
+):
+    """Platform Admin tool to modify any user profile globally."""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if full_name is not None:
+        user.full_name = full_name
+    if platform_role is not None:
+        user.platform_role = platform_role
+    if is_active is not None:
+        user.is_active = is_active
+        
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.post("/users/{user_id}/toggle-active", dependencies=[Depends(require_platform_role(["admin"]))])
+async def toggle_user_status(user_id: str, db: Session = Depends(get_session)):
+    """Quick toggle for account suspension (e.g. non-payment)."""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.is_active = not user.is_active
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"status": "success", "user_id": user_id, "is_active": user.is_active}
