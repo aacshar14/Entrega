@@ -7,6 +7,7 @@ from app.models.models import User, WhatsAppConfig
 from app.core.security import encrypt_token
 from app.core.logging import logger
 from datetime import datetime, timedelta, timezone
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel
 import httpx
@@ -66,13 +67,19 @@ async def exchange_meta_code(
             if payload.waba_id:
                 config.waba_id = payload.waba_id
             if payload.phone_number_id:
-                config.phone_number_id = payload.phone_number_id
+                config.meta_phone_number_id = payload.phone_number_id
             
             # 🛡️ Hardening: Encrypt token before storage
             config.encrypted_access_token = encrypt_token(short_token)
-            config.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
-            config.onboarding_status = "verified"
-            config.setup_completed = True
+            config.meta_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            
+            # 🛡️ Only mark as verified if both are present
+            if config.encrypted_access_token and config.meta_phone_number_id:
+                config.meta_onboarding_status = "verified"
+                config.setup_completed = True
+            else:
+                config.meta_onboarding_status = "authorized" # Missing phone_number_id info
+                config.setup_completed = False
             
             db.add(config)
             db.commit()

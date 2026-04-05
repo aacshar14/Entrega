@@ -21,7 +21,12 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     ).one() > 0
     
     # Check WhatsApp
-    has_wa = tenant.business_whatsapp_number is not None and len(tenant.business_whatsapp_number) > 5
+    from app.models.models import WhatsAppConfig
+    wa_config = db.exec(
+        select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == tenant.id)
+    ).first()
+    
+    has_wa = wa_config is not None and wa_config.meta_onboarding_status == "verified"
 
     return TenantInfo(
         id=tenant.id,
@@ -34,6 +39,9 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         clients_imported=has_customers,
         stock_imported=has_products,
         business_whatsapp_connected=has_wa,
+        whatsapp_status=wa_config.meta_onboarding_status if wa_config else "disconnected",
+        whatsapp_display_number=wa_config.display_phone_number if wa_config else None,
+        whatsapp_account_name=wa_config.whatsapp_business_account_name if wa_config else None,
         timezone=tenant.timezone,
         currency=tenant.currency,
         ready=has_customers and has_products # Business rule: customers + stock = ready

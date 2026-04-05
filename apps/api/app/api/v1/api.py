@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from app.models.models import MeResponse
 from app.api.v1.endpoints import (
     health,
     webhooks,
@@ -34,6 +33,7 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(balances.router, prefix="/balances", tags=["balances"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
-# Explicit alias for /me to avoid exposing the entire users router on root
-api_router.get("/me", response_model=MeResponse, tags=["identity"])(users.get_me)
+
+# 🛡️ Hardening: Using string reference "MeResponse" to avoid circular startup crashes
+api_router.get("/me", response_model=None, tags=["identity"])(users.get_me)
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])

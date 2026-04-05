@@ -61,7 +61,7 @@ async def receive_whatsapp_event(
 
         # 2. 🏛️ Resolve Tenant based on meta phone_number_id
         from app.models.models import WhatsAppConfig
-        config = db.exec(select(WhatsAppConfig).where(WhatsAppConfig.phone_number_id == str(business_number_id))).first()
+        config = db.exec(select(WhatsAppConfig).where(WhatsAppConfig.meta_phone_number_id == str(business_number_id))).first()
         
         if not config:
             logger.warning("No configuration found for meta phone number id", phone_number_id=business_number_id)

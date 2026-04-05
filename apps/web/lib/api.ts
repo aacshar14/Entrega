@@ -26,9 +26,11 @@ export async function apiRequest(
   const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
-  // Resolve token: provided (bootstrap) or from active session
+  // 🔐 Token Resolution: Prioritize injected token to avoid redundant session fetches
   let token = accessToken;
-  if (!token) {
+  
+  // Only attempt auto-discovery if no token is provided and we are in a browser context
+  if (!token && typeof window !== 'undefined') {
     const { data: { session } } = await createClient().auth.getSession();
     token = session?.access_token;
   }

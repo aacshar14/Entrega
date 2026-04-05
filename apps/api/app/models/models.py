@@ -47,14 +47,14 @@ class WhatsAppConfig(SQLModel, table=True):
     
     # Meta Identifiers
     waba_id: Optional[str] = Field(default=None, index=True)
-    phone_number_id: Optional[str] = Field(default=None, index=True)
+    meta_phone_number_id: Optional[str] = Field(default=None, index=True)
     display_phone_number: Optional[str] = None
     whatsapp_business_account_name: Optional[str] = None
     
     # Security & Lifecycle
     encrypted_access_token: Optional[str] = Field(default=None, description="AES-256 encrypted Meta Access Token")
-    token_expires_at: Optional[datetime] = None
-    onboarding_status: str = Field(default="pending", index=True) # 'pending', 'authorized', 'verified', 'failed'
+    meta_token_expires_at: Optional[datetime] = None
+    meta_onboarding_status: str = Field(default="pending", index=True) # 'pending', 'authorized', 'verified', 'failed'
     setup_completed: bool = Field(default=False)
     
     # Audit
