@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#EBEEF2]">
         <div className="flex flex-col items-center gap-6">
-          <Logo mode="dark" className="w-32 h-auto animate-pulse" />
+          <Logo variant="master" className="w-32 h-auto animate-pulse" />
           <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando Entrega...</p>
         </div>
       </div>
@@ -238,7 +238,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <div className="w-10 h-10 rounded-xl bg-[#56CCF2]/20 flex items-center justify-center border border-[#56CCF2]/30 shadow-inner">
                <Package size={22} className="text-[#56CCF2]" />
             </div>
-            <Logo mode="dark" className="w-32 h-auto ml-2" />
+            <Logo variant="master" className="w-32 h-auto ml-2" />
          </div>
          <div className="flex items-center gap-4">
             <div className="relative">
