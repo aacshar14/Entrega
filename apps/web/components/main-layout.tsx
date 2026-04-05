@@ -66,7 +66,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     { icon: Users, label: 'Clientes', href: '/customers', roles: ['admin', 'owner', 'operator'] },
     { icon: Package, label: 'Productos', href: '/products', roles: ['admin', 'owner'] },
     { icon: FileText, label: 'Reportes', href: '/reports', roles: ['admin', 'owner'] },
-    { icon: Zap, label: 'Learning Mode', href: '/learning', roles: ['admin'] },
+    { icon: ShieldCheck, label: 'Learning Mode', href: '/learning', roles: ['admin'] },
     { icon: ShieldCheck, label: 'Usuarios', href: '/users', roles: ['admin', 'owner'] },
     { icon: Settings, label: 'Configuración', href: '/settings', roles: ['admin', 'owner'] },
   ];
@@ -234,7 +234,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* HEADER (Mobile Only) */}
       <header className="md:hidden flex items-center justify-between px-6 h-20 bg-[#1D3146] text-white sticky top-0 z-[100] border-b border-white/10 shadow-lg">
          <div className="flex items-center gap-3">
-            <img src={activeTenant?.logo_url || '/chocobites.jpg'} className="w-10 h-10 rounded-xl border border-white/20 shadow-md" alt="Logo" />
+            <div className="w-10 h-10 rounded-xl bg-[#56CCF2]/20 flex items-center justify-center border border-[#56CCF2]/30 shadow-inner">
+               <Package size={22} className="text-[#56CCF2]" />
+            </div>
             <Logo mode="dark" className="w-32 h-auto ml-2" />
          </div>
          <div className="flex items-center gap-4">
