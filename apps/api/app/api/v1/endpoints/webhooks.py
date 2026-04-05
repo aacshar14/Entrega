@@ -53,32 +53,39 @@ async def receive_whatsapp_event(
         if not body:
             return {"status": "ignored_non_text"}
 
-        # 1. Resolve Tenant based on business_number_id or metadata
-        # For now, we assume the system knows which business number corresponds to which tenant
-        # In production, we'd have a mapping table or look up business_whatsapp_number
-        tenant = db.exec(select(Tenant).where(Tenant.business_whatsapp_number == business_number_id)).first()
+        # 1. 🛡️ Idempotency Check: Avoid reprocessing the same message
+        existing_msg = db.exec(select(WhatsAppMessage).where(WhatsAppMessage.message_sid == msg_id)).first()
+        if existing_msg:
+            logger.info("Message already processed, skipping duplicate", message_id=msg_id)
+            return {"status": "accepted_duplicate"}
+
+        # 2. 🏛️ Resolve Tenant based on meta phone_number_id
+        from app.models.models import WhatsAppConfig
+        config = db.exec(select(WhatsAppConfig).where(WhatsAppConfig.phone_number_id == str(business_number_id))).first()
+        
+        if not config:
+            logger.warning("No configuration found for meta phone number id", phone_number_id=business_number_id)
+            return {"status": "error", "detail": "Tenant not recognized"}
+
+        tenant = db.exec(select(Tenant).where(Tenant.id == config.tenant_id)).first()
         if not tenant:
-            # Fallback for pilot: look for first tenant if only one exists, or log as unknown
-            tenant = db.exec(select(Tenant)).first() 
+            return {"status": "error", "detail": "Tenant not found"}
 
-        # 2. Parsing Engine v1 (Learning First)
-        if tenant:
-            engine = ParsingEngine(db, tenant)
-            log = engine.parse_message(sender=from_number, raw_text=body)
-            # log.external_id = msg_id # Optional link
-            db.add(log)
-            db.commit()
-
-            # 3. Persist raw WhatsAppMessage model for history
-            new_msg = WhatsAppMessage(
-                tenant_id=tenant.id,
-                from_number=from_number,
-                message_sid=msg_id,
-                body=body,
-                raw_payload=json.dumps(payload)
-            )
-            db.add(new_msg)
-            db.commit()
+        # 3. 🧠 Parsing Engine v1 (Learning First)
+        engine = ParsingEngine(db, tenant)
+        log = engine.parse_message(sender=from_number, raw_text=body)
+        db.add(log)
+        
+        # 4. 🗄️ Persist raw WhatsAppMessage model for history & idempotency
+        new_msg = WhatsAppMessage(
+            tenant_id=tenant.id,
+            from_number=from_number,
+            message_sid=msg_id,
+            body=body,
+            raw_payload=json.dumps(payload)
+        )
+        db.add(new_msg)
+        db.commit()
 
         return {"status": "accepted"}
         

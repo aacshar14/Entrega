@@ -82,13 +82,16 @@ class WhatsAppConfig(SQLModel, table=True):
     tenant_id: UUID = Field(foreign_key="tenants.id", unique=True, index=True)
     
     # Meta Identifiers
-    waba_id: Optional[str] = None
-    phone_number_id: Optional[str] = None
+    waba_id: Optional[str] = Field(default=None, index=True)
+    phone_number_id: Optional[str] = Field(default=None, index=True)
     display_phone_number: Optional[str] = None
     whatsapp_business_account_name: Optional[str] = None
     
-    # Security
+    # Security & Lifecycle
     encrypted_access_token: Optional[str] = Field(default=None, description="AES-256 encrypted Meta Access Token")
+    token_expires_at: Optional[datetime] = None
+    onboarding_status: str = Field(default="pending", index=True) # 'pending', 'authorized', 'verified', 'failed'
+    setup_completed: bool = Field(default=False)
     
     # Audit
     connected_at: datetime = Field(default_factory=get_utc_now)
