@@ -126,7 +126,8 @@ async def get_current_user(
             public_key,
             algorithms=["ES256"],
             audience="authenticated",
-            issuer=expected_issuer
+            issuer=expected_issuer,
+            options={"leeway": 60} # Allow 60s of clock desync
         )
         
         if not payload:
