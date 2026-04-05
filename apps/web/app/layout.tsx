@@ -132,15 +132,10 @@ function UI_Shell({ children }) {
       {/* Sidebar (Desktop) */}
       <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-50 transition-colors duration-500`}>
         <div className="p-8 pb-12">
-            <div className="flex items-center gap-3">
-               <div className={`${isPlatformPath ? 'bg-amber-400' : 'bg-[#56CCF2]'} p-2 rounded-xl text-[#0F172A] transition-colors`}>
-                  <Zap size={24} fill="currentColor" />
-               </div>
-               <div>
-                  <h1 className="text-xl font-black tracking-tighter">Entrega</h1>
-                  {isPlatformPath && <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400 leading-none mt-1">Platform Admin</p>}
-               </div>
-            </div>
+            <Link href="/dashboard" className="flex flex-col items-center justify-center w-full gap-2">
+               <img src="/logo.png" alt="Entrega Logo" className="w-56 h-auto drop-shadow-2xl" style={{ pointerEvents: 'none' }} />
+               <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#56CCF2]/40 -mt-2">Branding Oficial v1.2</span>
+            </Link>
         </div>
 
         <nav className="flex-grow px-4 space-y-1">
