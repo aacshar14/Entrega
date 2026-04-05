@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './globals.css';
 import Link from 'next/link';
 import { 
@@ -18,14 +18,27 @@ import {
   TrendingUp,
   Layout,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  ArrowLeft,
+  Activity,
+  HeartPulse,
+  Coins
 } from 'lucide-react';
 import { Providers } from '../lib/context/providers';
 import { useTenant } from '../lib/context/tenant-context';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../utils/supabase/client';
+import { FEATURES } from '../config/feature-flags';
 
-const menuItems = [
+interface MenuItem {
+  icon: any;
+  label: string;
+  href: string;
+  ownerOnly?: boolean;
+  sreOnly?: boolean;
+}
+
+const tenantMenuItems: MenuItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Users, label: 'Clientes', href: '/customers' },
     { icon: Package, label: 'Inventario', href: '/stock' },
@@ -35,11 +48,23 @@ const menuItems = [
     { icon: FileText, label: 'Reportes', href: '/reports/weekly', ownerOnly: true },
 ];
 
+const platformMenuItems: MenuItem[] = [
+    { icon: Activity, label: 'Resumen', href: '/platform' },
+    { icon: Users, label: 'Tenants', href: '/platform/tenants' },
+    { icon: UserIcon, label: 'Usuarios', href: '/platform/users' },
+    { icon: HeartPulse, label: 'Salud', href: '/platform/health', sreOnly: true },
+    { icon: Coins, label: 'Costos', href: '/platform/costs', sreOnly: true },
+    { icon: Settings, label: 'Ajustes', href: '/platform/settings' },
+];
+
 function UI_Shell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, activeTenant, activeRole, isLoading } = useTenant();
-  const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const { user, activeTenant, activeRole, isLoading, clearTenant } = useTenant();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const isPlatformPath = pathname.startsWith('/platform');
+  const isAdmin = user?.platform_role === 'admin';
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -47,8 +72,20 @@ function UI_Shell({ children }) {
     router.push('/login');
   };
 
-  // 1. Protection for Owner-Only routes
-  const isOwnerOnlyRoute = menuItems.find(i => i.href === pathname)?.ownerOnly;
+  // 1. Protection for Platform routes
+  if (isPlatformPath && !isAdmin && !isLoading) {
+    router.replace('/dashboard');
+    return null;
+  }
+
+  // 1b. Feature Flag Check
+  if (isPlatformPath && !FEATURES.ENABLE_PLATFORM) {
+    router.replace('/dashboard');
+    return null;
+  }
+
+  // 2. Protection for Owner-Only routes
+  const isOwnerOnlyRoute = tenantMenuItems.find(i => i.href === pathname)?.ownerOnly;
   if (isOwnerOnlyRoute && activeRole !== 'owner' && !isLoading) {
     return null; // The Provider should have redirected, but as a shell gate: stay blank
   }
@@ -74,7 +111,7 @@ function UI_Shell({ children }) {
 
   // 4. Tenant Selection Guard
   const isTenantSetupPath = pathname.startsWith('/select-tenant') || pathname.startsWith('/onboarding');
-  if (!activeTenant && !isTenantSetupPath) {
+  if (!activeTenant && !isTenantSetupPath && !isPlatformPath) {
     // If authenticated but no active tenant, you can't be on dashboard/stock/etc.
     return null; 
   }
@@ -88,50 +125,81 @@ function UI_Shell({ children }) {
     name: activeTenant?.name || 'Seleccionar Negocio'
   };
 
+  const currentMenu = isPlatformPath ? platformMenuItems : tenantMenuItems;
+
   return (
     <div className="flex min-h-screen bg-[#EBEEF2] font-sans antialiased text-slate-900">
       {/* Sidebar (Desktop) */}
-      <aside className="fixed inset-y-0 left-0 w-64 bg-[#1D3146] text-white flex flex-col z-50">
+      <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-50 transition-colors duration-500`}>
         <div className="p-8 pb-12">
             <div className="flex items-center gap-3">
-               <div className="bg-[#56CCF2] p-2 rounded-xl text-[#1D3146]">
+               <div className={`${isPlatformPath ? 'bg-amber-400' : 'bg-[#56CCF2]'} p-2 rounded-xl text-[#0F172A] transition-colors`}>
                   <Zap size={24} fill="currentColor" />
                </div>
-               <h1 className="text-xl font-black tracking-tighter">EntréGA</h1>
+               <div>
+                  <h1 className="text-xl font-black tracking-tighter">EntréGA</h1>
+                  {isPlatformPath && <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400 leading-none mt-1">Platform Admin</p>}
+               </div>
             </div>
         </div>
 
         <nav className="flex-grow px-4 space-y-1">
-          {menuItems
-            .filter(item => !item.ownerOnly || activeRole === 'owner')
+          {currentMenu
+            .filter(item => (!item.ownerOnly || activeRole === 'owner') && (!item.sreOnly || FEATURES.ENABLE_SRE))
             .map((item) => {
               const isActive = pathname === item.href;
+              const activeColor = isPlatformPath ? 'bg-amber-400 text-[#0F172A]' : 'bg-[#56CCF2] text-[#1D3146]';
+              const hoverColor = isPlatformPath ? 'hover:text-amber-400' : 'hover:text-[#56CCF2]';
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-sm group ${
-                    isActive ? 'bg-[#56CCF2] text-[#1D3146] shadow-lg shadow-[#56CCF2]/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    isActive ? `${activeColor} shadow-lg` : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  <item.icon size={20} className={isActive ? 'text-[#1D3146]' : 'text-slate-500 group-hover:text-[#56CCF2]'} />
+                  <item.icon size={20} className={isActive ? '' : `text-slate-500 group-${hoverColor}`} />
                   {item.label}
                 </Link>
               );
             })}
         </nav>
 
-        <Link href="/settings" className="p-8 border-t border-white/5 hover:bg-white/5 transition-all block cursor-pointer">
-           <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                 <Settings size={20} className="text-[#56CCF2]" />
-              </div>
-              <div>
-                 <p className="text-xs font-black text-white/50 uppercase tracking-widest leading-none mb-1">Configuración</p>
-                 <p className="text-xs font-bold text-white">Panel Central</p>
+        {isPlatformPath ? (
+           <div className="p-8 border-t border-white/5">
+              <div className="bg-white/5 rounded-2xl p-4">
+                 <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">Status Global</p>
+                 <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <p className="text-xs font-bold">API Operativa</p>
+                 </div>
               </div>
            </div>
-        </Link>
+        ) : (
+           <>
+              {isAdmin && (
+                 <button 
+                  onClick={clearTenant}
+                  className="mx-4 mb-2 flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 group"
+                 >
+                    <ArrowLeft size={16} />
+                    Regresar a Plataforma
+                 </button>
+              )}
+              <Link href="/settings" className="p-8 border-t border-white/5 hover:bg-white/5 transition-all block cursor-pointer">
+                 <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                       <Settings size={20} className="text-[#56CCF2]" />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-white/50 uppercase tracking-widest leading-none mb-1">Configuración</p>
+                       <p className="text-xs font-bold text-white">Panel Central</p>
+                    </div>
+                 </div>
+              </Link>
+           </>
+        )}
       </aside>
 
       {/* Main Content Area */}
@@ -139,12 +207,16 @@ function UI_Shell({ children }) {
          {/* Top Header */}
          <header className="h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-4">
-               <div className="bg-[#56CCF2]/20 px-3 py-1 rounded-full flex items-center gap-2">
-                  <ShieldCheck size={14} className="text-[#56CCF2]" />
-                  <span className="text-[10px] font-black uppercase text-[#1D3146] tracking-tighter">Premium Enterprise</span>
+               <div className={`${isPlatformPath ? 'bg-amber-100' : 'bg-[#56CCF2]/20'} px-3 py-1 rounded-full flex items-center gap-2 transition-colors`}>
+                  <ShieldCheck size={14} className={isPlatformPath ? 'text-amber-600' : 'text-[#56CCF2]'} />
+                  <span className={`text-[10px] font-black uppercase ${isPlatformPath ? 'text-amber-900' : 'text-[#1D3146]'} tracking-tighter`}>
+                    {isPlatformPath ? 'Infra Administration' : 'Premium Enterprise'}
+                  </span>
                </div>
                <span className="text-slate-400 text-sm font-medium">/</span>
-               <h2 className="text-sm font-black text-[#1D3146] uppercase tracking-widest">{displayTenant.name}</h2>
+               <h2 className="text-sm font-black text-[#1D3146] uppercase tracking-widest">
+                  {isPlatformPath ? 'Global Control' : displayTenant.name}
+               </h2>
             </div>
             
             <div className="flex items-center gap-6">

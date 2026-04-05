@@ -45,6 +45,7 @@ interface TenantContextType {
   memberships: Membership[];
   isLoading: boolean;
   switchTenant: (tenantId: string) => void;
+  clearTenant: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -63,6 +64,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTenantId, setActiveTenantId] = useState<string | null>(null);
+  const [isTenantEntryExplicit, setIsTenantEntryExplicit] = useState(false);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -74,6 +76,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setActiveRole(null);
     setMemberships([]);
     setActiveTenantId(null);
+    setIsTenantEntryExplicit(false);
   }, []);
 
   const fetchContext = useCallback(async (overrideId?: string, accessToken?: string) => {
@@ -98,33 +101,48 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       }
 
       // --- ROUTING ENGINE ---
-      const isPublic = ['/landing', '/login', '/'].includes(pathname);
-      const isOnboarding = pathname.startsWith('/onboarding');
-      const isSelector = pathname.startsWith('/select-tenant');
-
+      const isPublic = ['/landing', '/login', '/', '/select-tenant'].includes(pathname);
+      const isPlatformArea = pathname.startsWith('/platform');
+      
       if (!data.user) return; // Wait for session
 
-      // Rule 1: No tenants found -> Force Onboarding
-      if (mCount === 0 && !isPublic && !isOnboarding) {
-        router.replace('/onboarding');
-      } 
-      // Rule 2: Multi-tenant Admin with no selection -> Force Selector
-      else if (isAdmin && mCount > 1 && !targetId && !isSelector && !isPublic) {
-        router.replace('/select-tenant');
-      }
-      // Rule 3: Single context management (Onboarding vs Dashboard)
-      else if (data.active_tenant) {
-        const isReady = data.active_tenant.ready;
-        if (!isReady && !isPublic && !isSelector && !isOnboarding) {
-          router.replace('/onboarding');
-        } else if (isReady && (isOnboarding || pathname === '/' || pathname === '/login')) {
-          router.replace('/dashboard');
+      // A. PLATFORM ADMIN FLOW
+      if (isAdmin) {
+        // If an admin land on Login/Root, take them to Platform
+        if (pathname === '/login' || pathname === '/') {
+          router.replace('/platform');
+          return;
+        }
+        
+        // If they chose a tenant, allow dashboard flow
+        if (overrideId || (activeTenantId && isTenantEntryExplicit)) {
+           // Allow regular ready-redirects below
+        } else if (!isPlatformArea && !isPublic) {
+           // If they are deep in a tenant route but didn't come from an explicit entry, 
+           // and they are an admin, redirect them back to platform overview
+           // unless it's a direct browser load with a tenant context already active
+           if (!data.active_tenant && !isPlatformArea) {
+              router.replace('/platform');
+              return;
+           }
         }
       }
-      
-      // Safety: Handle root landing redirect
-      if (pathname === '/' && data.active_tenant) {
-         router.replace(data.active_tenant.ready ? '/dashboard' : '/onboarding');
+
+      // B. REGULAR TENANT USER / ADMIN IN TENANT FLOW
+      const isOnboarding = pathname.startsWith('/onboarding');
+
+      // Rule 1: No tenants found -> Force Onboarding
+      if (mCount === 0 && !isPublic && !isOnboarding && !isPlatformArea) {
+        router.replace('/onboarding');
+      } 
+      // Rule 2: Tenant selected
+      else if (data.active_tenant) {
+        const isReady = data.active_tenant.ready;
+        if (!isReady && !isPublic && !isOnboarding && !isPlatformArea) {
+          router.replace('/onboarding');
+        } else if (isReady && (isOnboarding || pathname === '/' || pathname === '/login')) {
+          router.replace(isAdmin ? '/platform' : '/dashboard');
+        }
       }
     } catch (error: any) {
       if (error.status === 401 || error.status === 403) {
@@ -136,7 +154,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTenantId, pathname, router, handleManualLogout]);
+  }, [activeTenantId, pathname, router, handleManualLogout, isTenantEntryExplicit]);
 
   // Ref guard to prevent double-bootstrap in concurrent re-renders
   const authIsReady = React.useRef(false);
@@ -172,16 +190,25 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase, fetchContext, handleManualLogout, pathname, router]);
 
-  const switchTenant = (tenantId: string) => {
+  const switchTenant = useCallback((tenantId: string) => {
     setIsLoading(true);
     setActiveTenantId(tenantId);
+    setIsTenantEntryExplicit(true);
     fetchContext(tenantId);
-  };
+  }, [fetchContext]);
+
+  const clearTenant = useCallback(() => {
+    setActiveTenantId(null);
+    setActiveTenant(null);
+    setActiveRole(null);
+    setIsTenantEntryExplicit(false);
+    router.push('/platform');
+  }, [router]);
 
   return (
     <TenantContext.Provider value={{ 
       user, activeTenant, activeRole, memberships, isLoading, 
-      switchTenant, refreshUser: () => fetchContext() 
+      switchTenant, clearTenant, refreshUser: () => fetchContext() 
     }}>
       {children}
       <SessionTimeout user={user} onLogout={handleManualLogout} />
