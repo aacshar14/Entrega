@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import Logo from '@/components/logo';
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
@@ -134,8 +135,8 @@ export default function OnboardingPage() {
       
       {/* Header */}
       <div className="flex flex-col items-center gap-4 py-8">
-         <div className="bg-[#1D3146] p-4 rounded-3xl shadow-xl rotate-[-6deg]">
-            <Zap className="text-[#56CCF2] w-8 h-8" fill="currentColor" />
+         <div className="bg-[#1D3146] p-4 rounded-3xl shadow-xl rotate-[-6deg] hover:rotate-0 transition-transform duration-500">
+            <Logo variant="master" className="w-10 h-10" />
          </div>
          <div className="text-center">
             <h1 className="text-2xl font-black text-[#1D3146] tracking-tighter italic">Entrega Academy</h1>
