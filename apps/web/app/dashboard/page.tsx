@@ -70,7 +70,7 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <div className="mb-2">
          <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">{data.welcome_message}</h1>
-         <p className="text-slate-500 font-medium italic mt-1">Hoy en {data.business_name || 'EntréGA'}</p>
+         <p className="text-slate-500 font-medium italic mt-1">Hoy en {data.business_name || 'Entrega'}</p>
       </div>
 
       {/* 4 Cards Principales */}

@@ -1,8 +1,8 @@
-![EntréGA Banner](docs/assets/banner.png)
+![Entrega Banner](docs/assets/banner.png)
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/lucide-react/lucide/main/icons/zap.svg" width="48" height="48" />
-  <h1><b>EntréGA</b></h1>
+  <h1><b>Entrega</b></h1>
   <p><i>Tu operación de entrega en piloto automático.</i></p>
   
   <p>
@@ -14,9 +14,9 @@
 ---
 
 ## ⚡ El Concepto
-**EntréGA** es una plataforma logística de nueva generación diseñada para profesionalizar pequeñas flotas y negocios en crecimiento. Nacida del caos de los grupos de WhatsApp y las hojas de cálculo, EntréGA centraliza pedidos, clientes y stock en una experiencia **mobile-first** de alto nivel.
+**Entrega** es una plataforma logística de nueva generación diseñada para profesionalizar pequeñas flotas y negocios en crecimiento. Nacida del caos de los grupos de WhatsApp y las hojas de cálculo, Entrega centraliza pedidos, clientes y stock en una experiencia **mobile-first** de alto nivel.
 
-## 🛠️ Tech Stack Universo EntréGA
+## 🛠️ Tech Stack Universo Entrega
 
 | Capa | Tecnologías |
 | :--- | :--- |
@@ -29,7 +29,7 @@
 ---
 
 ## 🏰 Arquitectura: Doble Superficie
-EntréGA opera bajo un modelo de **Split Arquitectónico** que separa la gestión de infraestructura de las operaciones del negocio.
+Entrega opera bajo un modelo de **Split Arquitectónico** que separa la gestión de infraestructura de las operaciones del negocio.
 
 ```mermaid
 graph TD

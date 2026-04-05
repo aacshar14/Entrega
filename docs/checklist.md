@@ -1,4 +1,4 @@
-# 🚀 EntréGA V1.1 - Lanzamiento Pilot (ChocoBites)
+# 🚀 Entrega V1.1 - Lanzamiento Pilot (ChocoBites)
 
 Este checklist detalla los pasos críticos para movernos del desarrollo local (Docker) a la infraestructura real de producción.
 

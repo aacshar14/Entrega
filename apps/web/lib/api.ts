@@ -8,7 +8,7 @@ function sleep(ms: number) {
 }
 
 /**
- * EntréGA API Client
+ * Entrega API Client
  * 
  * Standardized request utility with:
  * - Automatic absolute URL resolution

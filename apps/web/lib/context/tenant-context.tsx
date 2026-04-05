@@ -52,7 +52,7 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 /**
- * EntréGA Multi-Tenant Context Provider
+ * Entrega Multi-Tenant Context Provider
  * 
  * Manages the global state for the signed-in user and their active tenant context.
  * Performs automatic identity resolution and routing logic on boot.

@@ -134,7 +134,7 @@ export default function LearningDashboard() {
                <div className="bg-[#1D3146] p-2 rounded-xl text-[#56CCF2]">
                   <Zap size={24} fill="currentColor" />
                </div>
-               EntréGA AI: Intelligence Mode
+               Entrega AI: Intelligence Mode
             </h2>
             <p className="text-sm text-slate-500 font-medium italic underline decoration-[#56CCF2]/30">Entrenando el parsing engine con lenguaje real de {activeTenant?.name}.</p>
          </div>

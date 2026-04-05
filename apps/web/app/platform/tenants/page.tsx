@@ -35,7 +35,7 @@ export default function PlatformTenants() {
              Tenant Registry
           </h1>
           <p className="text-slate-500 mt-1 font-medium italic">
-             {memberships.length} negocios registrados en el ecosistema EntréGA.
+             {memberships.length} negocios registrados en el ecosistema Entrega.
           </p>
         </div>
         

@@ -1,6 +1,6 @@
 {
-  "name": "EntréGA ChocoBites",
-  "short_name": "EntréGA",
+  "name": "Entrega ChocoBites",
+  "short_name": "Entrega",
   "description": "Gestión operativa inteligente para ChocoBites.",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -1,11 +1,11 @@
-# 🏢 EntréGA Tenant Wiki
+# 🏢 Entrega Tenant Wiki
 
 ## Multi-Tenant Architecture (V1.1)
 
-EntréGA follows an **Isolated Workspace** model where data is strictly partitioned by `tenant_id`. Every analytical, financial, and inventory record is scoped to its specific business identity.
+Entrega follows an **Isolated Workspace** model where data is strictly partitioned by `tenant_id`. Every analytical, financial, and inventory record is scoped to its specific business identity.
 
 ### 👥 Global Accounts vs. Tenant Memberships
-Users in EntréGA have two distinct identity layers:
+Users in Entrega have two distinct identity layers:
 1.  **Platform Identity**: Your global profile (email, name, platform_role).
 2.  **Tenant Memberships**: Your specific role within a business (owner, operator).
 

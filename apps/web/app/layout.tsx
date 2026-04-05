@@ -137,7 +137,7 @@ function UI_Shell({ children }) {
                   <Zap size={24} fill="currentColor" />
                </div>
                <div>
-                  <h1 className="text-xl font-black tracking-tighter">EntréGA</h1>
+                  <h1 className="text-xl font-black tracking-tighter">Entrega</h1>
                   {isPlatformPath && <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400 leading-none mt-1">Platform Admin</p>}
                </div>
             </div>

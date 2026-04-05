@@ -28,7 +28,7 @@ export default function MorePage() {
   ];
 
   const appItems = [
-    { icon: HelpCircle, label: 'Ayuda y Soporte', sub: 'Guías de uso de EntréGA', href: '/docs' },
+    { icon: HelpCircle, label: 'Ayuda y Soporte', sub: 'Guías de uso de Entrega', href: '/docs' },
     { icon: Database, label: 'Sincronizar Datos', sub: 'Forzar refresco de red', href: '#' },
     { icon: Bell, label: 'Notificaciones', sub: 'Alertas y WhatsApp', href: '#' },
   ];
@@ -97,7 +97,7 @@ export default function MorePage() {
             <LogOut size={20} />
             Cerrar Sesión
          </button>
-         <p className="text-center text-[10px] text-slate-300 font-bold mt-8 uppercase tracking-[0.2em]">EntréGA Pilot v1.1.0 • ChocoBites Space</p>
+         <p className="text-center text-[10px] text-slate-300 font-bold mt-8 uppercase tracking-[0.2em]">Entrega Pilot v1.1.0 • ChocoBites Space</p>
       </section>
 
     </div>

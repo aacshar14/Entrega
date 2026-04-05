@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className="min-h-screen flex items-center justify-center bg-[#EBEEF2]">
         <div className="flex flex-col items-center gap-4">
           <Zap className="w-10 h-10 text-[#56CCF2] animate-pulse" />
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Cargando EntréGA...</p>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Cargando Entrega...</p>
         </div>
       </div>
     );
@@ -148,7 +148,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <div className="bg-[#56CCF2] p-1.5 rounded-lg shadow-lg rotate-[-12deg]">
                 <Zap className="w-6 h-6 text-white" fill="white" /> 
               </div>
-              <h1 className="text-2xl font-black italic tracking-tighter text-white">EntréGA</h1>
+              <h1 className="text-2xl font-black italic tracking-tighter text-white">Entrega</h1>
            </div>
            
            {/* TENANT SWITCHER */}
@@ -239,7 +239,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <img src={activeTenant?.logo_url || '/chocobites.jpg'} className="w-10 h-10 rounded-xl border border-white/20 shadow-md" alt="Logo" />
             <div>
                <p className="text-xs font-black text-[#56CCF2] uppercase tracking-tighter leading-none mb-0.5">{activeTenant?.name}</p>
-               <h1 className="text-lg font-bold leading-none tracking-tight">EntréGA</h1>
+               <h1 className="text-lg font-bold leading-none tracking-tight">Entrega</h1>
             </div>
          </div>
          <div className="flex items-center gap-4">

@@ -48,7 +48,7 @@ export default function PlatformHealth() {
              <HeartPulse className="text-emerald-500" size={32} />
              System Health
           </h1>
-          <p className="text-slate-500 mt-1 font-medium">Estado en tiempo real de los servicios críticos de EntréGA.</p>
+          <p className="text-slate-500 mt-1 font-medium">Estado en tiempo real de los servicios críticos de Entrega.</p>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
            <div className={`w-3 h-3 rounded-full ${healthData?.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>

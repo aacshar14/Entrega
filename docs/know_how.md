@@ -1,4 +1,4 @@
-# Know How - EntréGA App
+# Know How - Entrega App
 
 Este documento recopila guías y formatos estándar para el uso de la aplicación por parte de los tenants y operadores.
 

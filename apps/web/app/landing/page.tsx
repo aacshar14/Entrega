@@ -28,7 +28,7 @@ export default function PublicLanding() {
                <div className="bg-[#1D3146] p-2 rounded-xl rotate-[-6deg] shadow-lg shadow-[#1D3146]/20">
                   <Zap className="text-[#56CCF2] w-5 h-5" fill="currentColor" />
                </div>
-               <span className="text-2xl font-black italic tracking-tighter">EntréGA</span>
+               <span className="text-2xl font-black italic tracking-tighter">Entrega</span>
             </div>
             
             <nav className="hidden md:flex items-center gap-10">
@@ -63,7 +63,7 @@ export default function PublicLanding() {
                </h1>
                
                <p className="text-lg md:text-xl text-slate-500 font-medium max-w-2xl leading-relaxed">
-                  EntréGA centraliza tus pedidos, clientes y stock en una experiencia <span className="text-[#1D3146] font-bold">mobile-first</span> diseñada para el mundo real. Olvida el caos de WhatsApp y las hojas de cálculo.
+                  Entrega centraliza tus pedidos, clientes y stock en una experiencia <span className="text-[#1D3146] font-bold">mobile-first</span> diseñada para el mundo real. Olvida el caos de WhatsApp y las hojas de cálculo.
                </p>
                
                <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -109,7 +109,7 @@ export default function PublicLanding() {
          <div className="max-w-7xl mx-auto px-6">
             <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#56CCF2]">Onboarding Academy</h2>
-               <h3 className="text-4xl md:text-5xl font-black tracking-tight italic">EntréGA Academy: Tu formación operativa.</h3>
+               <h3 className="text-4xl md:text-5xl font-black tracking-tight italic">Entrega Academy: Tu formación operativa.</h3>
                <p className="text-slate-500 font-medium italic">Accede a las lecciones tácticas y recursos que usamos para activar ChocoBites.</p>
             </div>
             
@@ -130,7 +130,7 @@ export default function PublicLanding() {
                   { 
                     icon: MessageCircle, 
                     title: 'WhatsApp Business', 
-                    desc: 'Configuración paso a paso para conectar tu número oficial con EntréGA.',
+                    desc: 'Configuración paso a paso para conectar tu número oficial con Entrega.',
                     action: 'Ver Tutorial'
                   }
                ].map((card, i) => (
@@ -172,7 +172,7 @@ export default function PublicLanding() {
          <div className="max-w-4xl mx-auto px-6 text-center space-y-10">
             <Smartphone className="mx-auto text-slate-200" size={64} strokeWidth={1} />
             <h3 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Digitaliza tu pequeña flota, <span className="text-[#56CCF2]">profesionaliza</span> tu marca.</h3>
-            <p className="text-lg text-slate-500 font-medium italic">"EntréGA nació para darle a los que entregan el poder de las grandes logísticas."</p>
+            <p className="text-lg text-slate-500 font-medium italic">"Entrega nació para darle a los que entregan el poder de las grandes logísticas."</p>
          </div>
       </section>
 
@@ -180,7 +180,7 @@ export default function PublicLanding() {
       <footer className="py-20 px-6 bg-[#1D3146] text-white overflow-hidden relative">
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
-               <h3 className="text-4xl font-black tracking-tighter italic">EntréGA</h3>
+               <h3 className="text-4xl font-black tracking-tighter italic">Entrega</h3>
                <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
             </div>
             

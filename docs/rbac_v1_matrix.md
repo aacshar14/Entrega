@@ -1,6 +1,6 @@
-# Matriz de Permisos RBAC V1 - EntréGA (ChocoBites)
+# Matriz de Permisos RBAC V1 - Entrega (ChocoBites)
 
-Este documento detalla la implementación de Control de Acceso Basado en Roles (RBAC) para la versión 1 de EntréGA, enfocada en el tenant piloto ChocoBites.
+Este documento detalla la implementación de Control de Acceso Basado en Roles (RBAC) para la versión 1 de Entrega, enfocada en el tenant piloto ChocoBites.
 
 ## Roles Definidos
 

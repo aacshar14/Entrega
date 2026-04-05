@@ -138,7 +138,7 @@ export default function OnboardingPage() {
             <Zap className="text-[#56CCF2] w-8 h-8" fill="currentColor" />
          </div>
          <div className="text-center">
-            <h1 className="text-2xl font-black text-[#1D3146] tracking-tighter italic">EntréGA Academy</h1>
+            <h1 className="text-2xl font-black text-[#1D3146] tracking-tighter italic">Entrega Academy</h1>
             <p className="text-xs text-[#56CCF2] font-black uppercase tracking-[0.2em] mt-1">Programa de Activación {currentBusinessName}</p>
          </div>
       </div>
@@ -406,7 +406,7 @@ export default function OnboardingPage() {
                      <CheckCircle2 size={48} strokeWidth={3} />
                   </div>
                   <h2 className="text-3xl font-black text-white mb-2 tracking-tight">¡Graduado!</h2>
-                  <p className="text-[#56CCF2] text-sm font-black uppercase tracking-[0.2em] mb-10">Has completado la EntréGA Academy</p>
+                  <p className="text-[#56CCF2] text-sm font-black uppercase tracking-[0.2em] mb-10">Has completado la Entrega Academy</p>
                   
                   <div className="w-full space-y-3 mb-12">
                      <div className={`flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 ${activeTenant?.clients_imported ? 'opacity-100' : 'opacity-40'}`}>
@@ -435,7 +435,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <div className="py-8 text-center">
-         <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em]">EntréGA Onboarding Academy © 2026</p>
+         <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em]">Entrega Onboarding Academy © 2026</p>
       </div>
 
     </div>
