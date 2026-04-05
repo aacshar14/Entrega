@@ -15,12 +15,18 @@ import {
   ChevronRight,
   PlusCircle
 } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
 
 export default function OperationsPage() {
   const [tab, setTab] = useState<'delivery' | 'payment'>('delivery');
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
+  // Data for selects
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+
   // States for delivery
   const [clientId, setClientId] = useState('');
   const [items, setItems] = useState([{ productId: '', quantity: 1 }]);
@@ -29,15 +35,73 @@ export default function OperationsPage() {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
 
+  useEffect(() => {
+    async function loadResources() {
+      try {
+        const [custData, prodData] = await Promise.all([
+          apiRequest('customers', 'GET'),
+          apiRequest('products/stock', 'GET')
+        ]);
+        setCustomers(custData);
+        setProducts(prodData);
+      } catch (err) {
+        console.error('Error loading operational resources:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadResources();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setSubmitting(false);
+    
+    try {
+      if (tab === 'delivery') {
+        // Create manual movements for each item
+        const promises = items.map(item => 
+          apiRequest('movements/manual', 'POST', {
+            product_id: item.productId,
+            quantity: -Math.abs(item.quantity || 1), // Deduction
+            type: 'delivery',
+            customer_id: clientId,
+            description: 'Entrega registrada via Operaciones'
+          })
+        );
+        await Promise.all(promises);
+      } else {
+        // Create payment
+        await apiRequest('payments/', 'POST', {
+          customer_id: clientId,
+          amount: parseFloat(amount),
+          method: method
+        });
+      }
+      
       setSuccess(true);
-    }, 1500);
+    } catch (err) {
+      console.error('Operation failed:', err);
+      alert('Error al registrar operación');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const updateItem = (index: number, field: string, value: any) => {
+    const newItems = [...items];
+    (newItems[index] as any)[field] = value;
+    setItems(newItems);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-40 flex flex-col items-center justify-center gap-4">
+         <Loader2 className="animate-spin text-[#1D3146]" size={40} />
+         <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Cargando Recursos Operativos...</p>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -46,7 +110,7 @@ export default function OperationsPage() {
             <CheckCircle2 className="text-emerald-500" size={48} />
          </div>
          <h1 className="text-3xl font-black text-[#1D3146] mb-4">¡Hecho!</h1>
-         <p className="text-slate-500 font-medium mb-10">La operación se ha registrado correctamente en ChocoBites.</p>
+         <p className="text-slate-500 font-medium mb-10">La operación se ha registrado correctamente y sincronizado en tiempo real.</p>
          <button 
            onClick={() => { setSuccess(false); setClientId(''); setAmount(''); setItems([{ productId: '', quantity: 1 }]); }}
            className="w-full py-5 bg-[#1D3146] text-white font-bold rounded-3xl hover:bg-[#2B4764] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#1D3146]/20"
@@ -67,7 +131,7 @@ export default function OperationsPage() {
          </div>
          <div>
             <h1 className="text-2xl font-black text-[#1D3146] tracking-tight">Nueva Operación</h1>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Canal de Ventas ChocoBites</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Canal de Ventas Entrega</p>
          </div>
       </div>
 
@@ -118,9 +182,9 @@ export default function OperationsPage() {
                    className="w-full h-14 pl-4 pr-10 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none appearance-none"
                  >
                    <option value="">Selecciona un cliente...</option>
-                   <option value="1">Ana Lopez</option>
-                   <option value="2">Carlos Perez</option>
-                   <option value="3">Luis Garcia</option>
+                   {customers.map(c => (
+                     <option key={c.id} value={c.id}>{c.name}</option>
+                   ))}
                  </select>
                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-400" size={18} />
                </div>
@@ -145,18 +209,50 @@ export default function OperationsPage() {
                      <div key={i} className="flex gap-4 items-end animate-in fade-in zoom-in duration-300">
                         <div className="flex-grow space-y-2">
                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Producto</label>
-                           <select aria-label="Seleccionar Producto" className="w-full h-14 pl-4 bg-[#EBEEF2] border-none rounded-2xl text-xs font-bold text-[#1D3146] outline-none appearance-none">
-                              <option>Barra ChocoBites 70%</option>
-                              <option>Trufas Mix</option>
-                              <option>Brownie Mini</option>
-                           </select>
+                           <div className="relative">
+                            <select 
+                              required
+                              value={item.productId}
+                              onChange={(e) => updateItem(i, 'productId', e.target.value)}
+                              aria-label="Seleccionar Producto" 
+                              className="w-full h-14 pl-4 pr-10 bg-[#EBEEF2] border-none rounded-2xl text-xs font-bold text-[#1D3146] outline-none appearance-none"
+                            >
+                               <option value="">Seleccionar...</option>
+                               {products.map(p => (
+                                 <option key={p.id} value={p.id}>{p.name} ({p.quantity} en stock)</option>
+                               ))}
+                            </select>
+                            <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-400" size={14} />
+                           </div>
                         </div>
                         <div className="w-28 space-y-2">
                            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Cantidad</label>
                            <div className="flex items-center h-14 bg-[#EBEEF2] rounded-2xl overflow-hidden px-2">
-                              <button type="button" className="p-1 text-slate-400 hover:text-[#1D3146]" aria-label="Disminuir cantidad" title="Disminuir"><Minus size={16} /></button>
-                              <input type="number" defaultValue={1} aria-label="Cantidad" className="w-full text-center bg-transparent font-black text-[#1D3146] outline-none border-none text-sm pointer-events-none" />
-                              <button type="button" className="p-1 text-slate-400 hover:text-[#1D3146]" aria-label="Aumentar cantidad" title="Aumentar"><Plus size={16} /></button>
+                              <button 
+                                type="button" 
+                                onClick={() => updateItem(i, 'quantity', Math.max(1, item.quantity - 1))}
+                                className="p-1 text-slate-400 hover:text-[#1D3146]" 
+                                aria-label="Disminuir cantidad" 
+                                title="Disminuir"
+                              >
+                                <Minus size={16} />
+                              </button>
+                              <input 
+                                type="number" 
+                                value={item.quantity} 
+                                readOnly
+                                aria-label="Cantidad" 
+                                className="w-full text-center bg-transparent font-black text-[#1D3146] outline-none border-none text-sm pointer-events-none" 
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => updateItem(i, 'quantity', item.quantity + 1)}
+                                className="p-1 text-slate-400 hover:text-[#1D3146]" 
+                                aria-label="Aumentar cantidad" 
+                                title="Aumentar"
+                              >
+                                <Plus size={16} />
+                              </button>
                            </div>
                         </div>
                         <button type="button" onClick={() => { if(items.length > 1) setItems(items.filter((_, idx) => idx !== i)) }} className="mb-3 text-rose-500 opacity-40 hover:opacity-100 transition-opacity" aria-label="Eliminar fila" title="Eliminar"><Minus size={20} /></button>
@@ -177,6 +273,7 @@ export default function OperationsPage() {
                      <input 
                         type="number" 
                         placeholder="0.00"
+                        required
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="w-full h-14 px-6 bg-[#EBEEF2] border-none rounded-2xl text-xl font-black text-[#1D3146] outline-none placeholder:text-slate-300" 
@@ -184,11 +281,19 @@ export default function OperationsPage() {
                   </div>
                   <div className="space-y-2">
                      <label className="text-sm font-bold text-[#1D3146]">Método</label>
-                     <select aria-label="Método de Pago" className="w-full h-14 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none appearance-none">
-                        <option value="cash">Efectivo 💵</option>
-                        <option value="transfer">Transferencia 📱</option>
-                        <option value="card">Tarjeta 💳</option>
-                     </select>
+                     <div className="relative">
+                      <select 
+                        value={method}
+                        onChange={(e) => setMethod(e.target.value)}
+                        aria-label="Método de Pago" 
+                        className="w-full h-14 pl-6 pr-10 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none appearance-none"
+                      >
+                          <option value="cash">Efectivo 💵</option>
+                          <option value="transfer">Transferencia 📱</option>
+                          <option value="card">Tarjeta 💳</option>
+                      </select>
+                      <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-400" size={18} />
+                     </div>
                   </div>
                </div>
             </div>

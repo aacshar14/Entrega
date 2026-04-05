@@ -79,9 +79,9 @@ export default function LoginPage() {
         onSubmit={handleAuth}
         className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 flex flex-col gap-8 animate-in fade-in zoom-in-95 duration-500"
       >
-        <div className="text-center">
-          <h2 className="text-4xl font-black text-[#1D3146] tracking-tighter italic">Entrega</h2>
-          <p className="text-slate-400 font-medium mt-2">
+        <div className="flex flex-col items-center">
+          <img src="/logo.png" alt="Entrega Logo" className="w-48 h-auto mb-2 drop-shadow-lg" />
+          <p className="text-slate-400 font-medium text-center">
             {isRegister ? 'Crea tu cuenta de propietario' : 'Gestión Inteligente de Logística'}
           </p>
         </div>
