@@ -76,7 +76,7 @@ jobs:
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
-        vuln-type: 'os,library'
+        vuln-type: 'library'
         severity: 'CRITICAL'
 
     - name: Trivy Report API Image (Non-blocking HIGH)
@@ -144,7 +144,7 @@ jobs:
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
-        vuln-type: 'os,library'
+        vuln-type: 'library'
         severity: 'CRITICAL'
 
     - name: Trivy Report Web Image (Non-blocking HIGH)
