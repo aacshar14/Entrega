@@ -260,15 +260,18 @@ async def create_product(
     db.refresh(new_product)
     return new_product
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    price_menudeo: Optional[float] = None
+    price_mayoreo: Optional[float] = None
+    price_especial: Optional[float] = None
+    adjustment_quantity: Optional[float] = None
+
 @router.patch("/{id}")
 async def update_product(
     id: UUID,
-    name: Optional[str] = None,
-    sku: Optional[str] = None,
-    price_menudeo: Optional[float] = None,
-    price_mayoreo: Optional[float] = None,
-    price_especial: Optional[float] = None,
-    adjustment_quantity: Optional[float] = None,
+    update_data: ProductUpdate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -278,24 +281,24 @@ async def update_product(
     if not product or product.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    if name is not None:
-        product.name = name
-    if sku is not None:
-        product.sku = sku
-    if price_menudeo is not None:
-        product.price_menudeo = price_menudeo
-        product.price = price_menudeo # Sync legacy price
-    if price_mayoreo is not None:
-        product.price_mayoreo = price_mayoreo
-    if price_especial is not None:
-        product.price_especial = price_especial
+    if update_data.name is not None:
+        product.name = update_data.name
+    if update_data.sku is not None:
+        product.sku = update_data.sku
+    if update_data.price_menudeo is not None:
+        product.price_menudeo = update_data.price_menudeo
+        product.price = update_data.price_menudeo # Sync legacy price
+    if update_data.price_mayoreo is not None:
+        product.price_mayoreo = update_data.price_mayoreo
+    if update_data.price_especial is not None:
+        product.price_especial = update_data.price_especial
         
     product.updated_by_user_id = current_user.id
     product.updated_at = datetime.now(timezone.utc)
     db.add(product)
 
     # Stock Adjustment
-    if adjustment_quantity is not None:
+    if update_data.adjustment_quantity is not None and update_data.adjustment_quantity != 0:
         balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
         if balance:
             balance.quantity += adjustment_quantity

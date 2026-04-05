@@ -278,15 +278,18 @@ async def import_customers_commit(
     db.commit()
     return {"status": "success", "created": created_count, "updated": updated_count}
 
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    tier: Optional[str] = None
+
 @router.patch("/{id}", response_model=Customer)
 async def update_customer(
     id: UUID,
-    name: Optional[str] = None,
-    phone_number: Optional[str] = None,
-    email: Optional[str] = None,
-    address: Optional[str] = None,
-    notes: Optional[str] = None,
-    tier: Optional[str] = None,
+    update_data: CustomerUpdate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -296,18 +299,18 @@ async def update_customer(
     if not customer or customer.tenant_id != active_tenant.id:
         raise HTTPException(status_code=404, detail="Customer not found")
     
-    if name is not None:
-        customer.name = name
-    if phone_number is not None:
-        customer.phone_number = phone_number
-    if email is not None:
-        customer.email = email
-    if address is not None:
-        customer.address = address
-    if notes is not None:
-        customer.notes = notes
-    if tier is not None and tier in ["mayoreo", "menudeo", "especial"]:
-        customer.tier = tier
+    if update_data.name is not None:
+        customer.name = update_data.name
+    if update_data.phone_number is not None:
+        customer.phone_number = update_data.phone_number
+    if update_data.email is not None:
+        customer.email = update_data.email
+    if update_data.address is not None:
+        customer.address = update_data.address
+    if update_data.notes is not None:
+        customer.notes = update_data.notes
+    if update_data.tier is not None and update_data.tier in ["mayoreo", "menudeo", "especial"]:
+        customer.tier = update_data.tier
         
     customer.updated_by_user_id = current_user.id
     customer.updated_at = datetime.now(timezone.utc)
