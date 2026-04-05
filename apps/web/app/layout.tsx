@@ -27,8 +27,8 @@ const menuItems = [
     { icon: Users, label: 'Clientes', href: '/customers' },
     { icon: Package, label: 'Inventario', href: '/stock' },
     { icon: Layout, label: 'Operaciones', href: '/operations' },
+    { icon: Clock, label: 'Movimientos', href: '/movements' },
     { icon: CreditCard, label: 'Pagos', href: '/payments' },
-    { icon: Clock, label: 'Movimientos', href: '/operations' },
     { icon: FileText, label: 'Reportes', href: '/reports/weekly', ownerOnly: true },
 ];
 
