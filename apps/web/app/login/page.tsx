@@ -62,7 +62,7 @@ export default function LoginPage() {
         className="bg-[#1D3146] p-10 md:p-14 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/5 flex flex-col gap-10 animate-in fade-in zoom-in-95 duration-700"
       >
         <div className="flex flex-col items-center">
-          <Logo className="w-64 h-auto drop-shadow-2xl" />
+          <Logo mode="dark" className="w-80 h-auto drop-shadow-2xl" />
           <p className="text-[#56CCF2] font-black uppercase tracking-[0.2em] text-[10px] text-center mt-2">
             {isRegister ? 'Crea tu cuenta de propietario' : 'Gestión Inteligente de Logística'}
           </p>
