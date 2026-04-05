@@ -94,7 +94,13 @@ export default function PublicLanding() {
                 <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30"></div>
                 <div className="relative bg-[#1D3146] p-3 rounded-[3rem] shadow-2xl rotate-[2deg] group overflow-hidden">
                    <div className="bg-white rounded-[2.5rem] overflow-hidden aspect-[9/16] relative transition-transform duration-1000 group-hover:scale-105">
-                      <img src="/hero_mock_clean.png" className="w-full h-full object-cover" alt="Entrega Mobile App" />
+                      <img src="/onboarding_step_1.png" className="w-full h-full object-cover" alt="Entrega Mobile App" />
+                      
+                      {/* STEALTH PATCH: Masking legacy logo with matching background color */}
+                      <div className="absolute top-[8.5%] right-[8.5%] w-[21%] aspect-square bg-[#EBEEF2] rounded-2xl flex items-center justify-center">
+                         <Logo variant="master" className="w-[85%] h-auto opacity-90" />
+                      </div>
+                      
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1D3146]/20 to-transparent pointer-events-none"></div>
                    </div>
                 </div>
