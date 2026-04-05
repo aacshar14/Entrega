@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.12-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 WORKDIR /build
 
 # Install build dependencies
@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Final runtime stage
-FROM python:3.12-slim AS runner
+FROM python:3.11-slim-bookworm AS runner
 WORKDIR /app
 
 # Install runtime library dependencies (only what is strictly needed)
