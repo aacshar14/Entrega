@@ -89,15 +89,19 @@ export default function PublicLanding() {
                </div>
             </div>
             
-            <div className="lg:col-span-5 relative">
-               <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30"></div>
-               <div className="relative bg-[#1D3146] p-3 rounded-[3rem] shadow-2xl rotate-[2deg] group">
-                  <div className="bg-white rounded-[2.5rem] overflow-hidden aspect-[9/16] relative">
-                     <img src="/onboarding_step_1.png" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt="Mobile App Demo" />
-                     <div className="absolute inset-0 bg-gradient-to-t from-[#1D3146]/20 to-transparent"></div>
-                  </div>
-               </div>
-            </div>
+             <div className="lg:col-span-5 relative">
+                <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30"></div>
+                <div className="relative bg-[#1D3146] p-3 rounded-[3rem] shadow-2xl rotate-[2deg] group overflow-hidden">
+                   <div className="bg-white rounded-[2.5rem] overflow-hidden aspect-[9/16] relative transition-transform duration-1000 group-hover:scale-105">
+                      <img src="/onboarding_step_1.png" className="w-full h-full object-cover" alt="Mobile App Demo" />
+                      {/* BRANDING OVERLAY - EXTERMINATING ZAP */}
+                      <div className="absolute top-[8%] right-[8%] w-[22%] aspect-square bg-[#1D3146] rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
+                         <img src="/logo.png" className="w-[70%] h-auto" alt="Entrega Logo" />
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1D3146]/20 to-transparent pointer-events-none"></div>
+                   </div>
+                </div>
+             </div>
          </div>
       </section>
 
