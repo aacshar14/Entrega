@@ -176,3 +176,18 @@ Thumbs.db
 apps/web/.env.local
 build_output.txt
 .env*
+
+# Agent Infrastructure (AI Agents)
+.agents/
+.agent/
+_agents/
+_agent/
+.gemini/
+antigravity/
+brain/
+knowledge/
+tmp/
+
+# One-off maintenance scripts
+apps/api/fix_roles.py
+apps/api/sync_identities.py
