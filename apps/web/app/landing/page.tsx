@@ -30,9 +30,9 @@ export default function PublicLanding() {
             </Link>
             
             <nav className="hidden md:flex items-center gap-10">
-               {['Cómo Funciona', 'Recursos', 'Precios'].map((item) => (
-                  <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">{item}</a>
-               ))}
+               <a href="#como-funciona" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Cómo Funciona</a>
+               <a href="#recursos" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Recursos</a>
+               <a href="#precios" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Precios</a>
             </nav>
 
             <div className="flex items-center gap-4">
@@ -45,7 +45,7 @@ export default function PublicLanding() {
       </header>
 
       {/* 2. HERO SECTION */}
-      <section className="pt-40 pb-20 px-6">
+      <section id="como-funciona" className="pt-40 pb-20 px-6">
          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
             <div className="lg:col-span-7 space-y-8">
                <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#56CCF2]/10 text-[#1D3146] rounded-full border border-[#56CCF2]/20">
@@ -69,10 +69,10 @@ export default function PublicLanding() {
                      Activar mi Negocio
                      <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
-                  <button className="h-16 px-10 bg-white border-2 border-slate-100 text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:bg-slate-50 transition-all">
+                  <Link href="/docs" className="h-16 px-10 bg-white border-2 border-slate-100 text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:bg-slate-50 transition-all">
                      <PlayCircle size={20} />
                      Ver Demo
-                  </button>
+                  </Link>
                </div>
                
                <div className="flex items-center gap-8 pt-8 border-t border-slate-50">
@@ -94,11 +94,7 @@ export default function PublicLanding() {
                 <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30"></div>
                 <div className="relative bg-[#1D3146] p-3 rounded-[3rem] shadow-2xl rotate-[2deg] group overflow-hidden">
                    <div className="bg-white rounded-[2.5rem] overflow-hidden aspect-[9/16] relative transition-transform duration-1000 group-hover:scale-105">
-                      <img src="/onboarding_step_1.png" className="w-full h-full object-cover" alt="Mobile App Demo" />
-                      {/* BRANDING OVERLAY - EXTERMINATING ZAP */}
-                      <div className="absolute top-[8%] right-[8%] w-[22%] aspect-square bg-[#1D3146] rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
-                         <img src="/logo.png" className="w-[70%] h-auto" alt="Entrega Logo" />
-                      </div>
+                      <img src="/hero_mock.png" className="w-full h-full object-cover" alt="Entrega Mobile App" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1D3146]/20 to-transparent pointer-events-none"></div>
                    </div>
                 </div>
@@ -160,7 +156,7 @@ export default function PublicLanding() {
                   </div>
                   <div className="md:w-1/2 flex justify-center translate-y-8">
                      <div className="bg-white/5 p-4 rounded-[2rem] border border-white/10 backdrop-blur-3xl shadow-inner w-full max-w-sm">
-                        <img src="/onboarding_demo.webp" className="w-full rounded-2xl shadow-2xl border border-white/20" alt="Demo Video Preview" />
+                        <img src="/docs_mock.png" className="w-full rounded-2xl shadow-2xl border border-white/20" alt="Entrega Glass Interface" />
                      </div>
                   </div>
                </div>
@@ -169,11 +165,36 @@ export default function PublicLanding() {
          </div>
       </section>
 
-      {/* 4. Misión */}
-      <section className="py-32 bg-white">
+      {/* 4. PRECIOS TÁCTICOS */}
+      <section id="precios" className="py-32 bg-white">
+         <div className="max-w-7xl mx-auto px-6 text-center">
+            <h2 className="text-4xl md:text-6xl font-black text-[#1D3146] mb-8 uppercase tracking-tighter">Inversión <span className="text-[#56CCF2]">Táctica</span></h2>
+            <div className="max-w-2xl mx-auto bg-[#1D3146] p-16 rounded-[4rem] text-white overflow-hidden relative group shadow-2xl shadow-[#1D3146]/20">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-[#56CCF2]/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+               <div className="relative z-10">
+                  <p className="text-[#56CCF2] font-black uppercase tracking-[0.3em] text-sm mb-6">Plan Único Prototipo</p>
+                  <div className="flex items-end justify-center gap-2 mb-12">
+                     <span className="text-8xl font-black">$0</span>
+                     <span className="text-slate-400 font-bold uppercase tracking-widest mb-3">/ fase beta</span>
+                  </div>
+                  <ul className="text-left space-y-4 mb-12 max-w-xs mx-auto">
+                     <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Usuarios Ilimitados</li>
+                     <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Soporte ChocoBites 24/7</li>
+                     <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Panel de Costos Avanzado</li>
+                  </ul>
+                  <Link href="/onboarding" className="inline-block w-full bg-[#56CCF2] text-[#1D3146] px-16 py-6 rounded-3xl font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-2xl shadow-[#56CCF2]/20">
+                     Reserva tu acceso
+                  </Link>
+               </div>
+            </div>
+         </div>
+      </section>
+
+      {/* 5. Misión */}
+      <section className="py-32 bg-slate-50">
          <div className="max-w-4xl mx-auto px-6 text-center space-y-10">
             <Smartphone className="mx-auto text-slate-200" size={64} strokeWidth={1} />
-            <h3 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Digitaliza tu pequeña flota, <span className="text-[#56CCF2]">profesionaliza</span> tu marca.</h3>
+            <h3 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.95]">Digitaliza tu pequeña flota, <span className="text-[#56CCF2]">profesionaliza</span> tu marca.</h3>
             <p className="text-lg text-slate-500 font-medium italic">"Entrega nació para darle a los que entregan el poder de las grandes logísticas."</p>
          </div>
       </section>
@@ -188,9 +209,9 @@ export default function PublicLanding() {
             
             <div className="flex flex-col sm:flex-row items-center gap-8">
                <div className="flex gap-10">
-                  <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Descargar App"><Smartphone size={24} /></a>
-                  <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Seguridad"><ShieldCheck size={24} /></a>
-                  <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Productos"><Package size={24} /></a>
+                  <Link href="/onboarding" className="opacity-40 hover:opacity-100 transition-opacity" title="Descargar App"><Smartphone size={24} /></Link>
+                  <Link href="/docs" className="opacity-40 hover:opacity-100 transition-opacity" title="Seguridad"><ShieldCheck size={24} /></Link>
+                  <a href="#recursos" className="opacity-40 hover:opacity-100 transition-opacity" title="Productos"><Package size={24} /></a>
                </div>
                <Link href="/onboarding" className="group h-16 px-10 bg-[#56CCF2] text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#56CCF2]/20">
                   Reserva tu acceso
