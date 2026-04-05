@@ -64,9 +64,38 @@ jobs:
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
     # --- API Container ---
-    - name: Build and Push API
+    - name: Build API
       run: |-
         docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
+
+    - name: Trivy Scan API Image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL'
+
+    - name: Trivy Report API Image (Non-blocking HIGH)
+      uses: aquasecurity/trivy-action@master
+      if: always()
+      with:
+        image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-api-results.sarif'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Upload API Scan Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-api-results
+        path: trivy-api-results.sarif
+
+    - name: Push API
+      run: |-
         docker push $API_IMAGE:${{ github.sha }}
         docker push $API_IMAGE:latest
 
@@ -91,13 +120,42 @@ jobs:
         fi
 
     # --- Web Container ---
-    - name: Build and Push Web
+    - name: Build Web
       run: |-
         docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
           --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
           --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
           --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+
+    - name: Trivy Scan Web Image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL'
+
+    - name: Trivy Report Web Image (Non-blocking HIGH)
+      uses: aquasecurity/trivy-action@master
+      if: always()
+      with:
+        image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-web-results.sarif'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Upload Web Scan Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-web-results
+        path: trivy-web-results.sarif
+
+    - name: Push Web
+      run: |-
         docker push $WEB_IMAGE:${{ github.sha }}
         docker push $WEB_IMAGE:latest
 
