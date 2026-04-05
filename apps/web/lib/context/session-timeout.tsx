@@ -20,8 +20,8 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
 
   // Configuration based on role
   const isPlatformAdmin = user?.platform_role === 'admin';
-  const WARNING_TIME = isPlatformAdmin ? 15 * 60 * 1000 : 25 * 60 * 1000;
-  const LOGOUT_TIME = isPlatformAdmin ? 20 * 60 * 1000 : 30 * 60 * 1000;
+  const WARNING_TIME = isPlatformAdmin ? 55 * 60 * 1000 : 25 * 60 * 1000;
+  const LOGOUT_TIME = isPlatformAdmin ? 60 * 60 * 1000 : 30 * 60 * 1000;
   const COUNTDOWN_DURATION = (LOGOUT_TIME - WARNING_TIME) / 1000;
 
   const handleLogout = useCallback(async () => {
@@ -88,8 +88,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
     };
   }, [showWarning, countdown]);
 
-  // if (!showWarning) return null;
-  return null; // TEMPORARY DISABLE TO DEBUG "KICK OUT" ISSUE
+  if (!showWarning) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -129,7 +128,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
         <div className="flex items-center gap-2 px-2">
           <AlertCircle className="w-4 h-4 text-slate-400" />
           <p className="text-[10px] text-slate-400 font-medium leading-tight">
-            Por seguridad, cerramos sesiones inactivas. Los administradores tienen un tiempo de espera más corto (20 min).
+            Por seguridad, cerramos sesiones inactivas. Los administradores tienen un tiempo de espera extendido (60 min).
           </p>
         </div>
       </div>
