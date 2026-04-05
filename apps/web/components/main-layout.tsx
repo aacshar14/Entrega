@@ -145,8 +145,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* SIDEBAR (Desktop Only) */}
       <aside className="hidden md:flex w-72 bg-[#1D3146] text-white flex-col fixed top-0 h-screen overflow-y-auto border-r border-slate-800 z-50">
         <div className="p-8 pb-8 flex flex-col items-center gap-10">
-           <Link href="/dashboard" className="flex items-center justify-center w-full">
-              <Logo mode="dark" className="w-56 h-auto drop-shadow-2xl" />
+           <Link href="/dashboard" className="flex flex-col items-center justify-center w-full gap-2">
+              <img src="/logo.png" alt="Entrega Logo" className="w-56 h-auto drop-shadow-2xl" style={{ pointerEvents: 'none' }} />
+              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#56CCF2]/40 -mt-2">Branding Oficial v1.2</span>
            </Link>
            
            {/* TENANT SWITCHER */}
