@@ -181,7 +181,7 @@ export default function PublicLanding() {
       <footer className="py-20 px-6 bg-[#1D3146] text-white overflow-hidden relative">
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
-               <img src="/logo.png" alt="Entrega Logo" className="h-10 w-auto brightness-110" />
+               <img src="/logo.png" alt="Entrega Logo" className="h-12 w-auto object-contain brightness-110" />
                <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
             </div>
             

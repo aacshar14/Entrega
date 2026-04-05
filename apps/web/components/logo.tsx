@@ -9,7 +9,7 @@ export default function Logo({ className = "w-48 h-auto" }: { className?: string
       <img 
         src="/logo.png" 
         alt="Entrega Logo" 
-        className="w-full h-auto drop-shadow-2xl" 
+        className="w-full h-full object-contain drop-shadow-2xl" 
         style={{ pointerEvents: 'none' }}
       />
     </div>
