@@ -25,7 +25,7 @@ export default function PublicLanding() {
       <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100">
          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-               <img src="/logo_light.png" alt="Entrega Logo" className="h-10 w-auto" />
+               <img src="/logo_light.png" alt="Entrega Logo" className="h-16 w-auto" />
             </Link>
             
             <nav className="hidden md:flex items-center gap-10">
