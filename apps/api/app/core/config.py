@@ -4,9 +4,9 @@ from pydantic import field_validator
 
 class Settings(BaseSettings):
     # App General Settings
-    PROJECT_NAME: str = "EntréGA V1"
-    DOMAIN: str = "entrga.space"
-    VERSION: str = "1.0.0"
+    PROJECT_NAME: str = "Entrega"
+    DOMAIN: str = "entrega.space"
+    VERSION: str = "1.1"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
 
