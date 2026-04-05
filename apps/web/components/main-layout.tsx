@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '../lib/context/tenant-context';
 import { apiRequest } from '../lib/api';
+import Logo from './logo';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, activeTenant, memberships, switchTenant, isLoading } = useTenant();
@@ -41,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#EBEEF2]">
         <div className="flex flex-col items-center gap-6">
-          <img src="/logo.png" alt="Entrega Logo" className="w-24 h-auto animate-pulse" />
+          <Logo className="w-32 h-auto animate-pulse" />
           <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando Entrega...</p>
         </div>
       </div>
@@ -145,7 +146,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <aside className="hidden md:flex w-72 bg-[#1D3146] text-white flex-col fixed top-0 h-screen overflow-y-auto border-r border-slate-800 z-50">
         <div className="p-8 pb-8 flex flex-col items-center gap-10">
            <Link href="/dashboard" className="flex items-center justify-center w-full">
-              <img src="/logo.png" alt="Entrega Logo" className="w-48 h-auto drop-shadow-2xl" />
+              <Logo className="w-56 h-auto drop-shadow-2xl" />
            </Link>
            
            {/* TENANT SWITCHER */}
@@ -234,7 +235,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <header className="md:hidden flex items-center justify-between px-6 h-20 bg-[#1D3146] text-white sticky top-0 z-[100] border-b border-white/10 shadow-lg">
          <div className="flex items-center gap-3">
             <img src={activeTenant?.logo_url || '/chocobites.jpg'} className="w-10 h-10 rounded-xl border border-white/20 shadow-md" alt="Logo" />
-            <img src="/logo.png" alt="Entrega Logo" className="h-8 w-auto ml-2" />
+            <Logo className="w-32 h-auto ml-2" />
          </div>
          <div className="flex items-center gap-4">
             <div className="relative">
