@@ -125,17 +125,13 @@ async def import_customers_preview(
     invalid_count = 0
     duplicate_count = 0
     
-    for i, row in enumerate(reader, 1):
-        total += 1
-        errors = []
-        
     # Get keys with fuzzy matching for case-insensitivity and extra spaces
     keys = {k.strip().lower(): k for k in reader.fieldnames}
     
-    def get_val(fuzzy_list):
+    def get_val(row_data, fuzzy_list):
         for fl in fuzzy_list:
             if fl.lower() in keys:
-                return (row.get(keys[fl.lower()]) or "").strip()
+                return (row_data.get(keys[fl.lower()]) or "").strip()
         return None
 
     for i, row in enumerate(reader, 1):
@@ -143,12 +139,12 @@ async def import_customers_preview(
         errors = []
         
         # Robust Mapping
-        name = get_val(["name", "nombre", "cliente"]) or ""
-        phone = get_val(["phone", "teléfono", "telefono", "celular"])
-        email = get_val(["email", "correo", "mail"])
-        initial_balance = get_val(["initial_balance", "saldo", "deuda"]) or "0"
-        notes = get_val(["notes", "notas", "comentario"]) or ""
-        tier = (get_val(["tier", "nivel", "nivel de precio"]) or "menudeo").lower()
+        name = get_val(row, ["name", "nombre", "cliente"]) or ""
+        phone = get_val(row, ["phone", "teléfono", "telefono", "celular"])
+        email = get_val(row, ["email", "correo", "mail"])
+        initial_balance = get_val(row, ["initial_balance", "saldo", "deuda"]) or "0"
+        notes = get_val(row, ["notes", "notas", "comentario"]) or ""
+        tier = (get_val(row, ["tier", "nivel", "nivel de precio"]) or "menudeo").lower()
         
         if not name:
             errors.append("Name is required")
