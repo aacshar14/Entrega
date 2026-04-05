@@ -24,12 +24,9 @@ export default function PublicLanding() {
       {/* 1. STICKY HEADER */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100">
          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-               <div className="bg-[#1D3146] p-2 rounded-xl rotate-[-6deg] shadow-lg shadow-[#1D3146]/20">
-                  <Zap className="text-[#56CCF2] w-5 h-5" fill="currentColor" />
-               </div>
-               <span className="text-2xl font-black italic tracking-tighter">Entrega</span>
-            </div>
+            <Link href="/" className="flex items-center gap-3">
+               <img src="/logo_light.png" alt="Entrega Logo" className="h-10 w-auto" />
+            </Link>
             
             <nav className="hidden md:flex items-center gap-10">
                {['Cómo Funciona', 'Recursos', 'Precios'].map((item) => (
@@ -180,7 +177,7 @@ export default function PublicLanding() {
       <footer className="py-20 px-6 bg-[#1D3146] text-white overflow-hidden relative">
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
-               <h3 className="text-4xl font-black tracking-tighter italic">Entrega</h3>
+               <img src="/logo.png" alt="Entrega Logo" className="h-10 w-auto brightness-110" />
                <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
             </div>
             
