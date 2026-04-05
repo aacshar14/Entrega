@@ -132,9 +132,8 @@ function UI_Shell({ children }) {
       {/* Sidebar (Desktop) */}
       <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-50 transition-colors duration-500`}>
         <div className="p-8 pb-12">
-            <Link href="/dashboard" className="flex flex-col items-center justify-center w-full gap-2">
-               <img src="/logo.png" alt="Entrega Logo" className="w-56 h-auto drop-shadow-2xl" style={{ pointerEvents: 'none' }} />
-               <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#56CCF2]/40 -mt-2">Branding Oficial v1.2</span>
+            <Link href="/dashboard" className="flex flex-col items-center justify-center w-full">
+               <img src="/logo.png" alt="Entrega Logo" className="w-56 h-auto drop-shadow-2xl object-contain" style={{ pointerEvents: 'none' }} />
             </Link>
         </div>
 
