@@ -1,67 +1,99 @@
-# 🚀 EntréGA V1.1: Multi-Tenant Intelligence
+![EntréGA Banner](docs/assets/banner.png)
 
-Sistema integral de gestión logística e inventarios en tiempo real para negocios de última milla. Optimizado para el piloto **ChocoBites México**.
-
-## 🏗️ Arquitectura de Producción
-
-EntréGA ha evolucionado a una arquitectura **Enterprise Multi-Tenant**, permitiendo que múltiples negocios operen en una infraestructura única con total aislamiento de datos.
-
-### 📁 Estructura del Monorepo
-
-- **`apps/api/`**: Backend en FastAPI + SQLModel (api.entrega.space). Motor de inteligencia y webhooks.
-- **`apps/web/`**: Panel de Control en Next.js (app.entrega.space). UX Premium enfocada en rapidez operativa.
-- **`infra/`**: Configuración de despliegue Cloud Run y scripts de automatización.
-
----
-
-## 🔥 Key Features
-
-### 🎓 EntréGA Academy (Onboarding)
-
-Flujo de activación de 4 pasos para nuevos negocios:
-
-1. **Identidad**: Configuración de marca y regionalización.
-2. **Clientes**: Carga masiva de rutas y contactos vía CSV.
-3. **Inventario**: Sincronización inicial de stock y catálogos.
-4. **WhatsApp**: Conexión con Meta Cloud API para notificaciones automáticas.
-
-### 🧠 Intelligence Mode (AI Learning)
-
-Parsing Engine v1 que aprende del lenguaje real del negocio:
-
-- **Admin Review**: Panel para corregir y validar mensajes de repartidores.
-- **Tenant Dictionary**: Aliases locales (Ej: "Juan" → "Juan Lopez") para matching instantáneo.
-- **Zero-Guessing**: El sistema prioriza el aprendizaje sobre la automatización agresiva.
-
-### 🏛️ Multi-Tenant Core
-
-- **Aislamiento Total**: Seguridad nativa para manejar ChocoBites, Chiltepik y otros sin cruce de datos.
-- **RBAC**: Roles de Dueño y Operador preconfigurados.
-- **Timezone/Currency**: Soporte regional independiente por negocio.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lucide-react/lucide/main/icons/zap.svg" width="48" height="48" />
+  <h1><b>EntréGA</b></h1>
+  <p><i>Tu operación de entrega en piloto automático.</i></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/v1.1-Pilot_Launch-56CCF2?style=for-the-badge&logo=rocket" />
+    <img src="https://img.shields.io/badge/Platform-Admin_Ready-1D3146?style=for-the-badge&logo=shield" />
+  </p>
+</div>
 
 ---
 
-## 🚀 Despliegue Local (Docker)
+## ⚡ El Concepto
+**EntréGA** es una plataforma logística de nueva generación diseñada para profesionalizar pequeñas flotas y negocios en crecimiento. Nacida del caos de los grupos de WhatsApp y las hojas de cálculo, EntréGA centraliza pedidos, clientes y stock en una experiencia **mobile-first** de alto nivel.
 
-Levanta todo el stack con un solo comando:
+## 🛠️ Tech Stack Universo EntréGA
 
-```bash
-docker-compose up --build
+| Capa | Tecnologías |
+| :--- | :--- |
+| **Frontend** | `Next.js 14` (App Router), `TailwindCSS`, `Lucide Icons`, `Framer Motion` |
+| **Backend** | `FastAPI` (Python), `SQLModel`, `Uvicorn`, `Pydantic v2` |
+| **Persistencia** | `PostgreSQL` via `Supabase`, `Migrations` via `Alembic` |
+| **Seguridad** | `Supabase Auth` (Filtro ES256 via JWKS), `RBAC` Multi-Capas |
+| **Integración** | `WhatsApp Business Cloud API` (Meta) |
+
+---
+
+## 🏰 Arquitectura: Doble Superficie
+EntréGA opera bajo un modelo de **Split Arquitectónico** que separa la gestión de infraestructura de las operaciones del negocio.
+
+```mermaid
+graph TD
+    User((Usuario))
+    Auth[Supabase Auth / ES256]
+    API[(FastAPI Backend)]
+    DB[(Postgres DB)]
+    
+    User --> Auth
+    Auth --> API
+    API --> DB
+
+    subgraph "Superficie 1: Platform Admin"
+        AdminPanel[Global Overview]
+        UserRegistry[Directorio de Identidades]
+        SystemHealth[SRE & Infra Monitor]
+    end
+
+    subgraph "Superficie 2: Tenant Workspace"
+        Dashboard[Operaciones ChocoBites]
+        Inventory[Stock & Precios Tiers]
+        CRM[Directorios de Clientes]
+        WhatsApp[Logística Automatizada]
+    end
+
+    API --- AdminPanel
+    API --- Dashboard
 ```
 
-- **Web App:** `http://localhost:3000`
-- **Backend API:** `http://localhost:8000`
-- **API Docs:** `http://localhost:8000/docs`
+---
+
+## 🏢 Multi-Tenant Wiki
+Para entender cómo manejamos el aislamiento de datos, los roles de usuario (Hugo vs. Leo) y la inyección de contexto por negocio, consulta nuestra documentación especializada:
+
+👉 **[Wiki de Tenants & Arquitectura](docs/TENANTS.md)**
 
 ---
 
-## 🔐 Stack Tecnológico
+## 🚀 Guía de Inicio Rápido (Devs)
 
-- **Frontend**: Next.js 14, Tailwind CSS, Lucide Icons.
-- **Backend**: FastAPI, SQLModel (Pydantic + SQLAlchemy).
-- **Database**: PostgreSQL (Supabase Managed).
-- **Auth**: Supabase JWT + Middleware de Tenancy.
-- **CI/CD**: GitHub Actions → Google Cloud Run.
+### 1. Clonar y Configurar
+```bash
+git clone https://github.com/aacshar14/Entrega.git
+cd Entrega
+```
+
+### 2. Backend (FastAPI)
+```bash
+cd apps/api
+pip install -r requirements.txt
+# Configura tu .env con DATABASE_URL y SUPABASE_KEYS
+py -m uvicorn app.main:app --reload
+```
+
+### 3. Frontend (Next.js)
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
 ---
-© 2026 EntréGA Project - `entrega.space`
+
+<div align="center">
+  <p><i>Crafted for ChocoBites & The New Logistics Generation</i></p>
+  <img src="https://img.shields.io/badge/Designed_by-Hugo-1D3146?style=flat-square" />
+</div>
