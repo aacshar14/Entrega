@@ -1,8 +1,8 @@
-FROM python:3.11-slim
+# Build stage
+FROM python:3.11-slim AS builder
+WORKDIR /build
 
-WORKDIR /app
-
-# Install system dependencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
@@ -10,18 +10,26 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Final runtime stage
+FROM python:3.11-slim AS runner
+WORKDIR /app
+
+# Install runtime library dependencies (only what is strictly needed)
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed packages from builder
+COPY --from=builder /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
 
 # Copy application code
 COPY . .
 
-# Environment variable for the port
+EXPOSE 8080
 ENV PORT 8080
 
-# Command to run the application
-# We use sh -c to ensure environment variable expansion for $PORT
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips \"*\""]
-
