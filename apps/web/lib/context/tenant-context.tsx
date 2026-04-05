@@ -182,8 +182,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setIsLoading(false);
-        const isPublic = ['/landing', '/login', '/'].includes(pathname);
-        if (!isPublic) router.replace('/login');
+        const isPublic = ['/landing', '/login'].includes(pathname);
+        // If we are at root and not logged in, force redirect to login
+        if (pathname === '/' || !isPublic) {
+          router.replace('/login');
+        }
       }
     });
 
