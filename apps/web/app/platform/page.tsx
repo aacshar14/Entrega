@@ -15,16 +15,32 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
 import Link from 'next/link';
+import { apiRequest } from '@/lib/api';
 
 export default function PlatformOverview() {
   const { memberships } = useTenant();
+  const [statsData, setStatsData] = React.useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = React.useState(true);
   
-  // Real stats from context if available, or placeholder
+  React.useEffect(() => {
+    async function loadStats() {
+      try {
+        const data = await apiRequest('admin/stats', 'GET');
+        setStatsData(data);
+      } catch (err) {
+        console.error('Error fetching admin stats:', err);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    }
+    loadStats();
+  }, []);
+
   const stats = [
-    { label: 'Tenants Activos', value: memberships.length.toString(), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Usuarios Globales', value: '124', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { label: 'Salud API', value: '99.9%', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { label: 'Uptime Mensual', value: '100%', icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-100' },
+    { label: 'Tenants Activos', value: statsData?.tenants?.toString() || memberships.length.toString(), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: 'Usuarios Globales', value: statsData?.users?.toString() || '...', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { label: 'Movimientos (24h)', value: statsData?.active_24h?.toString() || '...', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+    { label: 'Status Sistema', value: statsData?.health === 'healthy' ? 'Óptimo' : '...', icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-100' },
   ];
 
   return (

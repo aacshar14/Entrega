@@ -13,12 +13,14 @@ from app.api.v1.endpoints import (
     movements,
     tenants,
     learning,
-    whatsapp_auth
+    whatsapp_auth,
+    admin
 )
 
 api_router = APIRouter()
 
 api_router.include_router(health.router, prefix="/health", tags=["system"])
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(whatsapp_auth.router, prefix="/whatsapp/auth", tags=["whatsapp-auth"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(movements.router, prefix="/movements", tags=["movements"])
