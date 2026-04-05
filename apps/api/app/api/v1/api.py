@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.models.models import MeResponse
 from app.api.v1.endpoints import (
     health,
     webhooks,
@@ -33,7 +34,6 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(balances.router, prefix="/balances", tags=["balances"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
-# Special mapping so /api/v1/me points to /api/v1/users/me implicitly 
-# or just allow the router to handle it at both levels.
-api_router.include_router(users.router, prefix="", tags=["users-me"])
+# Explicit alias for /me to avoid exposing the entire users router on root
+api_router.get("/me", response_model=MeResponse, tags=["identity"])(users.get_me)
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
