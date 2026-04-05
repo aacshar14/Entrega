@@ -1,9 +1,8 @@
 ![Entrega Banner](docs/assets/banner.png)
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/lucide-react/lucide/main/icons/zap.svg" width="48" height="48" />
-  <h1><b>Entrega</b></h1>
-  <p><i>Tu operación de entrega en piloto automático.</i></p>
+  <img src="docs/assets/logo.png" width="280" height="auto" />
+  <p><i>Gestión Inteligente de Logística al Alcance de tu Mano.</i></p>
   
   <p>
     <img src="https://img.shields.io/badge/v1.1-Pilot_Launch-56CCF2?style=for-the-badge&logo=rocket" />
