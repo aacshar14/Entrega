@@ -55,6 +55,15 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
         setShowWarning(true);
         const remaining = Math.max(0, Math.floor((LOGOUT_TIME - diff) / 1000));
         setCountdown(remaining);
+        
+        // Play subtle focus chime
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.volume = 0.5;
+          audio.play();
+        } catch (e) {
+          console.warn('Audio alert blocked by browser policy');
+        }
       }
 
       if (diff >= LOGOUT_TIME) {
