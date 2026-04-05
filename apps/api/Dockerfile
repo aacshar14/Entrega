@@ -10,8 +10,12 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade pip to ensure world-class compatibility
+RUN pip install --no-cache-dir --upgrade pip
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Install to /install to have a clean copy for the runner stage
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Final runtime stage
 FROM python:3.11-slim-bookworm AS runner
@@ -20,16 +24,18 @@ WORKDIR /app
 # Install runtime library dependencies (only what is strictly needed)
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
-
-# Copy application code
+# Copy only the installed packages from builder
+COPY --from=builder /install /usr/local
 COPY . .
 
-EXPOSE 8080
-ENV PORT 8080
+# Setting environment and world-class metadata
+ENV PYTHONUNBUFFERED=1
+ENV APP_NAME="entrega-api"
+ENV VERSION="1.1"
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips \"*\""]
+EXPOSE 8080
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
