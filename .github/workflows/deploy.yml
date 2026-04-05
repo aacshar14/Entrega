@@ -94,6 +94,13 @@ jobs:
         name: trivy-api-results
         path: trivy-api-results.sarif
 
+    - name: Trivy Summary API
+      if: always()
+      run: |-
+        echo "### 🛡️ API Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Scan completed for image: ${{ env.API_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "Critical vulnerabilities block the build, High vulnerabilities are reported." >> $GITHUB_STEP_SUMMARY
+
     - name: Push API
       run: |-
         docker push $API_IMAGE:${{ github.sha }}
@@ -153,6 +160,13 @@ jobs:
       with:
         name: trivy-web-results
         path: trivy-web-results.sarif
+
+    - name: Trivy Summary Web
+      if: always()
+      run: |-
+        echo "### 🛡️ Web Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Scan completed for image: ${{ env.WEB_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "Critical vulnerabilities block the build, High vulnerabilities are reported." >> $GITHUB_STEP_SUMMARY
 
     - name: Push Web
       run: |-
