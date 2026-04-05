@@ -1,17 +1,26 @@
-# Use full Python image to ensure all system libraries are present for version 1.1
-FROM python:3.11-bookworm
+# Use light but full-fat Python image for stable production environment
+FROM python:3.11-slim-bookworm
 WORKDIR /app
 
-# Install production-ready components (Gunicorn + Uvicorn)
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    libpq5 \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install requirements
 RUN pip install --no-cache-dir --upgrade pip
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir gunicorn
 
 # Copy application source
 COPY . .
 
-# Set world-class environment and metadata
+# Set world-class metadata
 ENV PYTHONUNBUFFERED=1
 ENV ENVIRONMENT=production
 ENV APP_NAME="Entrega"
@@ -21,6 +30,6 @@ ENV PYTHONPATH=/app
 # Expose port (metadata)
 EXPOSE 8080
 
-# Using Gunicorn with Uvicorn worker for world-class production stability in Cloud Run
-# This ensures robust port binding and signal handling
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120", "app.main:app"]
+# Execute uvicorn using the PORT environment variable provided by Cloud Run
+# Falling back to 8080 for world-class local testing
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
