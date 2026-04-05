@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import Logo from '@/components/logo';
 
 export default function PublicLanding() {
   return (
@@ -25,7 +26,7 @@ export default function PublicLanding() {
       <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100">
          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-               <img src="/logo_light.png" alt="Entrega Logo" className="h-16 w-auto" />
+               <Logo variant="light" className="h-12 w-auto" />
             </Link>
             
             <nav className="hidden md:flex items-center gap-10">
@@ -181,7 +182,7 @@ export default function PublicLanding() {
       <footer className="py-20 px-6 bg-[#1D3146] text-white overflow-hidden relative">
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
-               <img src="/logo.png" alt="Entrega Logo" className="h-12 w-auto object-contain brightness-110" />
+               <Logo variant="master" className="h-12 w-auto brightness-110" />
                <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
             </div>
             
@@ -189,7 +190,7 @@ export default function PublicLanding() {
                <div className="flex gap-10">
                   <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Descargar App"><Smartphone size={24} /></a>
                   <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Seguridad"><ShieldCheck size={24} /></a>
-                  <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Propulsor"><Zap size={24} /></a>
+                  <a href="#" className="opacity-40 hover:opacity-100 transition-opacity" title="Productos"><Package size={24} /></a>
                </div>
                <Link href="/onboarding" className="group h-16 px-10 bg-[#56CCF2] text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#56CCF2]/20">
                   Reserva tu acceso

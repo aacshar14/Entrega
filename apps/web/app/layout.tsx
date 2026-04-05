@@ -29,6 +29,7 @@ import { useTenant } from '../lib/context/tenant-context';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../utils/supabase/client';
 import { FEATURES } from '../config/feature-flags';
+import Logo from '@/components/logo';
 
 interface MenuItem {
   icon: any;
@@ -133,7 +134,7 @@ function UI_Shell({ children }) {
       <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-50 transition-colors duration-500`}>
         <div className="p-8 pb-12">
             <Link href="/dashboard" className="flex flex-col items-center justify-center w-full">
-               <img src="/logo.png" alt="Entrega Logo" className="w-56 h-auto drop-shadow-2xl object-contain" style={{ pointerEvents: 'none' }} />
+               <Logo variant="master" className="w-56 h-auto drop-shadow-2xl" />
             </Link>
         </div>
 
