@@ -24,9 +24,9 @@ export default function PublicLanding() {
       
       {/* 1. STICKY HEADER */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100">
-         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+         <div className="max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-               <Logo variant="light" className="h-12 w-auto" />
+               <Logo variant="light" className="h-24 w-auto" />
             </Link>
             
             <nav className="hidden md:flex items-center gap-10">
