@@ -153,7 +153,7 @@ export default function OnboardingPage() {
   const currentBusinessName = activeTenant?.name || "Nuevo Negocio";
 
   return (
-    <div className="min-h-screen bg-[#EBEEF2] flex flex-col p-6 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-[#EBEEF2] flex flex-col p-4 md:p-6 animate-in fade-in duration-700 overflow-x-hidden">
       
       {/* Header */}
       <div className="flex flex-col items-center gap-4 py-8">
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
       {/* Content */}
       <div className="max-w-md mx-auto w-full flex-grow">
          {step === 1 && (
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500 w-full max-w-full">
                <div className="bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center text-blue-500 mb-6">
                   <Building2 size={32} />
                </div>
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
          )}
 
          {step === 2 && (
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500 w-full max-w-full">
                <div className="bg-emerald-50 w-16 h-16 rounded-2xl flex items-center justify-center text-emerald-500 mb-6">
                   <Users size={32} />
                </div>
@@ -242,7 +242,7 @@ export default function OnboardingPage() {
                </div>
                <p className="text-sm text-slate-500 mb-8 font-medium italic underline decoration-[#56CCF2]/30">Domina la carga masiva de tu base de datos operativa.</p>
                
-               <div className="border-4 border-dashed border-slate-100 rounded-[2rem] p-10 text-center group hover:border-[#56CCF2]/30 transition-all cursor-pointer relative bg-slate-50/50">
+               <div className="border-4 border-dashed border-slate-100 rounded-[2rem] p-6 md:p-10 text-center group hover:border-[#56CCF2]/30 transition-all cursor-pointer relative bg-slate-50/50">
                   <input 
                     type="file" 
                     className="absolute inset-0 opacity-0 cursor-pointer" 
@@ -256,7 +256,7 @@ export default function OnboardingPage() {
                   <p className="text-[10px] text-slate-400 font-bold mt-2">Formato: name, phone, email</p>
                </div>
 
-               <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+               <div className="mt-8 p-4 md:p-6 bg-slate-50 rounded-2xl border border-slate-100">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-[#1D3146] mb-3 flex items-center gap-2">
                      <Zap size={14} className="text-[#56CCF2]" />
                      Instrucciones CSV
@@ -286,7 +286,7 @@ export default function OnboardingPage() {
          )}
 
          {step === 3 && (
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500 w-full max-w-full">
                <div className="bg-orange-50 w-16 h-16 rounded-2xl flex items-center justify-center text-orange-500 mb-6">
                   <Package size={32} />
                </div>
@@ -296,7 +296,7 @@ export default function OnboardingPage() {
                </div>
                <p className="text-sm text-slate-500 mb-8 font-medium italic underline decoration-orange-200">Sincroniza tus existencias actuales.</p>
                
-               <div className="border-4 border-dashed border-slate-100 rounded-[2rem] p-10 text-center group hover:border-orange-200 transition-all cursor-pointer relative bg-slate-50/50">
+               <div className="border-4 border-dashed border-slate-100 rounded-[2rem] p-6 md:p-10 text-center group hover:border-orange-200 transition-all cursor-pointer relative bg-slate-50/50">
                   <input 
                     type="file" 
                     className="absolute inset-0 opacity-0 cursor-pointer" 
@@ -310,7 +310,7 @@ export default function OnboardingPage() {
                   <p className="text-[10px] text-slate-400 font-bold mt-2">Formato: sku, name, quantity, price</p>
                </div>
 
-               <div className="mt-8 p-6 bg-orange-50/30 rounded-2xl border border-orange-100">
+               <div className="mt-8 p-4 md:p-6 bg-orange-50/30 rounded-2xl border border-orange-100">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-700 mb-3 flex items-center gap-2">
                      <Package size={14} />
                      Preparación de Catálogo
@@ -336,7 +336,7 @@ export default function OnboardingPage() {
          )}
 
          {step === 4 && (
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500 w-full max-w-full">
                <div className="bg-green-50 w-16 h-16 rounded-2xl flex items-center justify-center text-green-500 mb-6">
                   <MessageCircle size={32} fill="currentColor" className="opacity-20" />
                </div>
@@ -438,7 +438,7 @@ export default function OnboardingPage() {
          )}
 
          {step === 5 && (
-            <div className="bg-[#1D3146] rounded-[2.5rem] p-10 md:p-12 text-center shadow-2xl relative overflow-hidden group animate-in zoom-in-95 duration-500">
+            <div className="bg-[#1D3146] rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-12 text-center shadow-2xl relative overflow-hidden group animate-in zoom-in-95 duration-500 w-full max-w-full">
                <div className="relative z-10 flex flex-col items-center">
                   <div className="bg-[#56CCF2] w-24 h-24 rounded-full flex items-center justify-center text-[#1D3146] mb-8 shadow-2xl shadow-[#56CCF2]/30 animate-bounce">
                      <CheckCircle2 size={48} strokeWidth={3} />

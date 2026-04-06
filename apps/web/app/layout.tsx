@@ -131,7 +131,8 @@ function UI_Shell({ children }) {
   return (
     <div className="flex min-h-screen bg-[#EBEEF2] font-sans antialiased text-slate-900">
       {/* Sidebar (Desktop) */}
-      <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-50 transition-colors duration-500`}>
+      {!isPublicPath && !isTenantSetupPath && (
+        <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white hidden lg:flex flex-col z-50 transition-colors duration-500`}>
         <div className="p-8 pb-12">
             <Link href="/dashboard" className="flex flex-col items-center justify-center w-full">
                <Logo variant="master" className="w-56 h-auto drop-shadow-2xl" />
@@ -195,12 +196,16 @@ function UI_Shell({ children }) {
               </Link>
            </>
         )}
+        <div className="p-4 border-t border-white/5 opacity-40 text-[10px] text-center font-black uppercase tracking-widest hidden lg:block">
+          Entrega v1.1
+        </div>
       </aside>
+    )}
 
       {/* Main Content Area */}
-      <div className="flex-grow pl-64 flex flex-col min-h-screen">
+      <div className={`flex-grow ${!isPublicPath && !isTenantSetupPath ? 'pl-0 lg:pl-64' : 'pl-0'} flex flex-col min-h-screen`}>
          {/* Top Header */}
-         <header className="h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
+         <header className="h-16 md:h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-4">
                <div className={`${isPlatformPath ? 'bg-amber-100' : 'bg-[#56CCF2]/20'} px-3 py-1 rounded-full flex items-center gap-2 transition-colors`}>
                   <ShieldCheck size={14} className={isPlatformPath ? 'text-amber-600' : 'text-[#56CCF2]'} />
