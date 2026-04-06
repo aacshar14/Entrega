@@ -100,6 +100,32 @@ export default function PlatformOverview() {
         <h1 className="text-4xl font-black text-[#1D3146] tracking-tight">Platform Overview</h1>
         <p className="text-slate-500 mt-2 font-medium">Global infrastructure and observability control center.</p>
       </div>
+      {/* Autonomous Alerts Layer */}
+      {queueStats?.alerts?.length > 0 && (
+        <div className="space-y-4 mb-10 animate-in fade-in slide-in-from-top duration-500">
+           {queueStats.alerts.map((alert: any, i: number) => (
+              <div key={i} className={`p-8 rounded-[3rem] border flex items-start gap-8 shadow-xl shadow-slate-200/50 ${alert.severity === 'critical' ? 'bg-rose-50 border-rose-100 text-rose-950' : 'bg-amber-50 border-amber-100 text-amber-950'}`}>
+                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${alert.severity === 'critical' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'}`}>
+                    <AlertTriangle size={28} />
+                 </div>
+                 <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                       <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 italic">Autonomous Alert: {alert.type}</p>
+                       <span className="text-[10px] font-black uppercase opacity-40">{new Date(alert.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <h4 className="text-xl font-black tracking-tight mb-4">{alert.message}</h4>
+                    <div className="p-5 bg-white/60 rounded-[2rem] border border-white/40 backdrop-blur-md flex items-center gap-5">
+                       <Zap size={20} className={alert.severity === 'critical' ? 'text-rose-600' : 'text-amber-600'} />
+                       <p className="text-sm font-bold leading-relaxed">
+                          <span className="opacity-40 uppercase mr-3 tracking-tighter text-[10px]">Recommended Action:</span>
+                          {alert.recommended_action}
+                       </p>
+                    </div>
+                 </div>
+              </div>
+           ))}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

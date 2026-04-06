@@ -213,3 +213,9 @@ def require_platform_role(authorized_roles: List[str]):
 
 # Backward Compatibility & Logic Aliases
 require_roles = require_tenant_role
+
+async def get_current_user_id(current_user: Any = Depends(get_current_user)) -> UUID:
+    """
+    Utility dependency to extract only the UUID from the authenticated user context.
+    """
+    return current_user.id

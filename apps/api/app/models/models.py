@@ -292,6 +292,27 @@ class AuditLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, index=True)
     ip_address: Optional[str] = None
 
+class PlatformAlert(SQLModel, table=True):
+    """
+    Autonomous operational alerts triggered by metric thresholds.
+    """
+    __tablename__ = "platform_alerts"
+    
+    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    type: str = Field(index=True) # 'backlog', 'latency', 'tenant_pressure', 'failures'
+    severity: str = Field(index=True) # 'warning', 'critical'
+    tenant_id: Optional[UUID] = Field(default=None, index=True)
+    
+    message: str
+    recommended_action: Optional[str] = None
+    
+    snapshot_reference: Optional[str] = None # Metric name that triggered it
+    metric_value: float
+    
+    is_active: bool = Field(default=True, index=True)
+    resolved_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=get_utc_now, index=True)
+
 # --- Response & DTO Schemas (Bottom to ensure all SQLModel classes are defined) ---
 
 class TenantInfo(BaseModel):

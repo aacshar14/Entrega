@@ -4,12 +4,11 @@ from typing import List, Dict
 import uuid
 from uuid import UUID
 from app.core.db import get_session
-from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now
-from app.core.dependencies import require_platform_role
+from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now, PlatformAlert, AuditLog, MetricSnapshot
+from app.core.dependencies import require_platform_role, get_current_user_id
 from app.core.config import settings
 from app.core.metrics import MetricsAggregator
 from app.core.thresholds import PLATFORM_THRESHOLDS
-from app.models.models import AuditLog
 import json
 
 router = APIRouter()
@@ -56,6 +55,14 @@ async def get_queue_stats(db: Session = Depends(get_session)):
     aggregator = MetricsAggregator(db)
     snapshots = aggregator.get_latest_metrics()
     
+    # 4. Fetch Active Alerts
+    active_alerts = db.exec(
+        select(PlatformAlert)
+        .where(PlatformAlert.is_active == True)
+        .order_by(PlatformAlert.created_at.desc())
+        .limit(5)
+    ).all()
+    
     # We map the requested metrics for the 1h window as the standard 'latest'
     window = "1h" # Default window for the main dashboard cards
 
@@ -80,7 +87,16 @@ async def get_queue_stats(db: Session = Depends(get_session)):
                 } for m in ["webhook_intake_ms", "queue_wait_ms", "processing_ms", "end_to_end_ms"]
             } for w in ["5m", "1h", "24h"]
         },
-        "health_status": infra_status
+        "alerts": [
+            {
+                "type": a.type,
+                "severity": a.severity,
+                "message": a.message,
+                "recommended_action": a.recommended_action,
+                "created_at": a.created_at
+            } for a in active_alerts
+        ],
+        "health_status": "critical" if any(a.severity == "critical" for a in active_alerts) else "degraded" if active_alerts else "healthy"
     }
 
 @router.get("/tenants/pressure", dependencies=[Depends(require_platform_role(["admin", "owner"]))])

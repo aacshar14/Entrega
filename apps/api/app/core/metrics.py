@@ -1,7 +1,11 @@
 from datetime import datetime, timezone, timedelta
 from sqlmodel import Session, select, text, func
-from app.models.models import InboundEvent, MetricSnapshot, get_utc_now
-from typing import List, Dict
+from app.models.models import InboundEvent, MetricSnapshot, PlatformAlert, get_utc_now
+from app.core.thresholds import PLATFORM_THRESHOLDS
+from typing import List, Dict, Optional
+import structlog
+
+logger = structlog.get_logger()
 
 class MetricsAggregator:
     def __init__(self, db: Session):
@@ -44,6 +48,9 @@ class MetricsAggregator:
         # 3. Snapshot Hygiene: Retention policy (e.g. 30 days)
         self._cleanup_old_snapshots(now - timedelta(days=30))
         
+        # 4. Autonomous Operations: Alert Evaluation
+        self._evaluate_alerts(now)
+
         self.db.commit()
 
     def _cleanup_old_snapshots(self, cutoff: datetime):
@@ -52,6 +59,82 @@ class MetricsAggregator:
         """
         query = text("DELETE FROM metric_snapshots WHERE created_at < :cutoff")
         self.db.execute(query, {"cutoff": cutoff})
+
+    def _evaluate_alerts(self, now: datetime):
+        """
+        Scan latest snapshots and create alerts if thresholds are exceeded.
+        """
+        # Resolve latest snapshots for key metrics
+        def get_stat(name, tenant_id=None):
+            stmt = select(MetricSnapshot.metric_value).where(MetricSnapshot.metric_name == name)
+            if tenant_id: stmt = stmt.where(MetricSnapshot.tenant_id == tenant_id)
+            return self.db.exec(stmt.order_by(MetricSnapshot.created_at.desc())).first()
+
+        # 1. Backlog Alert
+        backlog = self.db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "pending")).one()
+        if backlog > PLATFORM_THRESHOLDS.BACKLOG_WARNING_THRESHOLD:
+            severity = "critical" if backlog > PLATFORM_THRESHOLDS.BACKLOG_CRITICAL_THRESHOLD else "warning"
+            self._trigger_alert(
+                type="backlog",
+                severity=severity,
+                message=f"Queue backlog is high: {backlog} messages pending.",
+                metric_value=float(backlog),
+                recommended_action="Scalability: Review active workers or increase processing concurrency."
+            )
+
+        # 2. Latency Alert (p95)
+        p95_latency = get_stat("1h_end_to_end_ms_p95")
+        if p95_latency and p95_latency > PLATFORM_THRESHOLDS.P95_LATENCY_MAX_THRESHOLD:
+            self._trigger_alert(
+                type="latency",
+                severity="critical",
+                message=f"System latency p95 is exceeding SLA: {round(p95_latency, 2)}ms.",
+                metric_value=p95_latency,
+                snapshot_reference="1h_end_to_end_ms_p95",
+                recommended_action="Optimization: Investigate database contention or worker execution timeouts."
+            )
+
+        # 3. Hot Tenants Alert
+        hot_tenant_snaps = self.db.exec(
+            select(MetricSnapshot)
+            .where(MetricSnapshot.metric_name == "tenant_volume_24h")
+            .where(MetricSnapshot.metric_value > PLATFORM_THRESHOLDS.WARNING_TENANT_VOLUME_24H)
+            .order_by(MetricSnapshot.created_at.desc())
+            .limit(10)
+        ).all()
+
+        for hts in hot_tenant_snaps:
+            if hts.metric_value > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H:
+                 self._trigger_alert(
+                    type="tenant_pressure",
+                    severity="critical",
+                    tenant_id=hts.tenant_id,
+                    message=f"Hot Tenant Detected: High volume ({int(hts.metric_value)} events/24h).",
+                    metric_value=hts.metric_value,
+                    recommended_action="Governance: Evaluate throttling or move to dedicated worker tier."
+                 )
+
+    def _trigger_alert(self, type: str, severity: str, message: str, metric_value: float, recommended_action: str, tenant_id: Optional[uuid.UUID] = None, snapshot_reference: Optional[str] = None):
+        """
+        Persists a platform alert and logs it.
+        """
+        # Close old alerts of same type/tenant if they exist?
+        # For simplicity in v1, we mark old active ones as inactive
+        self.db.execute(text(
+            "UPDATE platform_alerts SET is_active = FALSE, resolved_at = :now WHERE type = :type AND tenant_id IS NOT DISTINCT FROM :tenant_id AND is_active = TRUE"
+        ), {"now": get_utc_now(), "type": type, "tenant_id": tenant_id})
+
+        alert = PlatformAlert(
+            type=type,
+            severity=severity,
+            tenant_id=tenant_id,
+            message=message,
+            recommended_action=recommended_action,
+            metric_value=metric_value,
+            snapshot_reference=snapshot_reference
+        )
+        self.db.add(alert)
+        logger.warning("platform.alert_triggered", type=type, severity=severity, message=message)
 
     def _refresh_tenant_pressure(self, period_start: datetime, period_end: datetime):
         """
