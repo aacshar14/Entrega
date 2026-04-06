@@ -30,6 +30,5 @@ ENV PYTHONPATH=/app
 # Expose port (metadata)
 EXPOSE 8080
 
-# Execute uvicorn using the PORT environment variable provided by Cloud Run
-# Falling back to 8080 for world-class local testing
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Execute using shell to ensure PORT expansion and gunicorn for production
+CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 0"]
