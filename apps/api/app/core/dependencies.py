@@ -138,18 +138,19 @@ async def get_current_user(
                 db.commit()
                 db.refresh(user)
             else:
-                import uuid
+                # Auto-provision user if they don't exist
+                logger.info("PROVISIONING: Creating new local User profile from Supabase identity", email=email)
                 user = User(
-                    id=uuid.uuid4(),
                     email=email,
-                    full_name=email.split('@')[0],
                     auth_provider_id=supabase_uid,
-                    platform_role="user",
-                    is_active=True
+                    full_name=payload.get("user_metadata", {}).get("full_name") or email.split("@")[0]
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+
+        # 🛡️ Hardening: Bind user_id to session context immediately
+        structlog.contextvars.bind_contextvars(user_id=str(user.id))
         
         if not user.is_active:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive account")
@@ -159,6 +160,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
+        from app.core.logging import logger
         logger.error("AUTH SYSTEM ERROR", error=str(e))
         raise credentials_exception
 
@@ -175,6 +177,7 @@ async def get_active_membership(
     ).first()
     
     if membership:
+        # 🛡️ Hardening: Bind tenant_id to session context immediately
         structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
     return membership
 
@@ -207,3 +210,6 @@ def require_platform_role(authorized_roles: List[str]):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return current_user
     return role_dependency
+
+# Backward Compatibility & Logic Aliases
+require_roles = require_tenant_role
