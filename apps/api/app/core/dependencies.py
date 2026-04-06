@@ -66,7 +66,7 @@ def get_db():
 async def get_current_user(
     token: Optional[HTTPAuthorizationCredentials] = Security(security),
     db: Session = Depends(get_db)
-) -> User:
+) -> "User":
     """
     EntréGA Authentication Layer:
     1. Validates the incoming Supabase access token (ES256 via JWKS).
@@ -150,6 +150,7 @@ async def get_current_user(
         raise credentials_exception
 
     # 4. Identity Mapping (Global EntréGA Context)
+    from app.models.models import User
     statement = select(User).where(User.auth_provider_id == supabase_uid)
     user = db.exec(statement).first()
     
@@ -190,13 +191,14 @@ async def get_current_user(
     return user
 
 async def get_active_membership(
-    current_user: User = Depends(get_current_user),
+    current_user: "User" = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> Optional[TenantUser]:
+) -> Optional["TenantUser"]:
     """
     Resolves active membership context exclusively from authenticated mapping.
     Removed dependency on X-Tenant-Id to prevent spoofing or accidental context mixing.
     """
+    from app.models.models import TenantUser
     membership_stmt = select(TenantUser).where(
         TenantUser.user_id == current_user.id,
         TenantUser.is_active == True
@@ -215,22 +217,23 @@ async def get_active_membership(
     return membership
 
 async def get_active_tenant(
-    membership: TenantUser = Depends(get_active_membership),
+    membership: "TenantUser" = Depends(get_active_membership),
     db: Session = Depends(get_db)
-) -> Tenant:
+) -> "Tenant":
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
+    from app.models.models import Tenant
     return db.get(Tenant, membership.tenant_id)
 
 async def get_active_tenant_id(
-    membership: TenantUser = Depends(get_active_membership)
+    membership: "TenantUser" = Depends(get_active_membership)
 ) -> UUID:
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
     return membership.tenant_id
 
 def require_tenant_role(roles: List[str]):
-    async def role_dependency(membership: TenantUser = Depends(get_active_membership)):
+    async def role_dependency(membership: "TenantUser" = Depends(get_active_membership)):
         if not membership or membership.tenant_role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -242,7 +245,7 @@ def require_tenant_role(roles: List[str]):
 require_roles = require_tenant_role
 
 def require_platform_role(authorized_roles: List[str]):
-    async def role_dependency(current_user: User = Depends(get_current_user)):
+    async def role_dependency(current_user: "User" = Depends(get_current_user)):
         if current_user.platform_role not in authorized_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
