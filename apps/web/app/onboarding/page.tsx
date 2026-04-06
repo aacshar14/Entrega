@@ -56,7 +56,7 @@ export default function OnboardingPage() {
         appId            : metaAppId,
         autoLogAppEvents : true,
         xfbml            : true,
-        version          : 'v19.0'
+        version          : 'v22.0'
       });
     };
 

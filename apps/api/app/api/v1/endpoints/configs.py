@@ -23,13 +23,13 @@ async def get_public_config(db: Session = Depends(get_session)):
         # Use raw SQL to be agnostic to model/migration state
         result = db.execute(text("SELECT value FROM system_settings WHERE key = 'whatsapp_app_id'")).first()
         if result and result[0]:
-            app_id = result[0]
+            app_id = str(result[0]).strip()
     except Exception:
         # If table doesn't exist yet, we silently ignore and use the fallback
         pass
     
     return {
-        "whatsapp_app_id": str(app_id) if app_id else None,
+        "whatsapp_app_id": str(app_id).strip() if app_id else None,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT
     }

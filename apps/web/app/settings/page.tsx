@@ -121,7 +121,7 @@ export default function SettingsPage() {
             appId            : metaAppId, 
             cookie           : true,
             xfbml            : true,
-            version          : 'v19.0'
+            version          : 'v22.0'
           });
         };
       };

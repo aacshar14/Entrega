@@ -79,6 +79,7 @@ export default function PlatformSettingsPage() {
         <button 
           onClick={handleSave}
           disabled={isSaving}
+          title="Guardar todos los cambios de configuración global"
           className={`px-8 py-3 rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest transition-all ${success ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg active:scale-95'}`}
         >
            {success ? <CheckCircle2 size={18} /> : isSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></div> : <Save size={18} />}
@@ -127,6 +128,8 @@ export default function PlatformSettingsPage() {
                   <span className="text-xs font-bold text-slate-500">Max Tenants</span>
                   <input 
                     type="number"
+                    title="Cantidad máxima de tenants permitidos por administrador"
+                    placeholder="Ej. 10"
                     className="w-16 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-black text-blue-600 text-right focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     defaultValue={settings?.limits?.max_tenants_per_admin}
                   />
@@ -135,6 +138,8 @@ export default function PlatformSettingsPage() {
                   <span className="text-xs font-bold text-slate-500">Events/Day Free</span>
                   <input 
                     type="number"
+                    title="Límite máximo de eventos gratuitos por día"
+                    placeholder="Ej. 1000"
                     className="w-24 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-black text-blue-600 text-right focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     defaultValue={settings?.limits?.max_events_per_day_free_tier}
                   />
