@@ -39,7 +39,7 @@ export default function SettingsPage() {
 
   const [team, setTeam] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
-  const [metaAppId, setMetaAppId] = useState<string | null>(null);
+  const [metaAppId, setMetaAppId] = useState<string | null>('825875709540441');
   const [showManualMeta, setShowManualMeta] = useState(false);
 
   // Platform Level Settings (Admin Only)

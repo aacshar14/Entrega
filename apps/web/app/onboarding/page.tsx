@@ -28,7 +28,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<OnboardingStep>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [metaAppId, setMetaAppId] = useState<string | null>(null);
+  const [metaAppId, setMetaAppId] = useState<string | null>('825875709540441');
   const [formData, setFormData] = useState({
     business_name: activeTenant?.name || '',
     whatsapp: activeTenant?.business_whatsapp_number || '',
