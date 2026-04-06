@@ -19,7 +19,7 @@ import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 
 export default function SettingsPage() {
-  const { activeTenant, refreshUser } = useTenant();
+  const { user, activeTenant, refreshUser } = useTenant();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +40,42 @@ export default function SettingsPage() {
   const [team, setTeam] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
   const [showManualMeta, setShowManualMeta] = useState(false);
+
+  // Platform Level Settings (Admin Only)
+  const [platformConfig, setPlatformConfig] = useState<Record<string, string>>({});
+  const [platformLoading, setPlatformLoading] = useState(false);
+
+  const fetchPlatformSettings = async () => {
+    if (user?.platform_role !== 'admin') return;
+    try {
+      const data = await apiRequest('/admin/settings', 'GET', null, activeTenant?.id);
+      if (data && data.db_backed) {
+         setPlatformConfig(data.db_backed);
+      }
+    } catch (err) {
+      console.error("Error fetching platform settings:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.platform_role === 'admin') {
+      fetchPlatformSettings();
+    }
+  }, [user]);
+
+  const handleUpdatePlatformSetting = async (key: string, value: string) => {
+    setPlatformLoading(true);
+    try {
+      await apiRequest(`/admin/settings/${key}?value=${encodeURIComponent(value || '')}`, 'PUT', null, activeTenant?.id);
+      setSuccess(true);
+      await fetchPlatformSettings();
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError("Error admin: " + err.message);
+    } finally {
+      setPlatformLoading(false);
+    }
+  };
 
   const fetchTeam = async () => {
     if (!activeTenant) return;
@@ -487,6 +523,82 @@ export default function SettingsPage() {
                </div>
             </div>
          </div>
+
+         {/* Platform Admin Central (Admin Only) */}
+         {user?.platform_role === 'admin' && (
+            <div className="md:col-span-12 bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl border-2 border-dashed border-[#56CCF2]/40 mt-10 animate-in zoom-in-95 duration-500">
+               <div className="flex items-center justify-between mb-10">
+                  <div className="space-y-1">
+                     <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-3">
+                        <SettingsIcon size={20} className="text-[#56CCF2]" /> Zona de Infraestructura 
+                     </h3>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Panel de Control Global (Hugo Only)</p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#1D3146] text-[#56CCF2] rounded-full text-[9px] font-black uppercase tracking-[0.15em] shadow-lg">
+                     <CheckCircle2 size={12} />
+                     Modo SuperUser Activo
+                  </div>
+               </div>
+               
+               <div className="grid grid-cols-1 gap-8">
+                  <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-8 group hover:bg-white hover:shadow-xl transition-all duration-300">
+                     <div className="space-y-2">
+                        <p className="text-base font-black text-[#1D3146] flex items-center gap-2">
+                           <Smartphone size={18} className="text-[#56CCF2]" />
+                           WhatsApp Meta App ID (Global)
+                        </p>
+                        <p className="text-xs text-slate-400 font-medium max-w-xl leading-relaxed">
+                           Identidad maestra de Meta. Si un tenant no tiene su propio ID, usará este. 
+                           <span className="text-rose-400 font-bold ml-1 italic">Advertencia: Cambiar esto afecta a todos los usuarios en tiempo real.</span>
+                        </p>
+                     </div>
+                     <div className="flex items-center gap-4 w-full lg:w-auto">
+                        <input 
+                           type="text"
+                           className="h-14 px-6 bg-white border-2 border-slate-100 rounded-2xl text-sm font-black text-[#1D3146] outline-none focus:border-[#56CCF2] transition-colors flex-1 lg:w-72 shadow-inner"
+                           value={platformConfig.whatsapp_app_id || ''}
+                           onChange={(e) => setPlatformConfig({...platformConfig, whatsapp_app_id: e.target.value})}
+                           placeholder="Ej: 825875709540441"
+                           title="Global Meta App ID"
+                        />
+                        <button 
+                           onClick={() => handleUpdatePlatformSetting('whatsapp_app_id', platformConfig.whatsapp_app_id)}
+                           disabled={platformLoading}
+                           className="h-14 px-8 bg-[#1D3146] text-[#56CCF2] rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-125 transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                        >
+                           {platformLoading ? <Loader2 className="animate-spin" size={16} /> : 'Guardar'}
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-8 group hover:bg-white hover:shadow-xl transition-all duration-300">
+                     <div className="space-y-2">
+                        <p className="text-base font-black text-[#1D3146] flex items-center gap-2">
+                           <AlertCircle size={18} className={platformConfig.maintenance_mode === 'true' ? 'text-rose-500' : 'text-emerald-500'} />
+                           Interruptor de Mantenimiento
+                        </p>
+                        <p className="text-xs text-slate-400 font-medium max-w-xl leading-relaxed">
+                           Activa el bloqueo global de la plataforma para realizar actualizaciones críticas. 
+                           Status actual: <span className={platformConfig.maintenance_mode === 'true' ? 'text-rose-500 font-black' : 'text-emerald-500 font-black'}>
+                              {platformConfig.maintenance_mode === 'true' ? 'BLOQUEADO' : 'OPERATIVO'}
+                           </span>
+                        </p>
+                     </div>
+                     <button 
+                        onClick={() => handleUpdatePlatformSetting('maintenance_mode', platformConfig.maintenance_mode === 'true' ? 'false' : 'true')}
+                        disabled={platformLoading}
+                        className={`h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center gap-3 ${
+                           platformConfig.maintenance_mode === 'true' 
+                           ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200' 
+                           : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-200'
+                        }`}
+                     >
+                        {platformConfig.maintenance_mode === 'true' ? 'Desbloquear Plataforma' : 'Activar Bloqueo'}
+                     </button>
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
     </div>
   );
