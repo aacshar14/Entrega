@@ -7,9 +7,10 @@ from sqlmodel import Session, select, text
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.logging import logger
-from app.models.models import WhatsAppMessage, Tenant, MessageLog
+from app.models.models import WhatsAppMessage, Tenant, MessageLog, InboundEvent
 from app.core.parser import ParsingEngine
 from app.core.limiter import limiter
+from app.core.queue import QueueManager
 
 router = APIRouter()
 
@@ -98,12 +99,7 @@ async def receive_whatsapp_event(
         if not tenant:
             return {"status": "error", "detail": "Tenant not found"}
 
-        # 3. 🧠 Parsing Engine v1 (Learning First)
-        engine = ParsingEngine(db, tenant)
-        log = engine.parse_message(sender=from_number, raw_text=body)
-        db.add(log)
-        
-        # 4. 🗄️ Persist raw WhatsAppMessage model for history & idempotency
+        # 3. 🗄️ Persist raw WhatsAppMessage model for history
         new_msg = WhatsAppMessage(
             tenant_id=tenant.id,
             from_number=from_number,
@@ -112,8 +108,20 @@ async def receive_whatsapp_event(
             raw_payload=json.dumps(payload)
         )
         db.add(new_msg)
+
+        # 4. 📭 Enqueue Event for Async Processing
+        qm = QueueManager(db)
+        qm.enqueue(
+            tenant_id=tenant.id,
+            source="whatsapp",
+            event_type="message",
+            message_sid=msg_id,
+            payload={"from": from_number, "body": body}
+        )
+        
         db.commit()
 
+        logger.info("webhooks.whatsapp_enqueued", message_id=msg_id)
         return {"status": "accepted"}
         
     except Exception as e:

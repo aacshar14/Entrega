@@ -228,6 +228,50 @@ class OnboardingEvent(SQLModel, table=True):
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=get_utc_now)
 
+class InboundEvent(SQLModel, table=True):
+    """
+    EntréGA Inbound Event Queue (Postgres-backed).
+    Used for safe asynchronous decoupling of heavy webhook logic.
+    """
+    __tablename__ = "inbound_events"
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
+    
+    # Context
+    source: str = Field(default="whatsapp", index=True) # e.g., 'whatsapp', 'shopify'
+    event_type: str = Field(default="message") # e.g., 'message', 'status_update'
+    message_sid: str = Field(index=True) # Provider-level ID (e.g., Meta SID) for idempotency
+    payload_json: str = Field(description="Raw JSON payload of the event")
+    
+    # State Machine
+    status: str = Field(default="pending", index=True) # 'pending', 'processing', 'done', 'failed'
+    attempt_count: int = Field(default=0)
+    
+    # Chronology & Locking
+    available_at: datetime = Field(default_factory=get_utc_now, index=True)
+    locked_at: Optional[datetime] = None
+    locked_by: Optional[str] = None # Worker hostname or ID
+    
+    created_at: datetime = Field(default_factory=get_utc_now)
+    processed_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+
+class MetricSnapshot(SQLModel, table=True):
+    """
+    Pre-aggregated metrics for the Platform Admin Dashboard (Rollups).
+    Eliminates the cost of real-time p90/p95 calculation on raw events.
+    """
+    __tablename__ = "metric_snapshots"
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenants.id", index=True)
+    metric_name: str = Field(index=True) # 'latency_p95', 'backlog_size', 'error_rate'
+    metric_value: float
+    
+    # Timing
+    period_start: datetime
+    period_end: datetime
+    created_at: datetime = Field(default_factory=get_utc_now)
+
 # --- Response & DTO Schemas (Bottom to ensure all SQLModel classes are defined) ---
 
 class TenantInfo(BaseModel):
