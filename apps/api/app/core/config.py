@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # WhatsApp Cloud API (Meta)
     WHATSAPP_APP_ID: str = "825875709540441" # Public ID for ChocoBites
     WHATSAPP_APP_SECRET: Optional[str] = None
-    WHATSAPP_VERIFY_TOKEN: str = "default_verify_token" # Overwrite in .env
+    WHATSAPP_VERIFY_TOKEN: str = "Entr3gA_WABA_Secure_2026_TKN_#!" # Overwrite in .env
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None
 

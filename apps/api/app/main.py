@@ -50,6 +50,10 @@ def get_application() -> FastAPI:
     from app.api.v1.api import api_router
     app.include_router(api_router, prefix=settings.API_V1_STR)
     
+    # 🔗 Root Webhook Gateway (Required for Meta standard compliance)
+    from app.api.v1.endpoints import webhooks
+    app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
+    
     return app
 
 app = get_application()
