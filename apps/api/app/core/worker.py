@@ -1,72 +1,72 @@
-import time
-import json
+import uuid
 import structlog
-import socket
-from typing import NoReturn
 from sqlmodel import Session, select
-from app.core.db import engine
+from app.core.db import get_session
 from app.core.queue import QueueManager
 from app.core.parser import ParsingEngine
-from app.models.models import Tenant, InboundEvent
+from app.models.models import InboundEvent, Tenant
+from typing import Optional
 
 logger = structlog.get_logger()
 
-def process_event(db: Session, event: InboundEvent):
+class EventWorker:
     """
-    Business logic transition: Unpacks event and runs ParsingEngine.
+    Consumes InboundEvents from the queue and dispatches them to the correct engine.
     """
-    tenant = db.get(Tenant, event.tenant_id)
-    if not tenant:
-        raise ValueError(f"Tenant {event.tenant_id} not found")
+    def __init__(self, db: Session):
+        self.db = db
+        self.qm = QueueManager(db)
 
-    payload = json.loads(event.payload_json)
-    
-    # We reconstruct the context that was originally in the webhook
-    # This is where 'ParsingEngine' (the heavy lifter) now lives.
-    parser = ParsingEngine(db, tenant)
-    
-    # Extract data from payload (assuming WhatsApp source)
-    from_number = payload.get("from")
-    body = payload.get("body")
-    
-    if not from_number or not body:
-         logger.warning("worker.invalid_payload", event_id=str(event.id))
-         return
+    def process_pending_events(self, limit: int = 10):
+        """
+        Main loop for the worker to claim and process events.
+        """
+        worker_id = f"worker-{uuid.uuid4().hex[:8]}"
+        events = self.qm.claim_events(worker_id=worker_id, limit=limit)
+        
+        if not events:
+            return 0
 
-    # Process!
-    parser.parse_message(sender=from_number, raw_text=body)
-    logger.info("worker.event_processed", event_id=str(event.id), tenant_id=str(tenant.id))
+        processed = 0
+        for event in events:
+            try:
+                self._process_single_event(event)
+                self.qm.mark_done(event.id)
+                processed += 1
+            except Exception as e:
+                logger.exception("Worker failed to process event", event_id=str(event.id), error=str(e))
+                self.qm.mark_failed(event.id, error=str(e))
+        
+        return processed
 
-def run_worker() -> NoReturn:
-    """
-    Main loop for the EntréGA Background Worker.
-    """
-    worker_id = f"worker-{socket.gethostname()}-{time.time()}"
-    logger.info("worker.started", worker_id=worker_id)
-    
-    while True:
-        try:
-            with Session(engine) as db:
-                qm = QueueManager(db)
-                events = qm.claim_events(worker_id=worker_id, limit=5)
-                
-                if not events:
-                    # No work? Sleep a bit.
-                    time.sleep(2)
-                    continue
-                
-                for event in events:
-                    try:
-                        logger.info("worker.processing_event", event_id=str(event.id))
-                        process_event(db, event)
-                        qm.mark_done(event.id)
-                    except Exception as e:
-                        logger.error("worker.event_failed", event_id=str(event.id), error=str(e))
-                        qm.mark_failed(event.id, error=str(e))
-                        
-        except Exception as e:
-            logger.error("worker.loop_error", error=str(e))
-            time.sleep(5)
+    def _process_single_event(self, event: InboundEvent):
+        """
+        Logic for a single event type.
+        """
+        # Resolve Tenant
+        tenant = self.db.get(Tenant, event.tenant_id)
+        if not tenant:
+            raise ValueError(f"Tenant {event.tenant_id} not found for event {event.id}")
 
-if __name__ == "__main__":
-    run_worker()
+        # Bind context for logging
+        structlog.contextvars.bind_contextvars(tenant_id=str(tenant.id), event_id=str(event.id))
+
+        if event.source == "whatsapp" and event.event_type == "message":
+            payload = event.get_payload()
+            sender = payload.get("from")
+            body = payload.get("body")
+            
+            if not body:
+                logger.warning("Empty message body, skipping parsing")
+                return
+
+            # Call Parsing Engine
+            engine = ParsingEngine(self.db, tenant)
+            log = engine.parse_message(sender=sender, raw_text=body)
+            
+            logger.info("webhooks.message_parsed", 
+                        intent=log.detected_intent, 
+                        confidence=log.confidence,
+                        needs_confirmation=log.needs_confirmation)
+        else:
+            logger.warning("Unsupported event type or source", source=event.source, type=event.event_type)

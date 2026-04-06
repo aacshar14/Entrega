@@ -2,7 +2,7 @@ import json
 import hmac
 import hashlib
 import structlog
-from fastapi import APIRouter, Request, Query, HTTPException, Depends
+from fastapi import APIRouter, Request, Query, HTTPException, Depends, BackgroundTasks
 from sqlmodel import Session, select, text
 from app.core.config import settings
 from app.core.db import get_session
@@ -11,6 +11,7 @@ from app.models.models import WhatsAppMessage, Tenant, MessageLog, InboundEvent
 from app.core.parser import ParsingEngine
 from app.core.limiter import limiter
 from app.core.queue import QueueManager
+from app.core.worker import EventWorker
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ async def verify_webhook(
 @limiter.limit("20/minute")
 async def receive_whatsapp_event(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_session)
 ):
     """
@@ -128,6 +130,10 @@ async def receive_whatsapp_event(
         )
         
         db.commit()
+
+        # 🚀 Immediate Background Dispatcher
+        worker = EventWorker(db)
+        background_tasks.add_task(worker.process_pending_events, limit=5)
 
         logger.info("webhooks.whatsapp_enqueued", message_id=msg_id, intake_ms=duration_ms)
         return {"status": "accepted"}
