@@ -118,14 +118,20 @@ jobs:
 
     - name: API Health Check
       run: |-
-        # Simple health check
-        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.entrega.space/ || echo "000")
-        if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ]; then
-           echo "🚀 API Health Check Passed: $STATUS"
-        else
-           echo "❌ API Unreachable or Critical Error: $STATUS"
-           exit 1
-        fi
+        max_attempts=5
+        attempt=1
+        until [ $attempt -gt $max_attempts ]; do
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.entrega.space/api/v1/health/)
+          if [ "$STATUS" -eq 200 ]; then
+            echo "🚀 API Health Check Passed: $STATUS"
+            exit 0
+          fi
+          echo "Attempt $attempt failed with status $STATUS. Retrying in 5s..."
+          sleep 5
+          attempt=$((attempt + 1))
+        done
+        echo "❌ API Unreachable after $max_attempts attempts."
+        exit 1
 
     # --- Web Container ---
     - name: Build Web
