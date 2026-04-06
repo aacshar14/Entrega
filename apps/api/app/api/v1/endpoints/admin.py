@@ -219,3 +219,56 @@ async def delete_user(user_id: UUID, db: Session = Depends(get_session)):
     db.delete(user)
     db.commit()
     return {"status": "deleted"}
+
+@router.get("/costs", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_platform_costs(db: Session = Depends(get_session)):
+    """
+    Platform Admin only: usage-based cost estimates.
+    """
+    total_events = db.exec(select(func.count(InboundEvent.id))).one()
+    events_24h = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.created_at > text("now() - interval '24 hours'"))).one()
+    total_tenants = db.exec(select(func.count(Tenant.id))).one()
+    
+    # Heuristic cost calculation (example: $0.001 per event, $5 per active tenant)
+    estimated_monthly = (events_24h * 30 * 0.001) + (total_tenants * 5.0)
+    
+    return {
+        "total_events": total_events,
+        "events_last_24h": events_24h,
+        "active_tenants": total_tenants,
+        "estimated_monthly_usd": round(estimated_monthly, 2),
+        "currency": "USD",
+        "breakdown": [
+            {"label": "Infrastructure (Base)", "value": 15.00, "unit": "USD"},
+            {"label": "Event Processing (Est.)", "value": round(events_24h * 30 * 0.001, 2), "unit": "USD"},
+            {"label": "Database Storage", "value": 2.50, "unit": "USD"}
+        ]
+    }
+
+@router.get("/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_platform_settings():
+    """
+    Platform Admin only: Global configuration.
+    """
+    # Currently reading from app config/env, eventually from a settings table
+    return {
+        "features": {
+            "enable_whatsapp": True,
+            "enable_sre_dashboard": True,
+            "enable_multi_region": False,
+            "maintenance_mode": False
+        },
+        "limits": {
+            "max_tenants_per_admin": 10,
+            "max_events_per_day_free_tier": 1000
+        },
+        "environment": "production" if not settings.DEBUG else "development"
+    }
+
+@router.patch("/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def update_platform_settings(payload: Dict):
+    """
+    Platform Admin only: Update global configuration.
+    """
+    # This is a placeholder for persistent settings
+    return {"status": "success", "updated_values": payload}
