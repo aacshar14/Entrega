@@ -1,5 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlmodel import Session, select
 from app.core.config import settings
+from app.core.db import get_session
+from app.models.models import SystemSetting
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -10,13 +13,22 @@ class PublicConfigResponse(BaseModel):
     environment: str
 
 @router.get("/public", response_model=PublicConfigResponse)
-async def get_public_config():
+async def get_public_config(db: Session = Depends(get_session)):
     """
     Returns public configuration values needed by the frontend.
-    This ensures the Meta App ID is always synchronized with the backend environment.
+    Priority:
+    1. Database (system_settings table)
+    2. Environment Variable (fallback)
     """
+    # Try fetching from DB
+    db_app_id = db.exec(
+        select(SystemSetting.value).where(SystemSetting.key == "whatsapp_app_id")
+    ).first()
+    
+    app_id = db_app_id or settings.WHATSAPP_APP_ID
+    
     return {
-        "whatsapp_app_id": settings.WHATSAPP_APP_ID,
+        "whatsapp_app_id": app_id,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT
     }

@@ -9,6 +9,14 @@ def get_utc_now():
 
 # --- Database Tables (SQLModel) ---
 
+class SystemSetting(SQLModel, table=True):
+    """Global platform-wide configuration settings stored in Supabase"""
+    __tablename__ = "system_settings"
+    key: str = Field(primary_key=True)
+    value: str
+    description: Optional[str] = None
+    updated_at: datetime = Field(default_factory=get_utc_now)
+
 class Tenant(SQLModel, table=True):
     __tablename__ = "tenants"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)

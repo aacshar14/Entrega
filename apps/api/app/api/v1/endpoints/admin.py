@@ -4,7 +4,7 @@ from typing import List, Dict
 import uuid
 from uuid import UUID
 from app.core.db import get_session
-from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now, PlatformAlert, AuditLog, MetricSnapshot
+from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now, PlatformAlert, AuditLog, MetricSnapshot, SystemSetting
 from app.core.dependencies import require_platform_role, get_current_user_id
 from app.core.config import settings
 from app.core.metrics import MetricsAggregator
@@ -286,17 +286,20 @@ async def get_platform_costs(db: Session = Depends(get_session)):
     }
 
 @router.get("/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
-async def get_platform_settings():
+async def get_platform_settings(db: Session = Depends(get_session)):
     """
-    Platform Admin only: Global configuration.
+    Platform Admin only: Global configuration from database.
     """
-    # Currently reading from app config/env, eventually from a settings table
+    settings_db = db.exec(select(SystemSetting)).all()
+    # Map to dict
+    config = {s.key: s.value for s in settings_db}
+    
     return {
+        "db_backed": config,
         "features": {
             "enable_whatsapp": True,
             "enable_sre_dashboard": True,
-            "enable_multi_region": False,
-            "maintenance_mode": False
+            "maintenance_mode": config.get("maintenance_mode") == "true"
         },
         "limits": {
             "max_tenants_per_admin": 10,
@@ -325,6 +328,40 @@ async def update_platform_settings(payload: Dict, db: Session = Depends(get_sess
     
     # 2. Return success
     return {"status": "success", "updated_values": payload, "audit_id": log.id}
+@router.put("/settings/{key}", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def update_system_setting(
+    key: str, 
+    value: str, 
+    description: Optional[str] = None, 
+    db: Session = Depends(get_session),
+    user_id: UUID = Depends(get_current_user_id)
+):
+    """
+    Platform Admin only: Update global configuration.
+    """
+    setting = db.get(SystemSetting, key)
+    if not setting:
+        setting = SystemSetting(key=key, value=value, description=description)
+    else:
+        setting.value = value
+        if description:
+            setting.description = description
+        setting.updated_at = get_utc_now()
+    
+    db.add(setting)
+    
+    # Audit trail
+    log = AuditLog(
+        performed_by=user_id,
+        action=f"update_system_setting:{key}",
+        module="platform_admin",
+        data_after=value
+    )
+    db.add(log)
+    
+    db.commit()
+    return {"status": "success", "key": key, "value": value}
+
 @router.post("/metrics/refresh", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 async def refresh_metrics(db: Session = Depends(get_session)):
     """
