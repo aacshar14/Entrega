@@ -20,7 +20,6 @@ async def readiness_check(db: Session = Depends(get_session)):
 async def health_check(request: Request):
     """General health status of the application. Branded for browsers."""
     
-    # Standard health data
     health_data = {
         "status": "healthy",
         "version": settings.VERSION,
@@ -28,10 +27,9 @@ async def health_check(request: Request):
         "environment": settings.ENVIRONMENT
     }
 
-    # Content negotiation: If they want HTML (browser), give them a branded page
     accept_header = request.headers.get("Accept", "")
     if "text/html" in accept_header:
-        # Use official brand colors: Slate 950 and Blue 500
+        # Using official colors: Light background (#e5e9ef), Dark Navy card (#1c2d3d), and Cyan accent (#5dd3f3)
         return HTMLResponse(content=f"""
         <!DOCTYPE html>
         <html lang="es">
@@ -42,16 +40,19 @@ async def health_check(request: Request):
             <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
             <style>
                 :root {{
-                    --primary: #0f172a;
-                    --accent: #3b82f6;
+                    --bg-page: #e5e9ef;
+                    --bg-card: #1c2d3d;
+                    --accent: #5dd3f3;
+                    --text-main: #ffffff;
+                    --text-muted: #94a3b8;
                     --success: #22c55e;
                 }}
                 body {{
                     margin: 0;
                     padding: 0;
                     font-family: 'Outfit', sans-serif;
-                    background: radial-gradient(circle at bottom left, #1e293b, #0f172a);
-                    color: white;
+                    background-color: var(--bg-page);
+                    color: var(--text-main);
                     min-height: 100vh;
                     display: flex;
                     align-items: center;
@@ -59,48 +60,55 @@ async def health_check(request: Request):
                     overflow: hidden;
                 }}
                 .glass {{
-                    background: rgba(255, 255, 255, 0.02);
-                    backdrop-filter: blur(20px);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 32px;
+                    background: var(--bg-card);
+                    border-radius: 40px;
                     padding: 60px;
                     text-align: center;
                     max-width: 480px;
                     width: 90%;
-                    box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.6);
+                    box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.3);
                     animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+                    position: relative;
                 }}
                 @keyframes slideUp {{
                     from {{ opacity: 0; transform: translateY(40px) scale(0.95); }}
                     to {{ opacity: 1; transform: translateY(0) scale(1); }}
                 }}
-                .logo {{
-                    font-size: 42px;
+                .logo-container {{
+                    margin-bottom: 40px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }}
+                .logo-text {{
+                    font-size: 48px;
                     font-weight: 700;
-                    letter-spacing: -1.5px;
-                    margin-bottom: 32px;
+                    letter-spacing: -2px;
+                }}
+                .arrow {{
+                    color: var(--accent);
                 }}
                 .status-badge {{
                     display: inline-flex;
                     align-items: center;
                     gap: 12px;
-                    background: rgba(34, 197, 94, 0.15);
-                    border: 1px solid rgba(34, 197, 94, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
                     padding: 8px 24px;
                     border-radius: 100px;
-                    color: var(--success);
-                    font-size: 15px;
+                    color: var(--text-main);
+                    font-size: 13px;
                     font-weight: 700;
                     margin-bottom: 24px;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
+                    letter-spacing: 1.5px;
+                    background: rgba(255, 255, 255, 0.05);
                 }}
                 .pulse {{
                     width: 10px;
                     height: 10px;
-                    background: var(--success);
+                    background: var(--accent);
                     border-radius: 50%;
-                    box-shadow: 0 0 15px var(--success);
+                    box-shadow: 0 0 15px var(--accent);
                     animation: pulse 2s infinite;
                 }}
                 @keyframes pulse {{
@@ -108,46 +116,54 @@ async def health_check(request: Request):
                     50% {{ transform: scale(1.5); opacity: 0.5; }}
                     100% {{ transform: scale(1); opacity: 1; }}
                 }}
-                h1 {{ margin: 0; font-size: 20px; color: #f8fafc; font-weight: 400; opacity: 0.8; }}
-                .version {{ font-family: monospace; opacity: 0.5; margin-top: 8px; font-size: 14px; }}
+                h1 {{ 
+                    margin: 0; 
+                    font-size: 18px; 
+                    color: var(--text-muted); 
+                    font-weight: 500; 
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                }}
                 .grid {{
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-top: 40px;
+                    gap: 20px;
+                    margin-top: 48px;
                     text-align: left;
                 }}
                 .card {{
                     background: rgba(255,255,255,0.03);
-                    padding: 16px;
-                    border-radius: 16px;
+                    padding: 20px;
+                    border-radius: 20px;
                     border: 1px solid rgba(255,255,255,0.05);
                 }}
-                .card-label {{ font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; }}
-                .card-value {{ font-size: 14px; margin-top: 4px; font-weight: 600; color: #cbd5e1; }}
+                .card-label {{ font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }}
+                .card-value {{ font-size: 15px; margin-top: 6px; font-weight: 600; color: var(--text-main); }}
                 .footer {{
-                    margin-top: 40px;
+                    margin-top: 60px;
                     font-size: 13px;
-                    color: #475569;
+                    color: var(--text-muted);
+                    opacity: 0.6;
                 }}
             </style>
         </head>
         <body>
             <div class="glass">
-                <div class="logo">
-                    <span style="color: var(--accent);">Entré</span>GA
+                <div class="logo-container">
+                    <div class="logo-text">
+                        <span class="arrow">E</span>ntrega
+                    </div>
                 </div>
                 <div class="status-badge">
                     <div class="pulse"></div>
                     SISTEMA OPERATIVO
                 </div>
-                <h1>{settings.PROJECT_NAME} API Engine</h1>
-                <div class="version">v{settings.VERSION}</div>
+                <h1>Health Monitor Engine</h1>
                 
                 <div class="grid">
                     <div class="card">
-                        <div class="card-label">Estado</div>
-                        <div class="card-value">Saludable</div>
+                        <div class="card-label">Version</div>
+                        <div class="card-value">v{settings.VERSION}</div>
                     </div>
                     <div class="card">
                         <div class="card-label">Entorno</div>
@@ -156,13 +172,11 @@ async def health_check(request: Request):
                 </div>
 
                 <div class="footer">
-                    Infraestructura monitoreada en tiempo real<br>
-                    &copy; {time.strftime('%Y')} EntréGA Platform
+                    © {time.strftime('%Y')} Entrega Platform • Logistic Intelligence
                 </div>
             </div>
         </body>
         </html>
         """)
     
-    # Return JSON for API calls
     return JSONResponse(content=health_data)
