@@ -15,8 +15,13 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def trim_db_url(cls, v: str) -> str:
-        return v.strip() if isinstance(v, str) else v
+    def validate_db_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            v = v.strip()
+            # SQLAlchemy 1.4+ requires 'postgresql://' instead of 'postgres://'
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql://", 1)
+        return v
 
     # WhatsApp Cloud API (Meta)
     WHATSAPP_APP_ID: Optional[str] = None

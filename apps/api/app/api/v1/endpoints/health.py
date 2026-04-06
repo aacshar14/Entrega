@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlmodel import Session, text
 from app.core.db import get_session
+from app.core.config import settings
 
 router = APIRouter()
 
