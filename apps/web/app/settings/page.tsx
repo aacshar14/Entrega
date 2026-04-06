@@ -67,7 +67,7 @@ export default function SettingsPage() {
       script.onload = () => {
         (window as any).fbAsyncInit = function() {
           (window as any).FB.init({
-            appId      : activeTenant?.whatsapp_app_id || '904555555555555', 
+            appId      : activeTenant?.whatsapp_app_id || '825875709540441', 
             cookie     : true,
             xfbml      : true,
             version    : 'v19.0'
