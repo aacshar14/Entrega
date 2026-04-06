@@ -22,7 +22,17 @@ async def verify_webhook(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ):
     """WhatsApp webhook verification for Meta Cloud API integration."""
-    if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
+    # 🔍 Dynamic Verification Policy
+    verify_token = settings.WHATSAPP_VERIFY_TOKEN
+    try:
+        # Check if we have a dynamic token in system_settings
+        result = db.execute(text("SELECT value FROM system_settings WHERE key = 'whatsapp_verify_token'")).first()
+        if result and result[0]:
+            verify_token = str(result[0]).strip()
+    except Exception:
+        pass # Fallback to settings if table doesn't exist
+
+    if hub_mode == "subscribe" and hub_verify_token == verify_token:
         return int(hub_challenge)
     
     raise HTTPException(status_code=403, detail="Verification token mismatch")
