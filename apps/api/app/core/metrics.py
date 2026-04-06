@@ -41,7 +41,17 @@ class MetricsAggregator:
         # 2. Per-Tenant Pressure (24h)
         self._refresh_tenant_pressure(now - timedelta(hours=24), now)
         
+        # 3. Snapshot Hygiene: Retention policy (e.g. 30 days)
+        self._cleanup_old_snapshots(now - timedelta(days=30))
+        
         self.db.commit()
+
+    def _cleanup_old_snapshots(self, cutoff: datetime):
+        """
+        Delete snapshots older than the retention period to prevent storage bloat.
+        """
+        query = text("DELETE FROM metric_snapshots WHERE created_at < :cutoff")
+        self.db.execute(query, {"cutoff": cutoff})
 
     def _refresh_tenant_pressure(self, period_start: datetime, period_end: datetime):
         """

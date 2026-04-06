@@ -8,6 +8,9 @@ from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_no
 from app.core.dependencies import require_platform_role
 from app.core.config import settings
 from app.core.metrics import MetricsAggregator
+from app.core.thresholds import PLATFORM_THRESHOLDS
+from app.models.models import AuditLog
+import json
 
 router = APIRouter()
 
@@ -40,11 +43,11 @@ async def get_queue_stats(db: Session = Depends(get_session)):
     except:
         db_conns = -1 # Indicate no data instead of false 0
 
-    # Logic for Infra Status
+    # Logic for Infra Status using centralized thresholds
     infra_status = "healthy"
     if failed > 0:
         infra_status = "critical"
-    elif pending > 500:
+    elif pending > PLATFORM_THRESHOLDS.BACKLOG_WARNING_THRESHOLD:
         infra_status = "degraded"
     elif pending > 0 and processing == 0:
         infra_status = "critical" # Workers down
@@ -120,7 +123,7 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
             "failed_count": int(get_val("tenant_failures_24h")),
             "retry_count": int(get_val("tenant_retries_24h")),
             "backlog": int(get_val("tenant_backlog_current")),
-            "status": "hot" if snap.metric_value > 5000 or get_val("tenant_failures_24h") > 50 else "warning" if snap.metric_value > 1000 or get_val("tenant_failures_24h") > 0 else "normal"
+            "status": "hot" if snap.metric_value > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H or get_val("tenant_failures_24h") > PLATFORM_THRESHOLDS.HOT_TENANT_FAILURES_24H else "warning" if snap.metric_value > PLATFORM_THRESHOLDS.WARNING_TENANT_VOLUME_24H or get_val("tenant_failures_24h") > 0 else "normal"
         })
         
     return pressure_map
@@ -252,15 +255,17 @@ async def get_platform_costs(db: Session = Depends(get_session)):
     estimated_monthly = (events_24h * 30 * 0.001) + (total_tenants * 5.0)
     
     return {
+        "title": "Costo estimado mensual",
         "total_events": total_events,
         "events_last_24h": events_24h,
         "active_tenants": total_tenants,
         "estimated_monthly_usd": round(estimated_monthly, 2),
         "currency": "USD",
+        "is_projection": True,
         "breakdown": [
-            {"label": "Infrastructure (Base)", "value": 15.00, "unit": "USD"},
-            {"label": "Event Processing (Est.)", "value": round(events_24h * 30 * 0.001, 2), "unit": "USD"},
-            {"label": "Database Storage", "value": 2.50, "unit": "USD"}
+            {"label": "Infrastructure (Base Est.)", "value": 15.00, "unit": "USD"},
+            {"label": "Event Processing (Trend Est.)", "value": round(events_24h * 30 * 0.001, 2), "unit": "USD"},
+            {"label": "Database Storage (Est.)", "value": 2.50, "unit": "USD"}
         ]
     }
 
@@ -285,12 +290,25 @@ async def get_platform_settings():
     }
 
 @router.patch("/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
-async def update_platform_settings(payload: Dict):
+async def update_platform_settings(payload: Dict, db: Session = Depends(get_session), user_id: str = Depends(get_current_user_id)):
     """
-    Platform Admin only: Update global configuration.
+    Platform Admin only: Update global configuration with audit trail.
     """
-    # This is a placeholder for persistent settings
-    return {"status": "success", "updated_values": payload}
+    # 1. Capture audit trail
+    log = AuditLog(
+        performed_by=user_id,
+        action="update_settings",
+        module="platform_admin",
+        data_after=json.dumps(payload),
+        ip_address="internal" # Placeholder for future IP tracking
+    )
+    db.add(log)
+    db.commit()
+    
+    logger.info("admin.settings_updated", performed_by=user_id, changes=payload)
+    
+    # 2. Return success
+    return {"status": "success", "updated_values": payload, "audit_id": log.id}
 @router.post("/metrics/refresh", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 async def refresh_metrics(db: Session = Depends(get_session)):
     """

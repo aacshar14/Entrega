@@ -275,6 +275,23 @@ class MetricSnapshot(SQLModel, table=True):
     period_end: datetime
     created_at: datetime = Field(default_factory=get_utc_now)
 
+class AuditLog(SQLModel, table=True):
+    """
+    Platform-wide audit trail for administrative actions.
+    """
+    __tablename__ = "audit_logs"
+    
+    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    performed_by: UUID = Field(index=True) # User ID
+    action: str = Field(index=True) # 'update_settings', 'suspend_user', etc.
+    module: str = Field(index=True) # 'platform_admin', 'tenant_admin'
+    
+    data_before: Optional[str] = None # JSON string
+    data_after: Optional[str] = None # JSON string
+    
+    created_at: datetime = Field(default_factory=get_utc_now, index=True)
+    ip_address: Optional[str] = None
+
 # --- Response & DTO Schemas (Bottom to ensure all SQLModel classes are defined) ---
 
 class TenantInfo(BaseModel):
