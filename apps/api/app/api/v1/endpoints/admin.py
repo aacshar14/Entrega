@@ -60,6 +60,28 @@ async def get_tenant_pressure(db: Session = Depends(get_session), current_user =
         
     return pressure_map
 
+@router.post("/queue/requeue-failed")
+async def requeue_failed(
+    db: Session = Depends(get_session),
+    current_user = Depends(get_current_user)
+):
+    """
+    DLQ Re-enqueue:
+    Resets all 'failed' events back to 'pending' to allow workers to retry them.
+    """
+    if current_user.platform_role != "admin":
+        raise HTTPException(status_code=403, detail="Platform Admin access required")
+
+    stmt = text("""
+        UPDATE inbound_events 
+        SET status = 'pending', attempt_count = 0, last_error = 'Manual requeue by admin'
+        WHERE status = 'failed'
+    """)
+    result = db.execute(stmt)
+    db.commit()
+    
+    return {"requeued_count": result.rowcount}
+
 @router.get("/capacity/advisor")
 async def get_capacity_advisor(db: Session = Depends(get_session), current_user = Depends(get_current_user)):
     """

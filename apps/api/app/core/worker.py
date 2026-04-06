@@ -4,7 +4,7 @@ import structlog
 import socket
 from typing import NoReturn
 from sqlmodel import Session, select
-from app.core.database import engine
+from app.core.db import engine
 from app.core.queue import QueueManager
 from app.core.parser import ParsingEngine
 from app.models.models import Tenant, InboundEvent

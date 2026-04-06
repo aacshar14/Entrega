@@ -59,11 +59,15 @@ graph TD
 ```
 
 ---
-
 ## 🏢 Multi-Tenant Wiki
 Para entender cómo manejamos el aislamiento de datos, los roles de usuario (Hugo vs. Leo) y la inyección de contexto por negocio, consulta nuestra documentación especializada:
 
 👉 **[Wiki de Tenants & Arquitectura](docs/TENANTS.md)**
+
+## ⚡ Rendimiento y Resiliencia
+La plataforma EntréGA v1.1 ha sido validada técnicamente para soportar carga productiva real mediante una arquitectura de procesamiento asíncrono.
+
+👉 **[Reporte de Validación Checkpoint 2](docs/reports/checkpoint2_validation.md)**
 
 ---
 

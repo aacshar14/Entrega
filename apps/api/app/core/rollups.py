@@ -1,7 +1,7 @@
 import structlog
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select, func, text
-from app.core.database import engine
+from app.core.db import engine
 from app.models.models import InboundEvent, MetricSnapshot, Tenant
 
 logger = structlog.get_logger()
