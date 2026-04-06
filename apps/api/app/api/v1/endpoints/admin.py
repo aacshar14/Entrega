@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func, text
-from typing import List, Dict
+from typing import List, Dict, Optional
 import uuid
 from uuid import UUID
 from app.core.db import get_session
