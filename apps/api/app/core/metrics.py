@@ -26,6 +26,7 @@ class MetricsAggregator:
 
         now = get_utc_now()
 
+        # 1. Global Metrics
         for window_label, delta in windows:
             period_start = now - delta
             
@@ -37,7 +38,52 @@ class MetricsAggregator:
                     period_end=now
                 )
         
+        # 2. Per-Tenant Pressure (24h)
+        self._refresh_tenant_pressure(now - timedelta(hours=24), now)
+        
         self.db.commit()
+
+    def _refresh_tenant_pressure(self, period_start: datetime, period_end: datetime):
+        """
+        Calculate Top Tenants by volume, failures, and p95 for the pressure panel.
+        """
+        query = text("""
+            SELECT 
+                tenant_id,
+                COUNT(*) as volume,
+                COUNT(*) FILTER (WHERE status = 'failed') as failures,
+                SUM(attempt_count) as total_retries,
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - locked_at)) * 1000) as p95_ms,
+                COUNT(*) FILTER (WHERE status IN ('pending', 'processing')) as backlog
+            FROM inbound_events
+            WHERE created_at >= :start
+            GROUP BY tenant_id
+            ORDER BY volume DESC
+            LIMIT 20
+        """)
+        
+        results = self.db.execute(query, {"start": period_start}).all()
+        
+        for row in results:
+            t_id, vol, fail, retries, p95, backlog = row
+            
+            # Store specialized snapshots for this tenant
+            self._save_metric(f"tenant_volume_24h", vol, period_start, period_end, t_id)
+            self._save_metric(f"tenant_failures_24h", fail, period_start, period_end, t_id)
+            self._save_metric(f"tenant_retries_24h", retries, period_start, period_end, t_id)
+            self._save_metric(f"tenant_p95_processing_ms_24h", p95 or 0, period_start, period_end, t_id)
+            self._save_metric(f"tenant_backlog_current", backlog, period_start, period_end, t_id)
+
+    def _save_metric(self, name: str, value: float, start: datetime, end: datetime, tenant_id=None):
+        snapshot = MetricSnapshot(
+            metric_name=name,
+            metric_value=float(value),
+            period_start=start,
+            period_end=end,
+            created_at=end,
+            tenant_id=tenant_id
+        )
+        self.db.add(snapshot)
 
     def _calculate_and_save(self, metric_name: str, sql_expression: str, period_start: datetime, period_end: datetime):
         """

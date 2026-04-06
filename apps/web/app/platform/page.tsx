@@ -118,35 +118,60 @@ export default function PlatformOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Load Distribution */}
+        {/* Tenant Pressure Panel v1 */}
         {pressure && pressure.length > 0 && (
           <div className="lg:col-span-2 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
             <div className="p-10 border-b border-slate-50 flex items-center justify-between">
                <h3 className="text-xl font-black text-[#1D3146] flex items-center gap-3">
                   <BarChart3 className="text-blue-500" size={24} />
-                  Distribución de Carga
+                  Tenant Pressure Panel
                </h3>
                <span className="text-[10px] font-black uppercase text-slate-400 bg-slate-100 px-3 py-1 rounded-full tracking-widest">
                   Últimas 24h
                </span>
             </div>
-            <div className="p-8">
-               <div className="space-y-6">
-                  {pressure.map((p, idx) => (
-                    <div key={idx} className="group">
-                      <div className="flex items-center justify-between mb-2">
-                         <span className="text-sm font-bold text-[#1D3146]">{p.tenant_name || 'Desconocido'}</span>
-                         <span className="text-xs font-black text-blue-600">{p.event_count.toLocaleString()} ev</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                         <div 
-                           className="h-full bg-blue-500 rounded-full transition-all duration-1000" 
-                           style={{ width: `${(p.event_count / (pressure[0]?.event_count || 1)) * 100}%` }}
-                         ></div>
-                      </div>
-                    </div>
-                  ))}
-               </div>
+            <div className="overflow-x-auto p-4">
+               <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-50">
+                       <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Tenant</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Volumen</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">p95 Proc</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Failed</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-rose-500">Backlog</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pressure.map((p, idx) => (
+                      <tr key={idx} className="group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0 font-medium">
+                        <td className="px-6 py-5">
+                           <div className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${p.status === 'hot' ? 'bg-rose-500 animate-pulse' : p.status === 'warning' ? 'bg-amber-400' : 'bg-emerald-500'}`}></div>
+                              <span className="text-sm font-bold text-[#1D3146]">{p.tenant_name}</span>
+                           </div>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className="text-xs font-black text-slate-600">{p.volume_24h.toLocaleString()}</span>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className={`text-xs font-black ${p.p95_processing_ms > 5000 ? 'text-amber-600' : 'text-slate-400'}`}>
+                              {p.p95_processing_ms > 0 ? `${p.p95_processing_ms}ms` : 'No data'}
+                           </span>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className={`text-xs font-black ${p.failed_count > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                              {p.failed_count}
+                           </span>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className={`px-2 py-0.5 rounded text-[10px] font-black ${p.backlog > 0 ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-300'}`}>
+                              {p.backlog}
+                           </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+               </table>
             </div>
           </div>
         )}

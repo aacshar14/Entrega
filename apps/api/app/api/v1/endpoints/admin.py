@@ -83,27 +83,44 @@ async def get_queue_stats(db: Session = Depends(get_session)):
 @router.get("/tenants/pressure", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 async def get_tenant_pressure(db: Session = Depends(get_session)):
     """
-    Identifies which tenants are generating the most load in the last hour.
+    Returns the Top 10 tenants with most pressure based on the latest snapshots.
     """
-    statement = text("""
-        SELECT tenant_id, count(*) as event_count 
-        FROM inbound_event 
-        WHERE created_at > now() - interval '1 hour'
-        GROUP BY tenant_id 
-        ORDER BY event_count DESC 
-        LIMIT 10
-    """)
-    result = db.execute(statement).all()
-    
-    if not result:
-        return []
-        
+    # 1. Identity tenants that have volume snapshots in last 24h
+    latest_volume_snapshots = db.exec(
+        select(MetricSnapshot)
+        .where(MetricSnapshot.metric_name == "tenant_volume_24h")
+        .order_by(MetricSnapshot.created_at.desc(), MetricSnapshot.metric_value.desc())
+        .limit(10)
+    ).all()
+
     pressure_map = []
-    for row in result:
-        tenant = db.get(Tenant, row[0])
+    for snap in latest_volume_snapshots:
+        t_id = snap.tenant_id
+        if not t_id: continue
+        
+        tenant = db.get(Tenant, t_id)
+        
+        # Get related metrics for this specific tenant in the same period
+        # We look for the most recent one for each type
+        def get_val(name):
+            val = db.exec(
+                select(MetricSnapshot.metric_value)
+                .where(MetricSnapshot.metric_name == name)
+                .where(MetricSnapshot.tenant_id == t_id)
+                .order_by(MetricSnapshot.created_at.desc())
+                .limit(1)
+            ).first()
+            return val or 0
+
         pressure_map.append({
+            "tenant_id": t_id,
             "tenant_name": tenant.name if tenant else "Unknown",
-            "event_count": row[1]
+            "volume_24h": int(snap.metric_value),
+            "p95_processing_ms": round(get_val("tenant_p95_processing_ms_24h"), 2),
+            "failed_count": int(get_val("tenant_failures_24h")),
+            "retry_count": int(get_val("tenant_retries_24h")),
+            "backlog": int(get_val("tenant_backlog_current")),
+            "status": "hot" if snap.metric_value > 5000 or get_val("tenant_failures_24h") > 50 else "warning" if snap.metric_value > 1000 or get_val("tenant_failures_24h") > 0 else "normal"
         })
         
     return pressure_map
