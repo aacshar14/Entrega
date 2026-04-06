@@ -3,6 +3,7 @@ import hmac
 import hashlib
 import structlog
 from fastapi import APIRouter, Request, Query, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import PlainTextResponse
 from sqlmodel import Session, select, text
 from app.core.config import settings
 from app.core.db import get_session
@@ -20,6 +21,7 @@ async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
+    db: Session = Depends(get_session)
 ):
     """WhatsApp webhook verification for Meta Cloud API integration."""
     # 🔍 Dynamic Verification Policy
@@ -33,7 +35,8 @@ async def verify_webhook(
         pass # Fallback to settings if table doesn't exist
 
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
-        return int(hub_challenge)
+        # 🛡️ Meta requires the challenge to be returned as plain text
+        return PlainTextResponse(content=hub_challenge)
     
     raise HTTPException(status_code=403, detail="Verification token mismatch")
 
