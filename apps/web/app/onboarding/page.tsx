@@ -28,18 +28,32 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<OnboardingStep>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [metaAppId, setMetaAppId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     business_name: activeTenant?.name || '',
     whatsapp: activeTenant?.business_whatsapp_number || '',
   });
 
+  // Load Public Config from Backend
+  useEffect(() => {
+    apiRequest('/config/public', 'GET')
+      .then(res => {
+        if (res.whatsapp_app_id) {
+          setMetaAppId(res.whatsapp_app_id);
+        }
+      })
+      .catch(err => console.error("Could not fetch public config", err));
+  }, []);
+
   // Load FB SDK
   useEffect(() => {
+    if (!metaAppId) return;
+
     // @ts-ignore
     window.fbAsyncInit = function() {
       // @ts-ignore
       FB.init({
-        appId            : process.env.NEXT_PUBLIC_WHATSAPP_APP_ID || '825875709540441',
+        appId            : metaAppId,
         autoLogAppEvents : true,
         xfbml            : true,
         version          : 'v19.0'
@@ -53,7 +67,7 @@ export default function OnboardingPage() {
        js.src = "https://connect.facebook.net/en_US/sdk.js";
        fjs.parentNode.insertBefore(js, fjs);
      }(document, 'script', 'facebook-jssdk'));
-  }, []);
+  }, [metaAppId]);
 
   // Auto-advance if already done (except for explicit navigation)
   useEffect(() => {
@@ -377,6 +391,10 @@ export default function OnboardingPage() {
                           
                           <button 
                             onClick={async () => {
+                               if (!metaAppId) {
+                                  setError("Meta App ID no configurado en el servidor.");
+                                  return;
+                               }
                                setLoading(true);
                                try {
                                   // @ts-ignore
@@ -404,7 +422,7 @@ export default function OnboardingPage() {
                                   setLoading(false);
                                }
                             }}
-                            disabled={loading}
+                            disabled={loading || !metaAppId}
                             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                           >
                              {loading ? <Loader2 className="animate-spin" /> : (
@@ -416,7 +434,7 @@ export default function OnboardingPage() {
                                 </>
                              )}
                           </button>
-                          <p className="text-[9px] text-slate-400 font-bold mt-4 tracking-tighter uppercase">Integración Oficial de WhatsApp Business Cloud API</p>
+                          <p className="text-[9px] text-slate-400 font-bold mt-4 tracking-tighter uppercase">Integración Oficial de WhatsApp Business Cloud API {metaAppId ? `(${metaAppId})` : ''}</p>
                        </div>
                     )}
                  </div>

@@ -207,25 +207,25 @@ function UI_Shell({ children }) {
          {/* Top Header */}
          <header className="h-16 md:h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-4">
-               <div className={`${isPlatformPath ? 'bg-amber-100' : 'bg-[#56CCF2]/20'} px-3 py-1 rounded-full flex items-center gap-2 transition-colors`}>
+               <div className={`${isPlatformPath ? 'bg-amber-100' : 'bg-[#56CCF2]/20'} px-2 py-0.5 md:px-3 md:py-1 rounded-full hidden sm:flex items-center gap-2 transition-colors flex-shrink-0`}>
                   <ShieldCheck size={14} className={isPlatformPath ? 'text-amber-600' : 'text-[#56CCF2]'} />
-                  <span className={`text-[10px] font-black uppercase ${isPlatformPath ? 'text-amber-900' : 'text-[#1D3146]'} tracking-tighter`}>
+                  <span className={`text-[9px] md:text-[10px] font-black uppercase ${isPlatformPath ? 'text-amber-900' : 'text-[#1D3146]'} tracking-tighter`}>
                     {isPlatformPath ? 'Infra Administration' : 'Premium Enterprise'}
                   </span>
                </div>
-               <span className="text-slate-400 text-sm font-medium">/</span>
-               <h2 className="text-sm font-black text-[#1D3146] uppercase tracking-widest">
+               <span className="text-slate-200 text-sm font-medium hidden sm:block">/</span>
+               <h2 className="text-[10px] md:text-sm font-black text-[#1D3146] uppercase tracking-widest truncate max-w-[120px] md:max-w-none">
                   {isPlatformPath ? 'Global Control' : displayTenant.name}
                </h2>
             </div>
             
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 md:gap-6">
                <div className="relative cursor-pointer">
-                  <Bell size={20} className="text-slate-400" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[8px] font-black flex items-center justify-center rounded-full border-2 border-white">2</span>
+                  <Bell size={18} className="text-slate-400" />
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black flex items-center justify-center rounded-full border-2 border-white">2</span>
                </div>
                
-               <div className="h-10 w-[1px] bg-slate-100"></div>
+               <div className="h-8 w-[1px] bg-slate-100"></div>
 
                <div className="relative">
                   <div 
