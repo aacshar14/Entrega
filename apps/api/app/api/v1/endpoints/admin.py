@@ -7,6 +7,7 @@ from app.core.db import get_session
 from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now
 from app.core.dependencies import require_platform_role
 from app.core.config import settings
+from app.core.metrics import MetricsAggregator
 
 router = APIRouter()
 
@@ -32,18 +33,6 @@ async def get_queue_stats(db: Session = Depends(get_session)):
     if oldest_pending:
         oldest_pending_seconds = (get_utc_now() - oldest_pending).total_seconds()
 
-    # Latency p90, p95, p99 (last 24h)
-    latency_stats = db.execute(text("""
-        SELECT 
-            PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p90,
-            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p95,
-            PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p99
-        FROM inbound_event
-        WHERE status = 'done' 
-          AND processed_at > now() - interval '24 hours'
-          AND processed_at >= created_at
-    """)).first()
-
     # DB Connections (Real metric)
     db_conns = 0
     try:
@@ -52,9 +41,6 @@ async def get_queue_stats(db: Session = Depends(get_session)):
         db_conns = -1 # Indicate no data instead of false 0
 
     # Logic for Infra Status
-    # backlog > 500 -> warning
-    # failed jobs > 0 -> critical
-    # (workers down is proxied by active_processing == 0 when backlog > 0)
     infra_status = "healthy"
     if failed > 0:
         infra_status = "critical"
@@ -62,6 +48,13 @@ async def get_queue_stats(db: Session = Depends(get_session)):
         infra_status = "degraded"
     elif pending > 0 and processing == 0:
         infra_status = "critical" # Workers down
+
+    # Use snapshots for advanced windows
+    aggregator = MetricsAggregator(db)
+    snapshots = aggregator.get_latest_metrics()
+    
+    # We map the requested metrics for the 1h window as the standard 'latest'
+    window = "1h" # Default window for the main dashboard cards
 
     return {
         "backlog": pending,
@@ -71,9 +64,18 @@ async def get_queue_stats(db: Session = Depends(get_session)):
         "oldest_pending_seconds": round(oldest_pending_seconds, 2),
         "db_connections": db_conns,
         "latency": {
-            "p90": round(latency_stats[0], 2) if latency_stats and latency_stats[0] is not None else None,
-            "p95": round(latency_stats[1], 2) if latency_stats and latency_stats[1] is not None else None,
-            "p99": round(latency_stats[2], 2) if latency_stats and latency_stats[2] is not None else None,
+            "p90": snapshots.get(f"{window}_end_to_end_ms_p90"),
+            "p95": snapshots.get(f"{window}_end_to_end_ms_p95"),
+            "p99": snapshots.get(f"{window}_end_to_end_ms_p99"),
+        },
+        "windows": {
+            w: {
+                m: {
+                    "p90": snapshots.get(f"{w}_{m}_p90"),
+                    "p95": snapshots.get(f"{w}_{m}_p95"),
+                    "p99": snapshots.get(f"{w}_{m}_p99")
+                } for m in ["webhook_intake_ms", "queue_wait_ms", "processing_ms", "end_to_end_ms"]
+            } for w in ["5m", "1h", "24h"]
         },
         "health_status": infra_status
     }
@@ -272,3 +274,11 @@ async def update_platform_settings(payload: Dict):
     """
     # This is a placeholder for persistent settings
     return {"status": "success", "updated_values": payload}
+@router.post("/metrics/refresh", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def refresh_metrics(db: Session = Depends(get_session)):
+    """
+    Platform Admin only: Trigger recalculation of all metrics snapshots.
+    """
+    aggregator = MetricsAggregator(db)
+    aggregator.refresh_all_snapshots()
+    return {"status": "success", "refreshed_at": get_utc_now()}

@@ -247,6 +247,9 @@ class InboundEvent(SQLModel, table=True):
     status: str = Field(default="pending", index=True) # 'pending', 'processing', 'done', 'failed'
     attempt_count: int = Field(default=0)
     
+    # Latency Metrics (Measured in ms)
+    webhook_duration_ms: Optional[float] = Field(default=None, description="Time from request to enqueue (ms)")
+    
     # Chronology & Locking
     available_at: datetime = Field(default_factory=get_utc_now, index=True)
     locked_at: Optional[datetime] = None

@@ -56,6 +56,9 @@ async def receive_whatsapp_event(
         logger.error("SECURITY ERROR: Signature processing failed.", error=str(e))
         raise HTTPException(status_code=401, detail="Could not verify signature")
 
+    import time
+    start_time = time.perf_counter()
+    
     payload = json.loads(body_bytes)
     
     try:
@@ -111,17 +114,22 @@ async def receive_whatsapp_event(
 
         # 4. 📭 Enqueue Event for Async Processing
         qm = QueueManager(db)
+        
+        # Calculate intake duration
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        
         qm.enqueue(
             tenant_id=tenant.id,
             source="whatsapp",
             event_type="message",
             message_sid=msg_id,
-            payload={"from": from_number, "body": body}
+            payload={"from": from_number, "body": body},
+            duration_ms=duration_ms
         )
         
         db.commit()
 
-        logger.info("webhooks.whatsapp_enqueued", message_id=msg_id)
+        logger.info("webhooks.whatsapp_enqueued", message_id=msg_id, intake_ms=duration_ms)
         return {"status": "accepted"}
         
     except Exception as e:

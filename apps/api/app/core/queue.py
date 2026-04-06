@@ -13,7 +13,7 @@ class QueueManager:
     def __init__(self, db: Session):
         self.db = db
 
-    def enqueue(self, tenant_id: uuid.UUID, source: str, event_type: str, message_sid: str, payload: dict) -> InboundEvent:
+    def enqueue(self, tenant_id: uuid.UUID, source: str, event_type: str, message_sid: str, payload: dict, duration_ms: Optional[float] = None) -> InboundEvent:
         """
         Push a new event into the database-backed queue.
         """
@@ -23,6 +23,7 @@ class QueueManager:
             event_type=event_type,
             message_sid=message_sid,
             payload_json=json.dumps(payload),
+            webhook_duration_ms=duration_ms,
             status="pending",
             available_at=datetime.now(timezone.utc)
         )
