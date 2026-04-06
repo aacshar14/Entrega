@@ -33,7 +33,7 @@ Entrega opera bajo un modelo de **Split Arquitectónico** que separa la gestión
 ```mermaid
 graph TD
     User((Usuario))
-    Auth[Supabase Auth / ES256]
+    Auth[Supabase Auth / ES256 Only]
     API[(FastAPI Backend)]
     DB[(Postgres DB)]
     
@@ -59,6 +59,17 @@ graph TD
 ```
 
 ---
+
+## 🔐 Seguridad y Auditoría
+La plataforma EntréGA v1.1 cumple con estándares de seguridad modernos, eliminando soporte para algoritmos legados (HS256) en favor de criptografía asimétrica.
+
+- **Algoritmo Mandatario**: `ES256` (Elliptic Curve Digital Signature Algorithm).
+- **Validación de Identidad**: Integración nativa con Supabase via `JWKS` (JSON Web Key Sets).
+- **Lincado Automático**: Sincronización transparente de identidades entre Supabase y el perfil local de `public.users`.
+- **RBAC**: Control de acceso basado en roles (Owner, Admin, User) aplicado en capa de middleware a nivel plataforma y tenant.
+
+---
+
 ## 🏢 Multi-Tenant Wiki
 Para entender cómo manejamos el aislamiento de datos, los roles de usuario (Hugo vs. Leo) y la inyección de contexto por negocio, consulta nuestra documentación especializada:
 

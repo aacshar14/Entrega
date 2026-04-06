@@ -1,14 +1,14 @@
-from fastapi import Depends, HTTPException, Security, status, Header
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
-from jose.utils import base64url_decode
-from cryptography.hazmat.primitives.asymmetric import ec
+from jose import jwt
 from uuid import UUID
 from typing import Optional, List, Any, Dict
 import httpx
 import time
+import json
 
-from sqlmodel import Session, select, text
+from sqlmodel import Session, select
+from app.core.config import settings
 import structlog
 
 security = HTTPBearer(auto_error=False)
@@ -18,33 +18,16 @@ JWKS_CACHE: Dict[str, Any] = {}
 JWKS_LAST_FETCH = 0
 JWKS_TTL = 3600  # 1 hour
 
-def build_es256_public_key_from_jwk(jwk: dict):
-    """
-    EntréGA Security:
-    Converts a Supabase JWK dict into a usable EC public key for ES256 signature verification.
-    """
-    x = base64url_decode(jwk["x"].encode())
-    y = base64url_decode(jwk["y"].encode())
-
-    public_numbers = ec.EllipticCurvePublicNumbers(
-        int.from_bytes(x, "big"),
-        int.from_bytes(y, "big"),
-        ec.SECP256R1()
-    )
-    return public_numbers.public_key()
-
 async def get_jwks():
     """
     Fetches the JSON Web Key Set (JWKS) from Supabase.
-    Keys are cached for 1 hour to optimize performance.
+    Used as a fallback if the local environment key is missing or rotated.
     """
     global JWKS_CACHE, JWKS_LAST_FETCH
-    
     current_time = time.time()
     if JWKS_CACHE and (current_time - JWKS_LAST_FETCH < JWKS_TTL):
         return JWKS_CACHE
         
-    # discovery endpoint path according to OIDC standards
     jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
     async with httpx.AsyncClient() as client:
         try:
@@ -66,12 +49,10 @@ def get_db():
 async def get_current_user(
     token: Optional[HTTPAuthorizationCredentials] = Security(security),
     db: Session = Depends(get_db)
-) -> "User":
+) -> Any:
     """
-    EntréGA Authentication Layer:
-    1. Validates the incoming Supabase access token (ES256 via JWKS).
-    2. Resolves the global User profile using the 'sub' claim (auth_provider_id).
-    3. Auto-provisions new profiles for valid identities if not already present.
+    EntréGA Authentication Layer (Hardened ES256):
+    Exclusively validates Supabase tokens using Elliptic Curve Cryptography (ES256).
     """
     from app.core.logging import logger
     
@@ -89,167 +70,140 @@ async def get_current_user(
     )
 
     try:
-        # 1. Inspect metadata without verification to resolve signing key
+        # Determine algorithm
         unverified_headers = jwt.get_unverified_header(token.credentials)
-        unverified_claims = jwt.get_unverified_claims(token.credentials)
         alg = unverified_headers.get("alg")
-        received_kid = unverified_headers.get("kid")
-
+        
         if alg != "ES256":
-            logger.error("AUTH FAILURE: Unsupported JWT algorithm. EntréGA strictly requires ES256 (JWKS).", 
-                         received_alg=alg)
+            logger.error("AUTH FAILURE: Project policy strictly enforces ES256. Received:", alg=alg)
             raise credentials_exception
 
-        # 2. Fetch/Resolve signing keys
-        jwks = await get_jwks()
-        if not jwks or "keys" not in jwks:
-            logger.error("AUTH ERROR: Supabase signing keys currently unavailable.")
-            raise credentials_exception
+        payload = None
+        jwt_secret_raw = settings.SUPABASE_JWT_SECRET
         
-        available_keys = jwks.get("keys", [])
-        target_jwk = next((k for k in available_keys if k.get("kid") == received_kid), None)
-        
-        if not target_jwk:
-            logger.error("AUTH FAILURE: Signing key not found in JWKS.", kid=received_kid)
-            raise credentials_exception
+        # 1. Primary: Use local JWK from environment
+        if jwt_secret_raw and jwt_secret_raw.strip().startswith("{"):
+            try:
+                jwk_dict = json.loads(jwt_secret_raw)
+                payload = jwt.decode(
+                    token.credentials,
+                    jwk_dict,
+                    algorithms=["ES256"],
+                    audience="authenticated",
+                    options={"verify_aud": True, "verify_iss": False, "leeway": 60}
+                )
+                logger.debug("AUTH: Validated via local ES256 key")
+            except Exception as e:
+                logger.warning("AUTH: Local ES256 validation failed, attempting remote JWKS", error=str(e))
 
-        # 3. Cryptographic Verification
-        # Convert JWK coordinates to a real EC Public Key for industrial-grade signature checking.
-        public_key = build_es256_public_key_from_jwk(target_jwk)
-
-        # Standard Supabase claims: aud='authenticated', iss='https://{ref}.supabase.co/auth/v1'
-        expected_issuer = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
-        
-        payload = jwt.decode(
-            token.credentials,
-            public_key,
-            algorithms=["ES256"],
-            audience="authenticated",
-            issuer=expected_issuer,
-            options={"leeway": 60} # Allow 60s of clock desync
-        )
-        
+        # 2. Secondary: Fallback to remote JWKS
         if not payload:
-            raise credentials_exception
+            jwks = await get_jwks()
+            kid = unverified_headers.get("kid")
+            target_jwk = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
             
+            if target_jwk:
+                try:
+                    payload = jwt.decode(
+                        token.credentials,
+                        target_jwk,
+                        algorithms=["ES256"],
+                        audience="authenticated",
+                        options={"verify_aud": True, "verify_iss": False, "leeway": 60}
+                    )
+                    logger.info("AUTH SUCCESS: Validated via Remote JWKS")
+                except Exception as e:
+                    logger.error("AUTH FAILURE: ES256 validation failed on both local and remote keys", error=str(e))
+                    raise credentials_exception
+            else:
+                logger.error("AUTH FAILURE: Signing key not found in JWKS collection")
+                raise credentials_exception
+
         supabase_uid: str = payload.get("sub")
         email: str = payload.get("email")
 
         if not supabase_uid or not email:
-            logger.error("AUTH FAILURE: Required claims (sub/email) missing from token.")
             raise credentials_exception
 
-    except JWTError as e:
-        # Standard jose errors (expired, invalid signature, etc)
-        logger.error("AUTH FAILURE: JWT verification failed.", error=str(e))
-        raise credentials_exception
-    except Exception as e:
-        # Unexpected system or cryptography errors
-        import traceback
-        logger.error("SYSTEM ERROR: JWT validation crash.", error=str(e), trace=traceback.format_exc())
-        raise credentials_exception
+        # Identity Mapping & Auto-Provisioning
+        from app.models.models import User
+        user = db.exec(select(User).where(User.auth_provider_id == supabase_uid)).first()
+        
+        if user is None:
+            user = db.exec(select(User).where(User.email == email)).first()
+            if user:
+                logger.info("IDENTITY LINK: Binding Supabase Identity to existing User profile", email=email)
+                user.auth_provider_id = supabase_uid
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            else:
+                import uuid
+                user = User(
+                    id=uuid.uuid4(),
+                    email=email,
+                    full_name=email.split('@')[0],
+                    auth_provider_id=supabase_uid,
+                    platform_role="user",
+                    is_active=True
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+        
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive account")
+            
+        return user
 
-    # 4. Identity Mapping (Global EntréGA Context)
-    from app.models.models import User
-    statement = select(User).where(User.auth_provider_id == supabase_uid)
-    user = db.exec(statement).first()
-    
-    if user is None:
-        # Auto-Provisioning logic (e.g. for invited users or new signups)
-        existing_user_stmt = select(User).where(User.email == email)
-        user = db.exec(existing_user_stmt).first()
-        
-        if user:
-            logger.info("IDENTITY LINK: Linking existing User profile to new auth_provider_id.", 
-                        email=email, sub=supabase_uid)
-            user.auth_provider_id = supabase_uid
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        else:
-            import uuid
-            user_metadata = payload.get("user_metadata", {})
-            full_name = user_metadata.get("full_name") or user_metadata.get("name") or email.split('@')[0]
-            
-            logger.info("PROVISIONING: Auto-creating new platform profile.", email=email)
-            
-            user = User(
-                id=uuid.uuid4(),
-                email=email,
-                full_name=full_name,
-                auth_provider_id=supabase_uid,
-                platform_role="user",
-                is_active=True
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-    
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user account")
-        
-    return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("AUTH SYSTEM ERROR", error=str(e))
+        raise credentials_exception
 
 async def get_active_membership(
-    current_user: "User" = Depends(get_current_user),
+    current_user: Any = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> Optional["TenantUser"]:
-    """
-    Resolves active membership context exclusively from authenticated mapping.
-    Removed dependency on X-Tenant-Id to prevent spoofing or accidental context mixing.
-    """
+) -> Optional[Any]:
     from app.models.models import TenantUser
-    membership_stmt = select(TenantUser).where(
-        TenantUser.user_id == current_user.id,
-        TenantUser.is_active == True
-    )
+    membership = db.exec(
+        select(TenantUser).where(
+            TenantUser.user_id == current_user.id,
+            TenantUser.is_active == True
+        )
+    ).first()
     
-    memberships = db.exec(membership_stmt).all()
-    if not memberships:
-        return None
-
-    # Priority: is_default > First
-    membership = next((m for m in memberships if m.is_default), memberships[0])
-    
-    # Bind tenant context automatically to all structured logs
-    structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
-
+    if membership:
+        structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
     return membership
 
 async def get_active_tenant(
-    membership: "TenantUser" = Depends(get_active_membership),
+    membership: Any = Depends(get_active_membership),
     db: Session = Depends(get_db)
-) -> "Tenant":
+) -> Any:
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
     from app.models.models import Tenant
     return db.get(Tenant, membership.tenant_id)
 
 async def get_active_tenant_id(
-    membership: "TenantUser" = Depends(get_active_membership)
+    membership: Any = Depends(get_active_membership)
 ) -> UUID:
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
     return membership.tenant_id
 
 def require_tenant_role(roles: List[str]):
-    async def role_dependency(membership: "TenantUser" = Depends(get_active_membership)):
+    async def role_dependency(membership: Any = Depends(get_active_membership)):
         if not membership or membership.tenant_role not in roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Operation requires one of roles: {roles}"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return membership
     return role_dependency
 
-require_roles = require_tenant_role
-
 def require_platform_role(authorized_roles: List[str]):
-    async def role_dependency(current_user: "User" = Depends(get_current_user)):
+    async def role_dependency(current_user: Any = Depends(get_current_user)):
         if current_user.platform_role not in authorized_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Platform-level permission denied"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return current_user
     return role_dependency

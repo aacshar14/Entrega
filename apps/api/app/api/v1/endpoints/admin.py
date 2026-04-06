@@ -1,23 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, text
 from typing import List, Dict
 import uuid
 from app.core.db import get_session
-from app.models.models import InboundEvent, Tenant, MetricSnapshot
-from app.core.dependencies import get_current_user
+from app.models.models import InboundEvent, Tenant
+from app.core.dependencies import require_platform_role
 from app.core.config import settings
 
 router = APIRouter()
 
-@router.get("/queue/stats")
-async def get_queue_stats(db: Session = Depends(get_session), current_user = Depends(get_current_user)):
+@router.get("/queue/stats", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_queue_stats(db: Session = Depends(get_session)):
     """
     Platform Admin only: General health of the Inbound Event Queue.
     """
-    if current_user.platform_role != "admin":
-        raise HTTPException(status_code=403, detail="Platform Admin access required")
-    
-    # Counts by status
     pending = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "pending")).one()
     processing = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "processing")).one()
     failed = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "failed")).one()
@@ -31,18 +27,15 @@ async def get_queue_stats(db: Session = Depends(get_session), current_user = Dep
         "health_status": "degraded" if pending > 500 or failed > 50 else "healthy"
     }
 
-@router.get("/tenants/pressure")
-async def get_tenant_pressure(db: Session = Depends(get_session), current_user = Depends(get_current_user)):
+@router.get("/tenants/pressure", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_tenant_pressure(db: Session = Depends(get_session)):
     """
     Identifies which tenants are generating the most load in the last hour.
     """
-    if current_user.platform_role != "admin":
-        raise HTTPException(status_code=403, detail="Platform Admin access required")
-
     # Simple group by and count
     statement = text("""
         SELECT tenant_id, count(*) as event_count 
-        FROM inbound_events 
+        FROM inbound_event 
         WHERE created_at > now() - interval '1 hour'
         GROUP BY tenant_id 
         ORDER BY event_count DESC 
@@ -60,20 +53,14 @@ async def get_tenant_pressure(db: Session = Depends(get_session), current_user =
         
     return pressure_map
 
-@router.post("/queue/requeue-failed")
-async def requeue_failed(
-    db: Session = Depends(get_session),
-    current_user = Depends(get_current_user)
-):
+@router.post("/queue/requeue-failed", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def requeue_failed(db: Session = Depends(get_session)):
     """
     DLQ Re-enqueue:
     Resets all 'failed' events back to 'pending' to allow workers to retry them.
     """
-    if current_user.platform_role != "admin":
-        raise HTTPException(status_code=403, detail="Platform Admin access required")
-
     stmt = text("""
-        UPDATE inbound_events 
+        UPDATE inbound_event 
         SET status = 'pending', attempt_count = 0, last_error = 'Manual requeue by admin'
         WHERE status = 'failed'
     """)
@@ -82,14 +69,11 @@ async def requeue_failed(
     
     return {"requeued_count": result.rowcount}
 
-@router.get("/capacity/advisor")
-async def get_capacity_advisor(db: Session = Depends(get_session), current_user = Depends(get_current_user)):
+@router.get("/capacity/advisor", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_capacity_advisor(db: Session = Depends(get_session)):
     """
     Heuristic check to decide if migration to Redis/PubSub is necessary.
     """
-    if current_user.platform_role != "admin":
-        raise HTTPException(status_code=403, detail="Platform Admin access required")
-    
     total_active = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.created_at > text("now() - interval '24 hours'"))).one()
     pending = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "pending")).one()
     
@@ -112,5 +96,3 @@ async def get_capacity_advisor(db: Session = Depends(get_session), current_user 
             "current_backlog": pending
         }
     }
-from fastapi import APIRouter
-from sqlmodel import text
