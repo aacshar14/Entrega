@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import time
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.middleware import ObservabilityMiddleware
 
 # Immediate startup signal for Cloud Run logging
 print(f"DEBUG: Entrypoint reached at {time.ctime()} (UTC)")
@@ -13,6 +16,9 @@ from app.core.logging import setup_logging, logger
 # Setup structured logging
 setup_logging()
 
+# Setup Rate Limiting
+from app.core.limiter import limiter
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -20,6 +26,12 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     redirect_slashes=False
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add Observability Middleware
+app.add_middleware(ObservabilityMiddleware)
 
 @app.on_event("startup")
 async def startup_event():

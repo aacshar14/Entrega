@@ -8,9 +8,8 @@ from typing import Optional, List, Any, Dict
 import httpx
 import time
 
-from app.core.config import settings
-from app.models.models import User, Tenant, TenantUser
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
+import structlog
 
 security = HTTPBearer(auto_error=False)
 
@@ -191,40 +190,27 @@ async def get_current_user(
     return user
 
 async def get_active_membership(
-    x_tenant_id: Optional[UUID] = Header(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Optional[TenantUser]:
-    """Resolves active membership context for users or platform admins."""
-    if current_user.platform_role == "admin":
-        if x_tenant_id:
-            tenant = db.get(Tenant, x_tenant_id)
-            if not tenant:
-                raise HTTPException(status_code=404, detail="Tenant not found")
-            return TenantUser(
-                tenant_id=x_tenant_id,
-                user_id=current_user.id,
-                tenant_role="owner", 
-                is_active=True
-            )
-        return None
-
+    """
+    Resolves active membership context exclusively from authenticated mapping.
+    Removed dependency on X-Tenant-Id to prevent spoofing or accidental context mixing.
+    """
     membership_stmt = select(TenantUser).where(
         TenantUser.user_id == current_user.id,
         TenantUser.is_active == True
     )
     
-    if x_tenant_id:
-        membership_stmt = membership_stmt.where(TenantUser.tenant_id == x_tenant_id)
-    
     memberships = db.exec(membership_stmt).all()
     if not memberships:
         return None
 
-    # Priority: X-Tenant-Id matched > is_default > First
+    # Priority: is_default > First
     membership = next((m for m in memberships if m.is_default), memberships[0])
-    if x_tenant_id:
-        membership = next((m for m in memberships if m.tenant_id == x_tenant_id), memberships[0])
+    
+    # Bind tenant context automatically to all structured logs
+    structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
 
     return membership
 

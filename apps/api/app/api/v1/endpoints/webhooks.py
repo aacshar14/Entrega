@@ -1,12 +1,15 @@
 import json
+import hmac
+import hashlib
+import structlog
 from fastapi import APIRouter, Request, Query, HTTPException, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select, text
 from app.core.config import settings
 from app.core.db import get_session
 from app.core.logging import logger
 from app.models.models import WhatsAppMessage, Tenant, MessageLog
 from app.core.parser import ParsingEngine
-from sqlmodel import select
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -23,15 +26,36 @@ async def verify_webhook(
     raise HTTPException(status_code=403, detail="Verification token mismatch")
 
 @router.post("/whatsapp")
+@limiter.limit("20/minute")
 async def receive_whatsapp_event(
     request: Request,
     db: Session = Depends(get_session)
 ):
     """
     Handles incoming WhatsApp events. 
-    Implements 'Learning Mode' strategy by logging every message.
+    1. Validates X-Hub-Signature-256 signature from Meta.
+    2. Implements 'Learning Mode' strategy by logging every message.
     """
-    payload = await request.json()
+    # --- 1. SIGNATURE VALIDATION ---
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        logger.error("MISSING SIGNATURE: Webhook request rejected.")
+        raise HTTPException(status_code=401, detail="Signature missing")
+
+    body_bytes = await request.body()
+    try:
+        # Extract sha256={hash}
+        expected_sig = signature.split("=")[1]
+        secret = settings.WHATSAPP_APP_SECRET or ""
+        h = hmac.new(secret.encode(), body_bytes, hashlib.sha256)
+        if not hmac.compare_digest(h.hexdigest(), expected_sig):
+             logger.error("INVALID SIGNATURE: Payload verification failed.")
+             raise HTTPException(status_code=401, detail="Invalid signature")
+    except Exception as e:
+        logger.error("SECURITY ERROR: Signature processing failed.", error=str(e))
+        raise HTTPException(status_code=401, detail="Could not verify signature")
+
+    payload = json.loads(body_bytes)
     
     try:
         # Extract basic info
@@ -66,6 +90,9 @@ async def receive_whatsapp_event(
         if not config:
             logger.warning("No configuration found for meta phone number id", phone_number_id=business_number_id)
             return {"status": "error", "detail": "Tenant not recognized"}
+
+        # Bind tenant context for ALL subsequent logs in this request
+        structlog.contextvars.bind_contextvars(tenant_id=str(config.tenant_id))
 
         tenant = db.exec(select(Tenant).where(Tenant.id == config.tenant_id)).first()
         if not tenant:
