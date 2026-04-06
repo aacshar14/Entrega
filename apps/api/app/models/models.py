@@ -263,6 +263,3 @@ class MessageCorrection(BaseModel):
     intent: str
     entities: dict
     status: str = "corrected"
-
-# Force Pydantic v2 to rebuild models to resolve forward references
-MeResponse.model_rebuild()

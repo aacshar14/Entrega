@@ -8,78 +8,51 @@ from app.core.middleware import ObservabilityMiddleware
 # Immediate startup signal for Cloud Run logging
 print(f"DEBUG: Entrypoint reached at {time.ctime()} (UTC)")
 
-from app.api.v1.api import api_router
-
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 
-# Setup structured logging
+# 🛡️ Hardening: Ensure logging is initialized first
 setup_logging()
 
-# Setup Rate Limiting
-from app.core.limiter import limiter
-
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    redirect_slashes=False
-)
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Add Observability Middleware
-app.add_middleware(ObservabilityMiddleware)
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Application starting up...", 
-                environment=settings.ENVIRONMENT,
-                project=settings.PROJECT_NAME,
-                version=settings.VERSION)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Application shutting down...")
-
-# Include CORSMiddleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://entrega.space",
-        "https://app.entrega.space",
-        "https://api.entrega.space",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    import traceback
-    from fastapi.responses import JSONResponse
-    logger.error("GLOBAL ERROR CAPTURED", 
-                 path=request.url.path,
-                 error=str(exc), 
-                 trace=traceback.format_exc())
-    
-    response = JSONResponse(
-        status_code=500,
-        content={
-            "detail": str(exc),
-            "type": type(exc).__name__,
-            "path": request.url.path
-        }
+# Delayed import of api_router to prevent top-level circular crashes
+def get_application() -> FastAPI:
+    app = FastAPI(
+        title=settings.PROJECT_NAME,
+        version=settings.VERSION,
+        description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
+        openapi_url=f"{settings.API_V1_STR}/openapi.json",
+        redirect_slashes=False
     )
     
-    return response
+    # Setup Rate Limiting
+    from app.core.limiter import limiter
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    
+    # Add Observability Middleware
+    app.add_middleware(ObservabilityMiddleware)
+    
+    # Include CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "https://entrega.space",
+            "https://app.entrega.space",
+            "https://api.entrega.space",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Include API Router (Lazy load to break circularity)
+    from app.api.v1.api import api_router
+    app.include_router(api_router, prefix=settings.API_V1_STR)
+    
+    return app
 
-# Include API Router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app = get_application()
 
 from fastapi.responses import HTMLResponse
 
