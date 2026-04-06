@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func, text
 from typing import List, Dict
 import uuid
+from uuid import UUID
 from app.core.db import get_session
-from app.models.models import InboundEvent, Tenant, get_utc_now
+from app.models.models import InboundEvent, Tenant, User, TenantUser, get_utc_now
 from app.core.dependencies import require_platform_role
 from app.core.config import settings
 
@@ -148,3 +149,73 @@ async def get_capacity_advisor(db: Session = Depends(get_session)):
             "current_backlog": pending
         }
     }
+
+@router.get("/users", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def get_all_users(db: Session = Depends(get_session)):
+    """
+    Platform Admin only: List all users in the system with their memberships.
+    """
+    users = db.exec(select(User)).all()
+    
+    result = []
+    for user in users:
+        # Get memberships for this user
+        memberships = db.exec(
+            select(TenantUser, Tenant)
+            .join(Tenant, TenantUser.tenant_id == Tenant.id)
+            .where(TenantUser.user_id == user.id)
+        ).all()
+        
+        membership_list = []
+        for tu, t in memberships:
+            membership_list.append({
+                "tenant_id": t.id,
+                "tenant_name": t.name,
+                "role": tu.tenant_role,
+                "is_active": tu.is_active
+            })
+            
+        result.append({
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "platform_role": user.platform_role,
+            "is_active": user.is_active,
+            "created_at": user.created_at,
+            "memberships": membership_list
+        })
+        
+    return result
+
+@router.patch("/users/{user_id}/status", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def update_user_status(user_id: UUID, is_active: bool, db: Session = Depends(get_session)):
+    """
+    Platform Admin only: Suspend or reactivate a user globally.
+    """
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.is_active = is_active
+    db.add(user)
+    db.commit()
+    return {"status": "updated", "is_active": user.is_active}
+
+@router.delete("/users/{user_id}", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def delete_user(user_id: UUID, db: Session = Depends(get_session)):
+    """
+    Platform Admin only: Permanently delete a user and their memberships.
+    """
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete memberships first (though DB might handle this if cascade is set, 
+    # but let's be explicit if not sure about constraints)
+    memberships = db.exec(select(TenantUser).where(TenantUser.user_id == user_id)).all()
+    for m in memberships:
+        db.delete(m)
+        
+    db.delete(user)
+    db.commit()
+    return {"status": "deleted"}
