@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session, text
 from app.core.config import settings
 from app.core.db import get_session
-from app.models.models import SystemSetting
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -16,23 +15,21 @@ class PublicConfigResponse(BaseModel):
 async def get_public_config(db: Session = Depends(get_session)):
     """
     Returns public configuration values needed by the frontend.
-    Priority:
-    1. Database (system_settings table)
-    2. Environment Variable (fallback)
+    Bulletproof implementation with raw SQL and silent fallback.
     """
-    # Try fetching from DB with graceful fallback if table not yet migrated
-    try:
-        db_app_id = db.exec(
-            select(SystemSetting.value).where(SystemSetting.key == "whatsapp_app_id")
-        ).first()
-    except Exception as e:
-        # Fallback to env default if table doesn't exist
-        db_app_id = None
+    app_id = settings.WHATSAPP_APP_ID # Primary fallback from Env/Config
     
-    app_id = db_app_id or settings.WHATSAPP_APP_ID
+    try:
+        # Use raw SQL to be agnostic to model/migration state
+        result = db.execute(text("SELECT value FROM system_settings WHERE key = 'whatsapp_app_id'")).first()
+        if result and result[0]:
+            app_id = result[0]
+    except Exception:
+        # If table doesn't exist yet, we silently ignore and use the fallback
+        pass
     
     return {
-        "whatsapp_app_id": app_id,
+        "whatsapp_app_id": str(app_id) if app_id else None,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT
     }
