@@ -39,6 +39,7 @@ export default function SettingsPage() {
 
   const [team, setTeam] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
+  const [metaAppId, setMetaAppId] = useState<string | null>(null);
   const [showManualMeta, setShowManualMeta] = useState(false);
 
   // Platform Level Settings (Admin Only)
@@ -93,8 +94,22 @@ export default function SettingsPage() {
     }
   }, [activeTenant]);
 
+  // 1. Fetch Public Config for Meta App ID
   useEffect(() => {
-    // Load Meta SDK for WhatsApp Embedded Signup
+    apiRequest('/config/public', 'GET')
+      .then(res => {
+        if (res.whatsapp_app_id) setMetaAppId(res.whatsapp_app_id);
+      })
+      .catch(err => {
+        console.error("Could not fetch public config", err);
+        setMetaAppId('825875709540441'); // Last resort fallback
+      });
+  }, []);
+
+  // 2. Load FB SDK dynamically when appId is ready
+  useEffect(() => {
+    if (!metaAppId) return;
+
     if (!(window as any).FB) {
       const script = document.createElement('script');
       script.src = "https://connect.facebook.net/en_US/sdk.js";
@@ -103,16 +118,26 @@ export default function SettingsPage() {
       script.onload = () => {
         (window as any).fbAsyncInit = function() {
           (window as any).FB.init({
-            appId      : activeTenant?.whatsapp_app_id || '825875709540441', 
-            cookie     : true,
-            xfbml      : true,
-            version    : 'v19.0'
+            appId            : metaAppId, 
+            cookie           : true,
+            xfbml            : true,
+            version          : 'v19.0'
           });
         };
       };
       document.body.appendChild(script);
+    } else {
+        // If already loaded, re-init with potentially new ID (unlikely but safe)
+        try {
+            (window as any).FB.init({
+                appId: metaAppId,
+                cookie: true,
+                xfbml: true,
+                version: 'v19.0'
+            });
+        } catch(e) {}
     }
-  }, [activeTenant]);
+  }, [metaAppId]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +196,9 @@ export default function SettingsPage() {
     }, {
       scope: 'whatsapp_business_management,whatsapp_business_messaging',
       extras: {
-        feature: 'whatsapp_embedded_signup'
+        feature: 'whatsapp_embedded_signup',
+        session_info: { version: 2 },
+        setup_mode: 'direct_enumeration'
       }
     });
   };

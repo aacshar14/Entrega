@@ -20,10 +20,14 @@ async def get_public_config(db: Session = Depends(get_session)):
     1. Database (system_settings table)
     2. Environment Variable (fallback)
     """
-    # Try fetching from DB
-    db_app_id = db.exec(
-        select(SystemSetting.value).where(SystemSetting.key == "whatsapp_app_id")
-    ).first()
+    # Try fetching from DB with graceful fallback if table not yet migrated
+    try:
+        db_app_id = db.exec(
+            select(SystemSetting.value).where(SystemSetting.key == "whatsapp_app_id")
+        ).first()
+    except Exception as e:
+        # Fallback to env default if table doesn't exist
+        db_app_id = None
     
     app_id = db_app_id or settings.WHATSAPP_APP_ID
     
