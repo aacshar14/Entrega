@@ -4,6 +4,7 @@ from app.models.models import InboundEvent, MetricSnapshot, PlatformAlert, get_u
 from app.core.thresholds import PLATFORM_THRESHOLDS
 from typing import List, Dict, Optional
 import structlog
+import uuid
 
 logger = structlog.get_logger()
 
