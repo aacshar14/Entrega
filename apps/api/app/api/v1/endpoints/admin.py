@@ -32,16 +32,35 @@ async def get_queue_stats(db: Session = Depends(get_session)):
         oldest_pending_seconds = (get_utc_now() - oldest_pending).total_seconds()
 
     # Latency p90, p95, p99 (last 24h)
-    # Using PERCENTILE_CONT in Postgres for quantiles
     latency_stats = db.execute(text("""
         SELECT 
             PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p90,
             PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p95,
             PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p99
-        FROM inbound_events
+        FROM inbound_event
         WHERE status = 'done' 
           AND processed_at > now() - interval '24 hours'
+          AND processed_at >= created_at
     """)).first()
+
+    # DB Connections (Real metric)
+    db_conns = 0
+    try:
+        db_conns = db.execute(text("SELECT count(*) FROM pg_stat_activity")).scalar()
+    except:
+        db_conns = -1 # Indicate no data instead of false 0
+
+    # Logic for Infra Status
+    # backlog > 500 -> warning
+    # failed jobs > 0 -> critical
+    # (workers down is proxied by active_processing == 0 when backlog > 0)
+    infra_status = "healthy"
+    if failed > 0:
+        infra_status = "critical"
+    elif pending > 500:
+        infra_status = "degraded"
+    elif pending > 0 and processing == 0:
+        infra_status = "critical" # Workers down
 
     return {
         "backlog": pending,
@@ -49,12 +68,13 @@ async def get_queue_stats(db: Session = Depends(get_session)):
         "failures": failed,
         "completed_total": done,
         "oldest_pending_seconds": round(oldest_pending_seconds, 2),
+        "db_connections": db_conns,
         "latency": {
-            "p90": round(latency_stats[0] or 0, 2),
-            "p95": round(latency_stats[1] or 0, 2),
-            "p99": round(latency_stats[2] or 0, 2),
+            "p90": round(latency_stats[0], 2) if latency_stats and latency_stats[0] is not None else None,
+            "p95": round(latency_stats[1], 2) if latency_stats and latency_stats[1] is not None else None,
+            "p99": round(latency_stats[2], 2) if latency_stats and latency_stats[2] is not None else None,
         },
-        "health_status": "degraded" if pending > 500 or failed > 50 or oldest_pending_seconds > 300 else "healthy"
+        "health_status": infra_status
     }
 
 @router.get("/tenants/pressure", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
@@ -62,7 +82,6 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
     """
     Identifies which tenants are generating the most load in the last hour.
     """
-    # Simple group by and count
     statement = text("""
         SELECT tenant_id, count(*) as event_count 
         FROM inbound_event 
@@ -73,6 +92,9 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
     """)
     result = db.execute(statement).all()
     
+    if not result:
+        return []
+        
     pressure_map = []
     for row in result:
         tenant = db.get(Tenant, row[0])
@@ -107,22 +129,22 @@ async def get_capacity_advisor(db: Session = Depends(get_session)):
     total_active = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.created_at > text("now() - interval '24 hours'"))).one()
     pending = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "pending")).one()
     
-    # Simple thresholds
+    # Updated labels per requirements
     if total_active < 10000 and pending < 100:
-        advice = "Redis/PubSub no es necesario aún. Postgres maneja el volumen actual sin fricción."
-        status = "optimal"
+        advice = "Operando normal"
+        status = "healthy"
     elif total_active < 50000 and pending < 500:
-        advice = "Conviene planificar migración. El volumen está creciendo, Postgres empezará a sentir latencia en el polling."
-        status = "warning"
+        advice = "Monitorear crecimiento"
+        status = "degraded"
     else:
-        advice = "Ya es necesario migrar. Recomendamos Google Cloud Tasks o Redis para desacoplar el IO de la base de datos operativa."
+        advice = "Escalar recomendado"
         status = "critical"
         
     return {
         "advice": advice,
         "status": status,
         "metrics": {
-            "24h_volume": total_active,
+            "24h_volume": total_active if total_active > 0 else None,
             "current_backlog": pending
         }
     }
