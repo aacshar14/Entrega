@@ -12,192 +12,192 @@ env:
   WEB_IMAGE: us-central1-docker.pkg.dev/entrega-468815/entrega-repo/web
 
 jobs:
-  ci:
-    name: Build & Validate
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - '.github/workflows/deploy.yml'
+            web:
+              - 'apps/web/**'
+              - '.github/workflows/deploy.yml'
+
+  ci_web:
+    name: Web Build Validation
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: apps/web/package-lock.json
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
 
-    - name: Cache Next.js Build
-      uses: actions/cache@v4
-      with:
-        path: ${{ github.workspace }}/apps/web/.next/cache
-        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-        restore-keys: |
-          ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+      - name: Cache Next.js Build
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/apps/web/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
-    - name: Web Build Validation
-      working-directory: apps/web
-      run: |-
-        npm ci
-        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} \
-        NEXT_PUBLIC_API_URL=https://api.entrega.space \
-        npm run build
+      - name: Web Build Validation
+        working-directory: apps/web
+        run: |-
+          npm ci
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} \
+          NEXT_PUBLIC_API_URL=https://api.entrega.space \
+          npm run build
 
-  deploy:
-    name: Containerize & Push
-    needs: ci
+  deploy_api:
+    name: Deploy API
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Google Auth
-      uses: 'google-github-actions/auth@v2'
-      with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Set up Cloud SDK
-      uses: 'google-github-actions/setup-gcloud@v2'
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
 
-    - name: Configure Docker
-      run: |-
-        gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Configure Docker
+        run: |-
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-    # --- API Container ---
-    - name: Build API
-      id: build-api
-      run: |-
-        docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
+      - name: Build API
+        id: build-api
+        run: |-
+          docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
 
-    - name: Trivy Scan API Image
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
-        format: 'table'
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: 'library'
-        severity: 'CRITICAL'
+      - name: Trivy Scan API Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'library'
+          severity: 'CRITICAL'
 
-    - name: Trivy Report API Image (Non-blocking HIGH)
-      uses: aquasecurity/trivy-action@master
-      if: always() && steps.build-api.outcome == 'success'
-      with:
-        image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
-        format: 'sarif'
-        output: 'trivy-api-results.sarif'
-        severity: 'HIGH,CRITICAL'
+      - name: Push API
+        run: |-
+          docker push $API_IMAGE:${{ github.sha }}
+          docker push $API_IMAGE:latest
 
-    - name: Upload API Scan Results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: trivy-api-results
-        path: trivy-api-results.sarif
+      - name: Deploy API to Cloud Run
+        run: |-
+          gcloud run deploy entrega-api \
+            --image $API_IMAGE:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}"
 
-    - name: Trivy Summary API
-      if: always()
-      run: |-
-        echo "### 🛡️ API Security Scan Summary" >> $GITHUB_STEP_SUMMARY
-        echo "Scan completed for image: ${{ env.API_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "Critical vulnerabilities block the build, High vulnerabilities are reported." >> $GITHUB_STEP_SUMMARY
+      - name: API Health Check
+        run: |-
+          max_attempts=5
+          attempt=1
+          until [ $attempt -gt $max_attempts ]; do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.entrega.space/api/v1/health/)
+            if [ "$STATUS" -eq 200 ]; then
+              echo "🚀 API Health Check Passed: $STATUS"
+              exit 0
+            fi
+            echo "Attempt $attempt failed with status $STATUS. Retrying in 5s..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
+          echo "❌ API Unreachable after $max_attempts attempts."
+          exit 1
 
-    - name: Push API
-      run: |-
-        docker push $API_IMAGE:${{ github.sha }}
-        docker push $API_IMAGE:latest
+  deploy_web:
+    name: Deploy Web
+    needs: [changes, ci_web]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Deploy API to Cloud Run
-      run: |-
-        gcloud run deploy entrega-api \
-          --image $API_IMAGE:${{ github.sha }} \
-          --region $REGION \
-          --platform managed \
-          --allow-unauthenticated \
-          --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}"
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: API Health Check
-      run: |-
-        max_attempts=5
-        attempt=1
-        until [ $attempt -gt $max_attempts ]; do
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://api.entrega.space/api/v1/health/)
-          if [ "$STATUS" -eq 200 ]; then
-            echo "🚀 API Health Check Passed: $STATUS"
-            exit 0
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Configure Docker
+        run: |-
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build Web
+        id: build-web
+        run: |-
+          docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+
+      - name: Trivy Scan Web Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'library'
+          severity: 'CRITICAL'
+
+      - name: Push Web
+        run: |-
+          docker push $WEB_IMAGE:${{ github.sha }}
+          docker push $WEB_IMAGE:latest
+
+      - name: Deploy Web to Cloud Run
+        run: |-
+          gcloud run deploy entrega-web \
+            --image $WEB_IMAGE:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}"
+
+  finalize:
+    name: Final Smoke Test
+    needs: [deploy_api, deploy_web]
+    if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Production Smoke Test
+        run: |-
+          echo "🚀 Running final smoke tests on production..."
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/ || echo "000")
+          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 301 ] || [ "$STATUS" -eq 302 ] || [ "$STATUS" -eq 307 ]; then
+             echo "✅ Production Reachable: $STATUS"
+          else
+             echo "❌ Production Check Failed: $STATUS"
+             exit 1
           fi
-          echo "Attempt $attempt failed with status $STATUS. Retrying in 5s..."
-          sleep 5
-          attempt=$((attempt + 1))
-        done
-        echo "❌ API Unreachable after $max_attempts attempts."
-        exit 1
-
-    # --- Web Container ---
-    - name: Build Web
-      id: build-web
-      run: |-
-        docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
-          --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
-          --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
-          --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
-
-    - name: Trivy Scan Web Image
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
-        format: 'table'
-        exit-code: '1'
-        ignore-unfixed: true
-        vuln-type: 'library'
-        severity: 'CRITICAL'
-
-    - name: Trivy Report Web Image (Non-blocking HIGH)
-      uses: aquasecurity/trivy-action@master
-      if: always() && steps.build-web.outcome == 'success'
-      with:
-        image-ref: ${{ env.WEB_IMAGE }}:${{ github.sha }}
-        format: 'sarif'
-        output: 'trivy-web-results.sarif'
-        severity: 'HIGH,CRITICAL'
-
-    - name: Upload Web Scan Results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: trivy-web-results
-        path: trivy-web-results.sarif
-
-    - name: Trivy Summary Web
-      if: always()
-      run: |-
-        echo "### 🛡️ Web Security Scan Summary" >> $GITHUB_STEP_SUMMARY
-        echo "Scan completed for image: ${{ env.WEB_IMAGE }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "Critical vulnerabilities block the build, High vulnerabilities are reported." >> $GITHUB_STEP_SUMMARY
-
-    - name: Push Web
-      run: |-
-        docker push $WEB_IMAGE:${{ github.sha }}
-        docker push $WEB_IMAGE:latest
-
-    - name: Deploy Web to Cloud Run
-      run: |-
-        gcloud run deploy entrega-web \
-          --image $WEB_IMAGE:${{ github.sha }} \
-          --region $REGION \
-          --platform managed \
-          --allow-unauthenticated \
-          --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}"
-
-    - name: Final Smoke Test
-      run: |-
-        echo "🚀 Running final smoke tests on production..."
-        STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/ || echo "000")
-        # Root redirects to /landing, so 200, 302 or 307 expected
-        if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 301 ] || [ "$STATUS" -eq 302 ] || [ "$STATUS" -eq 307 ]; then
-           echo "✅ Production Reachable: $STATUS"
-        else
-           echo "❌ Production Check Failed: $STATUS"
-           exit 1
-        fi
