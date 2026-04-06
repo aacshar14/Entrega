@@ -6,12 +6,12 @@ import {
   Building2, 
   Activity, 
   ShieldCheck, 
-  Database, 
   ArrowRight,
   TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertCircle
+  Zap,
+  BarChart3,
+  AlertTriangle,
+  History
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
 import Link from 'next/link';
@@ -19,28 +19,60 @@ import { apiRequest } from '@/lib/api';
 
 export default function PlatformOverview() {
   const { memberships } = useTenant();
-  const [statsData, setStatsData] = React.useState<any>(null);
-  const [isLoadingStats, setIsLoadingStats] = React.useState(true);
+  const [queueStats, setQueueStats] = React.useState<any>(null);
+  const [capacity, setCapacity] = React.useState<any>(null);
+  const [pressure, setPressure] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   
   React.useEffect(() => {
-    async function loadStats() {
+    async function loadData() {
       try {
-        const data = await apiRequest('admin/stats', 'GET');
-        setStatsData(data);
+        const [q, cap, pres] = await Promise.all([
+          apiRequest('admin/queue/stats', 'GET'),
+          apiRequest('admin/capacity/advisor', 'GET'),
+          apiRequest('admin/tenants/pressure', 'GET')
+        ]);
+        setQueueStats(q);
+        setCapacity(cap);
+        setPressure(pres);
       } catch (err) {
-        console.error('Error fetching admin stats:', err);
+        console.error('Error fetching admin data:', err);
       } finally {
-        setIsLoadingStats(false);
+        setIsLoading(false);
       }
     }
-    loadStats();
+    loadData();
   }, []);
 
   const stats = [
-    { label: 'Tenants Activos', value: statsData?.tenants?.toString() || memberships.length.toString(), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Usuarios Globales', value: statsData?.users?.toString() || '...', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { label: 'Movimientos (24h)', value: statsData?.active_24h?.toString() || '...', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    { label: 'Status Sistema', value: statsData?.health === 'healthy' ? 'Óptimo' : '...', icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-100' },
+    { 
+      label: 'Backlog Actual', 
+      value: queueStats?.backlog?.toLocaleString() || '0', 
+      icon: History, 
+      color: 'text-amber-600', 
+      bg: 'bg-amber-100' 
+    },
+    { 
+      label: 'Latencia p95', 
+      value: `${queueStats?.latency?.p95 || 0}s`, 
+      icon: Zap, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-100' 
+    },
+    { 
+      label: 'Volumen (24h)', 
+      value: capacity?.metrics?.['24h_volume']?.toLocaleString() || '0', 
+      icon: Activity, 
+      color: 'text-emerald-600', 
+      bg: 'bg-emerald-100' 
+    },
+    { 
+      label: 'Infra Status', 
+      value: capacity?.status === 'optimal' ? 'Óptimo' : capacity?.status === 'warning' ? 'Monitor' : 'Crítico', 
+      icon: ShieldCheck, 
+      color: capacity?.status === 'optimal' ? 'text-emerald-600' : 'text-amber-600', 
+      bg: capacity?.status === 'optimal' ? 'bg-emerald-100' : 'bg-amber-100' 
+    },
   ];
 
   return (
@@ -65,94 +97,86 @@ export default function PlatformOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Tenants */}
+        {/* Load Distribution */}
         <div className="lg:col-span-2 bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
           <div className="p-10 border-b border-slate-50 flex items-center justify-between">
-            <h3 className="text-xl font-black text-[#1D3146] flex items-center gap-3">
-              <Building2 className="text-amber-500" size={24} />
-              Últimos Tenants
-            </h3>
-            <Link href="/platform/tenants" className="text-sm font-bold text-blue-600 hover:underline flex items-center gap-1">
-              Ver todos <ArrowRight size={14} />
-            </Link>
+             <h3 className="text-xl font-black text-[#1D3146] flex items-center gap-3">
+                <BarChart3 className="text-blue-500" size={24} />
+                Distribución de Carga
+             </h3>
+             <span className="text-[10px] font-black uppercase text-slate-400 bg-slate-100 px-3 py-1 rounded-full tracking-widest">
+                Últimas 24h
+             </span>
           </div>
-          <div className="p-4">
-             <div className="divide-y divide-slate-50">
-                {memberships.slice(0, 5).map((m) => (
-                  <div key={m.tenant.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-3xl group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 font-black group-hover:bg-white group-hover:shadow-md transition-all">
-                        {m.tenant.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-[#1D3146]">{m.tenant.name}</p>
-                        <p className="text-xs text-slate-400 font-medium">Status: {m.tenant.status}</p>
-                      </div>
+          <div className="p-8">
+             <div className="space-y-6">
+                {pressure.length > 0 ? pressure.map((p, idx) => (
+                  <div key={p.tenant_id} className="group">
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-sm font-bold text-[#1D3146]">{p.tenant_name || `Tenant ${p.tenant_id.slice(0,8)}`}</span>
+                       <span className="text-xs font-black text-blue-600">{p.event_count.toLocaleString()} ev</span>
                     </div>
-                    <div className="flex items-center gap-6">
-                       <div className="text-right">
-                          <p className="text-xs font-black text-[#1D3146] uppercase tracking-widest">{m.role}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">Habilitado</p>
-                       </div>
-                       <button 
-                        onClick={() => {/* Use clearTenant or similar to enter */}}
-                        className="p-3 bg-slate-100 rounded-xl text-slate-400 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 group-hover:bg-blue-50 transition-all"
-                       >
-                         <ArrowRight size={20} />
-                       </button>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                       <div 
+                         className="h-full bg-blue-500 rounded-full transition-all duration-1000" 
+                         style={{ width: `${(p.event_count / (pressure[0]?.event_count || 1)) * 100}%` }}
+                       ></div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="py-10 text-center text-slate-400 font-medium">
+                     No hay datos de presión disponibles.
+                  </div>
+                )}
              </div>
           </div>
         </div>
 
-        {/* System Health Area */}
+        {/* Actionable Insights & Status */}
         <div className="space-y-6">
-           <div className="bg-[#0F172A] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 blur-3xl rounded-full"></div>
+           <div className="bg-[#0F172A] text-white rounded-[3rem] p-10 shadow-2xl relative overflow-hidden group">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 blur-3xl rounded-full group-hover:bg-blue-500/20 transition-all"></div>
+              
               <h3 className="text-xl font-black mb-8 flex items-center gap-3">
-                 <Activity size={24} className="text-amber-400" />
-                 SRE Monitor
+                 <Activity size={24} className={queueStats?.backlog > 100 ? 'text-amber-400' : 'text-emerald-400'} />
+                 Runtime Health
               </h3>
               
-              <div className="space-y-6">
+              <div className="space-y-6 relative z-10">
                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                    <span className="text-xs font-bold text-slate-400 italic">API Gateway</span>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Normal</span>
-                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    </div>
+                    <span className="text-xs font-bold text-slate-400">Backlog Age</span>
+                    <span className={`text-xs font-black uppercase tracking-widest ${queueStats?.oldest_pending_seconds > 300 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                       {queueStats?.oldest_pending_seconds ? `${Math.floor(queueStats.oldest_pending_seconds / 60)}m` : '0m'}
+                    </span>
                  </div>
                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                    <span className="text-xs font-bold text-slate-400 italic">Auth Service</span>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Normal</span>
-                       <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                    </div>
+                    <span className="text-xs font-bold text-slate-400">Async Workers</span>
+                    <span className="text-xs font-black uppercase text-emerald-400 tracking-widest">Active</span>
                  </div>
                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                    <span className="text-xs font-bold text-slate-400 italic">Database Pool</span>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Normal</span>
-                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    </div>
+                    <span className="text-xs font-bold text-slate-400">DB Connections</span>
+                    <span className="text-xs font-black uppercase text-emerald-400 tracking-widest">Optimal</span>
                  </div>
               </div>
-              
-              <button className="w-full mt-10 py-4 bg-white/5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/10">
-                 System Logs
-              </button>
+
+              <div className="mt-10 p-5 bg-white/5 rounded-2xl border border-white/10">
+                 <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle size={14} className="text-amber-400" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Capacity Advisor</span>
+                 </div>
+                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                    {capacity?.advice || "Sistema operando en parámetros nominales. No se requiere auto-scaling en este momento."}
+                 </p>
+              </div>
            </div>
 
-           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Costo Estimado (Hoy)</p>
-              <div className="flex items-end gap-2">
-                 <p className="text-3xl font-black text-[#1D3146] tracking-tighter">$14.20 <span className="text-sm text-slate-300 font-bold uppercase tracking-widest ml-1">USD</span></p>
-                 <div className="mb-1 text-emerald-500 flex items-center gap-0.5 font-bold text-xs">
-                    <TrendingUp size={14} />
-                    +2%
+           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 italic">System Pulse</p>
+              <div className="flex items-center gap-4">
+                 <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 w-full animate-[pulse_2s_infinite]"></div>
                  </div>
+                 <span className="text-xs font-black text-[#1D3146]">99.9% Uptime</span>
               </div>
            </div>
         </div>

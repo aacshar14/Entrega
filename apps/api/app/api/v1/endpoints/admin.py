@@ -3,7 +3,7 @@ from sqlmodel import Session, select, func, text
 from typing import List, Dict
 import uuid
 from app.core.db import get_session
-from app.models.models import InboundEvent, Tenant
+from app.models.models import InboundEvent, Tenant, get_utc_now
 from app.core.dependencies import require_platform_role
 from app.core.config import settings
 
@@ -19,12 +19,42 @@ async def get_queue_stats(db: Session = Depends(get_session)):
     failed = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "failed")).one()
     done = db.exec(select(func.count(InboundEvent.id)).where(InboundEvent.status == "done")).one()
     
+    # Oldest pending age
+    oldest_pending = db.exec(
+        select(InboundEvent.available_at)
+        .where(InboundEvent.status == "pending")
+        .order_by(InboundEvent.available_at)
+        .limit(1)
+    ).first()
+    
+    oldest_pending_seconds = 0
+    if oldest_pending:
+        oldest_pending_seconds = (get_utc_now() - oldest_pending).total_seconds()
+
+    # Latency p90, p95, p99 (last 24h)
+    # Using PERCENTILE_CONT in Postgres for quantiles
+    latency_stats = db.execute(text("""
+        SELECT 
+            PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p90,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p95,
+            PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (processed_at - created_at))) as p99
+        FROM inbound_events
+        WHERE status = 'done' 
+          AND processed_at > now() - interval '24 hours'
+    """)).first()
+
     return {
         "backlog": pending,
         "active_processing": processing,
         "failures": failed,
         "completed_total": done,
-        "health_status": "degraded" if pending > 500 or failed > 50 else "healthy"
+        "oldest_pending_seconds": round(oldest_pending_seconds, 2),
+        "latency": {
+            "p90": round(latency_stats[0] or 0, 2),
+            "p95": round(latency_stats[1] or 0, 2),
+            "p99": round(latency_stats[2] or 0, 2),
+        },
+        "health_status": "degraded" if pending > 500 or failed > 50 or oldest_pending_seconds > 300 else "healthy"
     }
 
 @router.get("/tenants/pressure", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
