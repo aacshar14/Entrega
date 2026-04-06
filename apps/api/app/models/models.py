@@ -281,7 +281,7 @@ class AuditLog(SQLModel, table=True):
     """
     __tablename__ = "audit_logs"
     
-    id: UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     performed_by: UUID = Field(index=True) # User ID
     action: str = Field(index=True) # 'update_settings', 'suspend_user', etc.
     module: str = Field(index=True) # 'platform_admin', 'tenant_admin'
@@ -298,7 +298,7 @@ class PlatformAlert(SQLModel, table=True):
     """
     __tablename__ = "platform_alerts"
     
-    id: Optional[UUID] = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     type: str = Field(index=True) # 'backlog', 'latency', 'tenant_pressure', 'failures'
     severity: str = Field(index=True) # 'warning', 'critical'
     tenant_id: Optional[UUID] = Field(default=None, index=True)
