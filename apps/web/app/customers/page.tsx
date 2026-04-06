@@ -118,7 +118,8 @@ export default function CustomersPage() {
         phone_number: editingCustomer.phone_number,
         email: editingCustomer.email,
         notes: editingCustomer.notes,
-        tier: editingCustomer.tier
+        tier: editingCustomer.tier,
+        balance: editingCustomer.balance
       }, activeTenant.id);
       
       setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
@@ -257,6 +258,16 @@ export default function CustomersPage() {
                            <option value="especial">Especial</option>
                         </select>
                     </div>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Saldo Actual ($)</label>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      className="w-full px-6 py-4 bg-blue-50/50 text-blue-700 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-black text-lg transition-all"
+                      value={editingCustomer.balance || 0}
+                      onChange={e => setEditingCustomer({...editingCustomer, balance: parseFloat(e.target.value) || 0})}
+                    />
                  </div>
                  <div>
                     <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Correo (Opcional)</label>

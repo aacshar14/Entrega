@@ -231,9 +231,12 @@ async def import_customers_commit(
             ).first()
             
             if balance_record:
-                balance_record.balance = -row.initial_balance
-                balance_record.last_updated = datetime.now(timezone.utc)
-                db.add(balance_record)
+                # 🛡️ Hardening: Only overwrite if CSV balance is provided (non-zero)
+                # to avoid wiping balances when re-importing to fix tiers/notes.
+                if row.initial_balance != 0:
+                    balance_record.balance = -row.initial_balance
+                    balance_record.last_updated = datetime.now(timezone.utc)
+                    db.add(balance_record)
             elif row.initial_balance != 0:
                 new_balance = CustomerBalance(
                     tenant_id=tenant_id,
@@ -285,8 +288,9 @@ class CustomerUpdate(BaseModel):
     address: Optional[str] = None
     notes: Optional[str] = None
     tier: Optional[str] = None
+    balance: Optional[float] = None
 
-@router.patch("/{id}", response_model=Customer)
+@router.patch("/{id}", response_model=CustomerResponse)
 async def update_customer(
     id: UUID,
     update_data: CustomerUpdate,
@@ -316,9 +320,45 @@ async def update_customer(
     customer.updated_at = datetime.now(timezone.utc)
     
     db.add(customer)
+    
+    # 💰 Synchronize Balance if provided
+    if update_data.balance is not None:
+        balance_record = db.exec(
+            select(CustomerBalance).where(CustomerBalance.customer_id == customer.id)
+        ).first()
+        
+        # Enforce consistency: balance in table is usually stored as negative for debt?
+        # Actually Inbound Import says: balance = -row.initial_balance
+        # We follow the same convention or allow absolute value?
+        # User usually sees absolute value in UI ($650.00). 
+        # But if it's debt, it should be stored as negative internally to facilitate SUMs.
+        val_to_save = -abs(update_data.balance) if update_data.balance != 0 else 0.0
+        
+        if balance_record:
+            balance_record.balance = val_to_save
+            balance_record.last_updated = datetime.now(timezone.utc)
+            db.add(balance_record)
+        else:
+            new_balance = CustomerBalance(
+                tenant_id=active_tenant.id,
+                customer_id=customer.id,
+                balance=val_to_save,
+                last_updated=datetime.now(timezone.utc)
+            )
+            db.add(new_balance)
+
     db.commit()
     db.refresh(customer)
-    return customer
+
+    # Refetch with balance to ensure full state returns to UI
+    balance_record = db.exec(
+        select(CustomerBalance).where(CustomerBalance.customer_id == customer.id)
+    ).first()
+
+    return CustomerResponse(
+        **customer.model_dump(),
+        balance=abs(float(balance_record.balance)) if balance_record else 0.0
+    )
 
 @router.delete("/{id}")
 async def delete_customer(
