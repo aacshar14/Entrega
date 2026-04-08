@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 
-from app.models.models import Customer, Product, ProductAlias, MessageLog, Tenant
+from app.models.models import Customer, Product, ProductAlias, MessageLog, Tenant, StockBalance, InventoryMovement
 
 class ParsingEngine:
     """
@@ -98,8 +98,47 @@ class ParsingEngine:
 
         return results
 
+    def execute_order(self, customer: Customer, items: List[Dict]):
+        """Executes inventory deductions and traces movements"""
+        for item in items:
+            sku = item['sku']
+            qty = item['qty']
+            
+            product = self.session.exec(
+                select(Product).where(Product.tenant_id == self.tenant.id, Product.sku == sku)
+            ).first()
+            
+            if not product:
+                continue
+                
+            # Upsert StockBalance
+            stock = self.session.exec(
+                select(StockBalance).where(StockBalance.tenant_id == self.tenant.id, StockBalance.product_id == product.id)
+            ).first()
+            
+            if not stock:
+                stock = StockBalance(tenant_id=self.tenant.id, product_id=product.id, quantity=0)
+                self.session.add(stock)
+                
+            # Resta el inventario
+            stock.quantity -= qty
+            
+            # Registra el movimiento histórico
+            movement = InventoryMovement(
+                tenant_id=self.tenant.id,
+                product_id=product.id,
+                customer_id=customer.id,
+                quantity=-qty,
+                type="delivery",
+                description="Orden automatizada vía WhatsApp",
+                sku=product.sku,
+                unit_price=product.price_menudeo,
+                total_amount=product.price_menudeo * qty
+            )
+            self.session.add(movement)
+
     def process_and_log(self, sender: str, raw_text: str) -> MessageLog:
-        """Logs structured order extraction for observability."""
+        """Logs structured order extraction and executes inventory movements."""
         items = self.parse_order(raw_text)
         
         log = MessageLog(
@@ -113,5 +152,25 @@ class ParsingEngine:
             final_status="pending"
         )
         self.session.add(log)
+        
+        if items:
+            # 1. Automáticamente dar de alta (o asociar) al cliente mediante su número
+            customer = self.session.exec(
+                select(Customer).where(Customer.tenant_id == self.tenant.id, Customer.phone_number == sender)
+            ).first()
+            
+            if not customer:
+                customer = Customer(
+                    tenant_id=self.tenant.id, 
+                    phone_number=sender, 
+                    name=f"Cliente {sender[-4:] if len(sender) >= 4 else sender}"
+                )
+                self.session.add(customer)
+                self.session.flush() # Get the new ID right away
+                
+            # 2. Ejecutar la actualización a la base de datos (Inventario y Ventas)
+            self.execute_order(customer, items)
+            log.final_status = "processed"
+            
         self.session.commit()
         return log
