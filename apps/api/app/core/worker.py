@@ -65,7 +65,7 @@ class EventWorker:
 
             # Call Parsing Engine
             engine = ParsingEngine(self.db, tenant)
-            log = engine.parse_message(sender=sender, raw_text=body)
+            log = engine.process_and_log(sender=sender, raw_text=body)
             
             logger.info("webhooks.message_parsed", 
                         intent=log.detected_intent, 
