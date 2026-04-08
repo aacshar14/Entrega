@@ -157,22 +157,24 @@ export default function StockPage() {
     if (!activeTenant) return;
     setIsSaving(true);
     try {
-      // We'll save them sequentially or with a bulk endpoint if available. 
-      // Current API has PATCH products/:id, so we'll do sequential promises for simplicity/safety unless we add a bulk endpoint.
-      const promises = Object.values(bulkData).map(p => 
-        apiRequest(`products/${p.id}`, 'PATCH', {
+      const promises = Object.values(bulkData).map(p => {
+        const original = products.find(op => op.id === p.id);
+        const adjustment = original ? (Number(p.quantity) - original.quantity) : 0;
+
+        return apiRequest(`products/${p.id}`, 'PATCH', {
           name: p.name,
           sku: p.sku,
           price_menudeo: Number(p.price_menudeo),
           price_mayoreo: Number(p.price_mayoreo),
-          price_especial: Number(p.price_especial)
-        }, activeTenant.id)
-      );
+          price_especial: Number(p.price_especial),
+          adjustment_quantity: adjustment
+        }, activeTenant.id);
+      });
       
       await Promise.all(promises);
       await fetchStock();
       setIsBulkEditing(false);
-      setMessage('✅ Catálogo actualizado correctamente.');
+      setMessage('✅ Catálogo y Stock actualizados correctamente.');
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       setError('Error al guardar algunos productos.');
@@ -451,7 +453,7 @@ export default function StockPage() {
                       <th className="px-4 py-5 text-center">Stock</th>
                       <th className="px-4 py-5 text-right">Menudeo</th>
                       <th className="px-4 py-5 text-right font-black text-[#56CCF2]">Mayoreo</th>
-                    <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
+                      <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
                       <th className="pr-8 py-5 text-right">Acciones</th>
                    </tr>
                 </thead>
@@ -487,9 +489,18 @@ export default function StockPage() {
                              )}
                           </td>
                           <td className="px-4 py-5 text-center">
-                             <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {p.quantity} unid.
-                             </span>
+                             {isEditingRow ? (
+                               <input 
+                                 type="number"
+                                 className="w-20 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs font-black outline-none focus:border-[#56CCF2]"
+                                 value={displayData.quantity}
+                                 onChange={e => handleBulkChange(p.id, 'quantity', Number(e.target.value))}
+                               />
+                             ) : (
+                               <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {p.quantity} unid.
+                               </span>
+                             )}
                           </td>
                           <td className="px-4 py-5 text-right">
                              {isEditingRow ? (

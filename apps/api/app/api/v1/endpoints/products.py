@@ -322,14 +322,14 @@ async def update_product(
     if update_data.adjustment_quantity is not None and update_data.adjustment_quantity != 0:
         balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
         if balance:
-            balance.quantity += adjustment_quantity
+            balance.quantity += update_data.adjustment_quantity
             balance.updated_by_user_id = current_user.id
             balance.last_updated = datetime.now(timezone.utc)
         else:
             balance = StockBalance(
                 tenant_id=active_tenant.id,
                 product_id=product.id,
-                quantity=adjustment_quantity,
+                quantity=update_data.adjustment_quantity,
                 updated_by_user_id=current_user.id
             )
         db.add(balance)
@@ -338,7 +338,7 @@ async def update_product(
         movement = InventoryMovement(
             tenant_id=active_tenant.id,
             product_id=product.id,
-            quantity=adjustment_quantity,
+            quantity=update_data.adjustment_quantity,
             type="adjustment",
             description=f"Ajuste manual vía catálogo por {current_user.email}",
             created_by_user_id=current_user.id
