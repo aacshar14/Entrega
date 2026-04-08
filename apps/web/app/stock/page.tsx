@@ -19,7 +19,8 @@ import {
   Save,
   ShoppingBag,
   Zap,
-  Star
+  Star,
+  RefreshCcw
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { useTenant } from '@/lib/context/tenant-context';
@@ -93,6 +94,22 @@ export default function StockPage() {
       setLoading(false);
     }
   }, [activeTenant]);
+
+  const handleReconcile = async () => {
+    if (!activeTenant) return;
+    try {
+      setLoading(true);
+      await apiRequest('movements/reconcile-all', 'POST', null, activeTenant.id);
+      setMessage('¡Saldos recalculados con éxito!');
+      setTimeout(() => setMessage(null), 3000);
+      fetchStock();
+    } catch (err) {
+      console.error('Reconciliation failed:', err);
+      setError('Error al recalcular saldos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTenant && step === 'list') {
@@ -389,9 +406,19 @@ export default function StockPage() {
 
       {/* Main UI */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-         <div>
-            <h1 className="text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
-               <Package className="text-[#56CCF2]" size={36} /> Catálogo
+         <div className="flex items-center gap-4">
+            <div className="bg-[#1D3146] p-4 rounded-3xl text-white shadow-xl">
+               <Package size={28} />
+            </div>
+            <h1 className="text-3xl font-black text-[#1D3146] tracking-tighter flex items-center gap-4">
+               Catálogo
+               <button 
+                 onClick={handleReconcile}
+                 title="Recalcular Saldos e Inventario"
+                 className="p-2 hover:bg-slate-100 rounded-full text-slate-300 hover:text-[#56CCF2] transition-all active:rotate-180 duration-500"
+               >
+                 <RefreshCcw size={16} className={loading && message === null ? 'animate-spin' : ''} />
+               </button>
             </h1>
          </div>
          <div className="flex gap-4">
