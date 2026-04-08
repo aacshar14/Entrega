@@ -325,3 +325,22 @@ async def reconcile_all(
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{id}", dependencies=[Depends(require_roles(["owner"]))])
+async def delete_movement(
+    id: UUID,
+    db: Session = Depends(get_session),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """Delete a movement and trigger full reconciliation for data integrity (owner only)."""
+    movement = db.get(InventoryMovement, id)
+    if not movement or movement.tenant_id != active_tenant_id:
+        raise HTTPException(status_code=404, detail="Movement not found")
+    
+    db.delete(movement)
+    db.commit()
+    
+    # Trigger internal reconciliation to ensure balances match the new reality
+    await reconcile_all(db, active_tenant_id)
+    
+    return {"status": "success", "message": "Movement deleted and balances reconciled"}
