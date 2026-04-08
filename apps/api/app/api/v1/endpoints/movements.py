@@ -9,7 +9,7 @@ from typing import List, Optional
 
 router = APIRouter()
 
-@router.get("/", response_model=List[InventoryMovement], dependencies=[Depends(require_roles(["owner", "operator"]))])
+@router.get("", response_model=List[InventoryMovement], dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def list_movements(
     db: Session = Depends(get_session),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
