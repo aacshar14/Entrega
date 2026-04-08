@@ -217,6 +217,9 @@ export default function RootPage() {
                   <Link href="/privacy-policy" className="text-[10px] text-slate-500 hover:text-[#56CCF2] transition-colors font-bold uppercase tracking-widest">
                     Política de Privacidad
                   </Link>
+                  <p className="text-[8px] text-slate-600 font-medium uppercase tracking-tighter opacity-50 mt-2">
+                    Entrega is a SaaS platform for business inventory and delivery operations.
+                  </p>
                </div>
             </div>
             

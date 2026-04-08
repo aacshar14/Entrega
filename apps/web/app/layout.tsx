@@ -196,8 +196,9 @@ function UI_Shell({ children }) {
               </Link>
            </>
         )}
-        <div className="p-4 border-t border-white/5 opacity-40 text-[10px] text-center font-black uppercase tracking-widest hidden lg:block">
-          Entrega v1.1
+        <div className="p-4 border-t border-white/5 opacity-40 text-center hidden lg:block">
+          <p className="text-[10px] font-black uppercase tracking-widest mb-1">Entrega v1.1</p>
+          <p className="text-[7px] font-bold text-slate-400 leading-tight">Entrega is a SaaS platform for business inventory and delivery operations.</p>
         </div>
       </aside>
     )}

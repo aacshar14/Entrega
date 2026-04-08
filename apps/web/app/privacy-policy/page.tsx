@@ -275,6 +275,9 @@ export default function PrivacyPage() {
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">
               {t.lastUpdated} // EntréGA V1.1 Compliance Mode
             </p>
+            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter mt-1 opacity-60">
+              Entrega is a SaaS platform for business inventory and delivery operations.
+            </p>
           </footer>
         </div>
       </main>
