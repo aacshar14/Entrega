@@ -69,6 +69,21 @@ class WhatsAppConfig(SQLModel, table=True):
     connected_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
+class TenantWhatsAppIntegration(SQLModel, table=True):
+    """Refined multi-tenant WhatsApp integration tracking for Embedded Signup"""
+    __tablename__ = "tenant_whatsapp_integrations"
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
+    provider: str = Field(default="meta")
+    business_name: Optional[str] = None
+    waba_id: Optional[str] = Field(default=None, index=True)
+    phone_number_id: Optional[str] = Field(default=None, index=True)
+    access_token_encrypted: Optional[str] = None
+    status: str = Field(default="pending") # 'pending', 'connected', 'disconnected', 'failed'
+    connected_at: datetime = Field(default_factory=get_utc_now)
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
+    updated_at: datetime = Field(default_factory=get_utc_now)
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)

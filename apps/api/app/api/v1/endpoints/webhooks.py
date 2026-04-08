@@ -103,17 +103,33 @@ async def receive_whatsapp_event(
             return {"status": "accepted_duplicate"}
 
         # 2. 🏛️ Resolve Tenant based on meta phone_number_id
-        from app.models.models import WhatsAppConfig
-        config = db.exec(select(WhatsAppConfig).where(WhatsAppConfig.meta_phone_number_id == str(business_number_id))).first()
+        # We check both the new integration table (preferred) and the legacy config table
+        from app.models.models import TenantWhatsAppIntegration, WhatsAppConfig
         
-        if not config:
-            logger.warning("No configuration found for meta phone number id", phone_number_id=business_number_id)
+        # Priority 1: New multi-tenant integration table
+        integration = db.exec(
+            select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.phone_number_id == str(business_number_id))
+        ).first()
+        
+        target_tenant_id = None
+        if integration:
+            target_tenant_id = integration.tenant_id
+        else:
+            # Priority 2: Legacy WhatsAppConfig table
+            config = db.exec(
+                select(WhatsAppConfig).where(WhatsAppConfig.meta_phone_number_id == str(business_number_id))
+            ).first()
+            if config:
+                target_tenant_id = config.tenant_id
+
+        if not target_tenant_id:
+            logger.warning("No tenant mapping found for meta phone number id", phone_number_id=business_number_id)
             return {"status": "error", "detail": "Tenant not recognized"}
 
         # Bind tenant context for ALL subsequent logs in this request
-        structlog.contextvars.bind_contextvars(tenant_id=str(config.tenant_id))
+        structlog.contextvars.bind_contextvars(tenant_id=str(target_tenant_id))
 
-        tenant = db.exec(select(Tenant).where(Tenant.id == config.tenant_id)).first()
+        tenant = db.exec(select(Tenant).where(Tenant.id == target_tenant_id)).first()
         if not tenant:
             return {"status": "error", "detail": "Tenant not found"}
 

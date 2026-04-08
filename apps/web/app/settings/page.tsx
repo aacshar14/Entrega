@@ -405,64 +405,40 @@ export default function SettingsPage() {
                </div>
             </div>
 
-            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col items-stretch gap-6">
-               <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-4">
-                  <div className="flex items-center gap-6">
-                     <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${
-                        activeTenant.whatsapp_status === 'connected' ? 'bg-emerald-100 text-emerald-600 shadow-emerald-200/50' : 'bg-blue-100 text-blue-600 shadow-blue-200/50'
-                     }`}>
-                        <MessageCircle size={32} />
-                     </div>
-                     <div>
-                        <h4 className="text-lg font-black text-[#1D3146] tracking-tight">
-                           {activeTenant.whatsapp_status === 'connected' ? (activeTenant.whatsapp_account_name || 'Cuenta Oficial') : 'Automatización WhatsApp'}
-                        </h4>
-                        <p className="text-sm text-slate-400 font-medium max-w-sm mt-1">
-                           {activeTenant.whatsapp_status === 'connected' 
-                              ? `Número activo: ${activeTenant.whatsapp_display_number || activeTenant.business_whatsapp_number}` 
-                              : 'Conecta tu cuenta para enviar notificaciones automáticas de pedidos y pagos.'}
-                        </p>
-                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                     <button 
-                        type="button"
-                        onClick={() => setShowManualMeta(!showManualMeta)}
-                        className="px-6 py-4 font-black rounded-2xl text-[10px] uppercase tracking-widest transition-all bg-white text-[#1D3146] border border-slate-200 hover:bg-slate-50"
-                     >
-                        Config. Manual (Tokens)
-                     </button>
-                     <button 
-                        type="button"
-                        onClick={async () => {
-                           if (activeTenant.whatsapp_status === 'connected') {
-                              if (confirm('¿Deseas desconectar WhatsApp? Se detendrán todas las automatizaciones.')) {
-                                 setLoading(true);
-                                 try {
-                                    await apiRequest('/whatsapp/auth/disconnect', 'DELETE', {}, activeTenant.id);
-                                    await refreshUser();
-                                 } finally {
-                                    setLoading(false);
-                                 }
-                              }
-                              return;
-                           }
-                           launchWhatsAppOnboarding();
-                        }}
-                        disabled={loading}
-                        className={`px-8 py-4 font-black rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 shadow-xl ${
-                           activeTenant.whatsapp_status === 'connected' 
-                           ? 'bg-white text-rose-500 border border-rose-100 hover:bg-rose-50' 
-                           : 'bg-[#25D366] text-white hover:scale-105 shadow-[#25D366]/20'
-                        }`}
-                     >
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : (
-                           activeTenant.whatsapp_status === 'connected' ? 'Desconectar Servicio' : 'Conectar con Meta'
-                        )}
-                     </button>
-                  </div>
-               </div>
+             <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-100 flex flex-col items-stretch gap-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-4">
+                   <div className="flex items-center gap-6">
+                      <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg ${
+                         activeTenant.business_whatsapp_connected ? 'bg-emerald-100 text-emerald-600 shadow-emerald-200/50' : 'bg-blue-100 text-blue-600 shadow-blue-200/50'
+                      }`}>
+                         <MessageCircle size={32} />
+                      </div>
+                      <div>
+                         <h4 className="text-lg font-black text-[#1D3146] tracking-tight">
+                            {activeTenant.business_whatsapp_connected ? 'WhatsApp Conectado' : 'Automatización WhatsApp'}
+                         </h4>
+                         <p className="text-sm text-slate-400 font-medium max-w-sm mt-1">
+                            {activeTenant.business_whatsapp_connected 
+                               ? 'Tu negocio está listo para procesar pedidos automáticamente.' 
+                               : 'Conecta tu cuenta oficial para enviar notificaciones automáticas.'}
+                         </p>
+                      </div>
+                   </div>
+                   
+                   <div className="flex items-center gap-3">
+                      <Link 
+                         href="/settings/integrations/whatsapp"
+                         className={`px-8 py-4 font-black rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 shadow-xl ${
+                            activeTenant.business_whatsapp_connected 
+                            ? 'bg-white text-[#1D3146] border border-slate-100 hover:bg-slate-50' 
+                            : 'bg-[#1D3146] text-[#56CCF2] hover:scale-105 shadow-[#1D3146]/20'
+                         }`}
+                      >
+                         <SettingsIcon size={16} />
+                         Gestionar Integración
+                      </Link>
+                   </div>
+                </div>
 
                {/* Manual Meta Form */}
                {showManualMeta && (
