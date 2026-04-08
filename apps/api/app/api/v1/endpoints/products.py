@@ -55,24 +55,37 @@ async def list_products_stock(
     db: Session = Depends(get_session),
     active_tenant: Tenant = Depends(get_active_tenant)
 ):
-    """List products with current stock levels."""
-    statement = select(Product, StockBalance.quantity).join(
-        StockBalance, Product.id == StockBalance.product_id, isouter=True
-    ).where(Product.tenant_id == active_tenant.id)
+    """List products with current stock levels (both internal and outside)."""
+    # 1. Base Stock & Prices
+    products = db.exec(
+        select(Product, StockBalance.quantity).join(
+            StockBalance, Product.id == StockBalance.product_id, isouter=True
+        ).where(Product.tenant_id == active_tenant.id)
+    ).all()
     
-    results = db.exec(statement).all()
-    
+    # 2. Calculate "Outside" Stock per product (Consignment)
+    # stock_outside = - sum(quantity) for all movements with customer_id
+    outside_movements = db.exec(
+        select(InventoryMovement.product_id, func.sum(InventoryMovement.quantity)).where(
+            InventoryMovement.tenant_id == active_tenant.id,
+            InventoryMovement.customer_id != None
+        ).group_by(InventoryMovement.product_id)
+    ).all()
+    outside_map = {r[0]: -float(r[1]) for r in outside_movements}
+
     return [
         {
             "id": p.id,
             "name": p.name,
             "sku": p.sku,
+            "cost": p.cost,
             "price_menudeo": p.price_menudeo,
             "price_mayoreo": p.price_mayoreo,
             "price_especial": p.price_especial,
-            "quantity": q if q is not None else 0.0
+            "stock_base": q if q is not None else 0.0,
+            "stock_outside": outside_map.get(p.id, 0.0)
         }
-        for p, q in results
+        for p, q in products
     ]
 
 @router.post("/import/preview", response_model=ProductImportPreviewResponse)
@@ -322,14 +335,14 @@ async def update_product(
     if update_data.adjustment_quantity is not None and update_data.adjustment_quantity != 0:
         balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
         if balance:
-            balance.quantity += adjustment_quantity
+            balance.quantity += update_data.adjustment_quantity
             balance.updated_by_user_id = current_user.id
             balance.last_updated = datetime.now(timezone.utc)
         else:
             balance = StockBalance(
                 tenant_id=active_tenant.id,
                 product_id=product.id,
-                quantity=adjustment_quantity,
+                quantity=update_data.adjustment_quantity,
                 updated_by_user_id=current_user.id
             )
         db.add(balance)
@@ -338,7 +351,7 @@ async def update_product(
         movement = InventoryMovement(
             tenant_id=active_tenant.id,
             product_id=product.id,
-            quantity=adjustment_quantity,
+            quantity=update_data.adjustment_quantity,
             type="adjustment",
             description=f"Ajuste manual vía catálogo por {current_user.email}",
             created_by_user_id=current_user.id

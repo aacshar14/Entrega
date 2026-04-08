@@ -64,6 +64,7 @@ async def create_manual_movement(
         tenant_id=active_tenant_id,
         product_id=product_id,
         customer_id=customer_id,
+        customer_name_snapshot=customer.name if customer_id else None,
         quantity=quantity,
         type=type,
         description=description,

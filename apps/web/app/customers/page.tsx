@@ -131,6 +131,28 @@ export default function CustomersPage() {
     }
   };
 
+  const handleClearTotalDebt = async (customer: Customer) => {
+    if (!activeTenant || !customer.balance || customer.balance >= 0) return;
+    const amount = Math.abs(customer.balance);
+    if (!confirm(`¿Confirmas el pago TOTAL de $${amount.toLocaleString()}? Se liquidará la deuda financiera y el inventario en calle.`)) return;
+    
+    setIsDataLoading(true);
+    try {
+      await apiRequest('payments/clear-total', 'POST', {
+        customer_id: customer.id,
+        method: 'cash' // Defaulting to cash for quick liquidation
+      }, activeTenant.id);
+      
+      // Reload customers to see updated balance
+      await loadCustomers();
+      setActiveMenu(null);
+    } catch (err: any) {
+      setError('Error al liquidar la deuda.');
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
   const downloadTemplate = () => {
     const csvContent = "Nombre,Teléfono,Correo,Saldo,Notas,Nivel\nAna,+528781111111,ana@email.com,650,Cliente frecuente,menudeo\nLuis,+528782222222,,300,,mayoreo";
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -453,6 +475,15 @@ export default function CustomersPage() {
                                         <Pencil size={16} />
                                         Editar
                                      </button>
+                                     {customer.balance && customer.balance < 0 && (
+                                        <button 
+                                          onClick={() => handleClearTotalDebt(customer)}
+                                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                        >
+                                           <CheckCircle2 size={16} />
+                                           Liquidar Deuda
+                                        </button>
+                                      )}
                                      <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-400 cursor-not-allowed rounded-xl transition-all">
                                         <History size={16} />
                                         Historial

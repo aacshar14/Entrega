@@ -21,7 +21,7 @@ def get_application() -> FastAPI:
         version=settings.VERSION,
         description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        redirect_slashes=False
+        redirect_slashes=True
     )
     
     # Setup Rate Limiting

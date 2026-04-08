@@ -27,6 +27,7 @@ interface Movement {
   total_amount: number;
   created_at: string;
   description: string;
+  customer_name_snapshot?: string;
   tier_applied?: string;
 }
 
@@ -40,7 +41,7 @@ export default function MovementsPage() {
     if (!activeTenant) return;
     try {
       setLoading(true);
-      const data = await apiRequest('movements/', 'GET', null, activeTenant.id) as Movement[];
+      const data = await apiRequest('movements', 'GET', null, activeTenant.id) as Movement[];
       // Sort by date descending
       const sorted = (data || []).sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -149,6 +150,7 @@ export default function MovementsPage() {
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha & Hora</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Producto / SKU</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cant / Precio</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
@@ -158,12 +160,12 @@ export default function MovementsPage() {
               {loading ? (
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={5} className="px-8 py-8"><div className="h-4 bg-slate-100 rounded-full w-full"></div></td>
+                    <td colSpan={6} className="px-8 py-8"><div className="h-4 bg-slate-100 rounded-full w-full"></div></td>
                   </tr>
                 ))
               ) : filteredMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center">
+                  <td colSpan={6} className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center gap-4 text-slate-300">
                       <Clock size={48} className="opacity-20" />
                       <p className="font-bold text-sm uppercase tracking-widest">Sin movimientos registrados</p>
@@ -194,13 +196,27 @@ export default function MovementsPage() {
                       </td>
                       <td className="px-8 py-6">
                          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
-                           movement.type === 'delivery' ? 'bg-rose-50 text-rose-600' : 
-                           movement.type === 'restock' ? 'bg-emerald-50 text-emerald-600' :
+                           movement.type.includes('delivery') ? 'bg-rose-50 text-rose-600' : 
+                           movement.type.includes('restock') || movement.type.includes('reported') ? 'bg-emerald-50 text-emerald-600' :
                            'bg-blue-50 text-blue-600'
                          }`}>
-                           {movement.type === 'delivery' ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
-                           {movement.type === 'delivery' ? 'ENTREGA' : movement.type === 'restock' ? 'RESTOCK' : 'AJUSTE'}
+                           {movement.quantity < 0 ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
+                           {
+                             movement.type === 'delivery_to_customer' ? 'Entrega Consignación' :
+                             movement.type === 'sale_reported' ? 'Venta Reportada' :
+                             movement.type === 'return_from_customer' ? 'Devolución' :
+                             movement.type === 'adjustment' ? 'Ajuste Stock' :
+                             movement.type === 'spoilage' ? 'Merma' : movement.type.toUpperCase()
+                           }
                          </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-2">
+                          <User size={12} className="text-slate-400" />
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            {movement.customer_name_snapshot || 'Interno'}
+                          </p>
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                          <div className="flex items-center gap-3">

@@ -148,9 +148,10 @@ class ParsingEngine:
                 tenant_id=self.tenant.id,
                 product_id=product.id,
                 customer_id=customer.id,
+                customer_name_snapshot=customer.name,
                 quantity=-qty,  # Negative physically means it left HQ -> went to client
-                type="delivery",
-                description="Entrega a consignación/crédito vía WhatsApp",
+                type="delivery_to_customer",
+                description="Entrega a consignación vía WhatsApp",
                 sku=product.sku,
                 unit_price=product.price_menudeo,
                 total_amount=total_charge
