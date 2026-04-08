@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/client';
 
 // Use relative path to leverage Next.js proxy/rewrites in production
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'https://api.entrega.space/api/v1';
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, HTTPException, Security, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt
 from uuid import UUID
@@ -165,20 +165,53 @@ async def get_current_user(
         raise credentials_exception
 
 async def get_active_membership(
+    request: Request,
     current_user: Any = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Optional[Any]:
     from app.models.models import TenantUser
-    membership = db.exec(
-        select(TenantUser).where(
-            TenantUser.user_id == current_user.id,
-            TenantUser.is_active == True
-        )
-    ).first()
+    from app.core.logging import logger
     
-    if membership:
-        # 🛡️ Hardening: Bind tenant_id to session context immediately
-        structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+    # 1. Capture Header Intent
+    header_tenant_id = request.headers.get("X-Tenant-Id")
+    
+    logger.debug("tenant_resolution.start", user_id=str(current_user.id), header_tenant_id=header_tenant_id)
+
+    # 2. Resolution Logic
+    if header_tenant_id:
+        try:
+            target_id = UUID(header_tenant_id)
+            membership = db.exec(
+                select(TenantUser).where(
+                    TenantUser.user_id == current_user.id,
+                    TenantUser.tenant_id == target_id,
+                    TenantUser.is_active == True
+                )
+            ).first()
+            
+            if not membership:
+                logger.warning("tenant_resolution.unauthorized", user_id=str(current_user.id), requested_tenant=header_tenant_id)
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have access to the requested tenant.")
+        except ValueError:
+            logger.error("tenant_resolution.invalid_uuid", user_id=str(current_user.id), header_tenant_id=header_tenant_id)
+            raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format.")
+    else:
+        # Fallback to default/first membership if no header
+        membership = db.exec(
+            select(TenantUser).where(
+                TenantUser.user_id == current_user.id,
+                TenantUser.is_active == True
+            ).order_by(TenantUser.is_default.desc())
+        ).first()
+
+    if not membership:
+        logger.warning("tenant_resolution.no_membership", user_id=str(current_user.id))
+        raise HTTPException(status_code=400, detail="No active tenant context found for user.")
+    
+    # 🛡️ Hardening: Bind tenant_id to session context immediately
+    structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+    logger.info("tenant_resolution.success", user_id=str(current_user.id), tenant_id=str(membership.tenant_id))
+    
     return membership
 
 async def get_active_tenant(

@@ -37,11 +37,15 @@ async def exchange_meta_code(
     # Meta Graph URL
     meta_url = "https://graph.facebook.com/v19.0/oauth/access_token"
     
+    if not settings.WHATSAPP_APP_ID or not settings.WHATSAPP_APP_SECRET:
+        logger.error("Missing WHATSAPP_APP_ID or WHATSAPP_APP_SECRET in environment configuration.")
+        raise HTTPException(status_code=500, detail="Server is missing required Meta API configurations.")
+
     try:
         async with httpx.AsyncClient() as client:
             fb_response = await client.get(meta_url, params={
-                "client_id": settings.WHATSAPP_APP_ID or "placeholder_app_id",
-                "client_secret": settings.WHATSAPP_APP_SECRET or "placeholder_secret",
+                "client_id": settings.WHATSAPP_APP_ID,
+                "client_secret": settings.WHATSAPP_APP_SECRET,
                 "code": payload.code
             })
             
