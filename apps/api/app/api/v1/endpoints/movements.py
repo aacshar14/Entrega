@@ -62,6 +62,12 @@ async def create_manual_movement(
         if not customer or customer.tenant_id != active_tenant_id:
             raise HTTPException(status_code=404, detail="Customer not found")
         customer_name_snapshot = customer.name
+        
+        # Enforce Signs for Business Logic
+        if type in ["delivery", "delivery_to_customer"]:
+            quantity = -abs(quantity) # Decreases warehouse
+        elif type in ["return", "return_from_customer", "sale_reported", "restock"]:
+            quantity = abs(quantity) # Addition or offset
 
         # Resolve price tier if it's a delivery
         if type in ["delivery", "delivery_to_customer"]:
