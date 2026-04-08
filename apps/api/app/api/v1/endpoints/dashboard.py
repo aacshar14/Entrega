@@ -62,6 +62,16 @@ async def get_dashboard_summary(
         .order_by(CustomerBalance.balance) # Lowest (most negative) first
         .limit(5)
     ).all()
+    
+    # 6. Recent Activity (Last 6 movements)
+    from app.models.models import InventoryMovement
+    recent_movements = db.exec(
+        select(InventoryMovement, Customer)
+        .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
+        .where(InventoryMovement.tenant_id == tenant_id)
+        .order_by(desc(InventoryMovement.created_at))
+        .limit(6)
+    ).all()
 
     return {
         "stats": {
@@ -76,6 +86,17 @@ async def get_dashboard_summary(
         ],
         "debtors": [
             {"name": c.name, "amount": abs(float(cb.balance))} for c, cb in top_debtors if cb.balance < 0
+        ],
+        "recent_activity": [
+            {
+                "id": str(m.id),
+                "customer_name": c.name if c else "Desconocido",
+                "description": m.description or "Movimiento de stock",
+                "quantity": abs(m.quantity),
+                "type": m.type,
+                "amount": m.total_amount,
+                "created_at": m.created_at.isoformat()
+            } for m, c in recent_movements
         ],
         "welcome_message": f"¡Hola de nuevo, {current_user.full_name}!",
         "business_name": active_tenant.name

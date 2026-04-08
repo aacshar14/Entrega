@@ -28,6 +28,15 @@ interface DashboardData {
   stats: DashboardStats;
   stock: Array<{ name: string, quantity: number }>;
   debtors: Array<{ name: string, amount: number }>;
+  recent_activity?: Array<{
+    id: string;
+    customer_name: string;
+    description: string;
+    quantity: number;
+    type: string;
+    amount: number;
+    created_at: string;
+  }>;
   welcome_message: string;
   business_name: string;
 }
@@ -139,7 +148,7 @@ export default function Dashboard() {
       {/* Grid de Contenido Real */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          
-         {/* Movimientos Recientes (Placeholder for future sync) */}
+         {/* Movimientos Recientes */}
          <div className="lg:col-span-7 space-y-8">
             <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
                <div className="p-8 pb-4 flex items-center justify-between">
@@ -147,11 +156,40 @@ export default function Dashboard() {
                   <button className="text-xs font-black uppercase tracking-widest text-[#56CCF2] hover:underline underline-offset-4">Historial Completo</button>
                </div>
                
-               <div className="p-8 pt-0 space-y-2">
-                  <div className="bg-slate-50 p-10 rounded-3xl text-center border border-dashed border-slate-200">
-                      <Truck className="text-slate-200 mx-auto mb-4" size={40} />
-                      <p className="text-slate-400 font-bold text-sm">Próximamente: Rastreo de movimientos en tiempo real sincronizado con tus rutas.</p>
-                  </div>
+               <div className="p-0">
+                  {data.recent_activity && data.recent_activity.length > 0 ? (
+                    <div className="divide-y divide-slate-50">
+                      {data.recent_activity.map((activity, i) => (
+                        <div key={i} className="py-5 px-8 flex items-center justify-between hover:bg-slate-50/50 transition-all cursor-default">
+                           <div className="flex items-center gap-4">
+                              <div className="bg-[#56CCF2]/10 p-3 rounded-2xl flex-shrink-0">
+                                 <Truck className="text-[#56CCF2]" size={20} />
+                              </div>
+                              <div>
+                                 <p className="font-bold text-[#1D3146] text-base">{activity.customer_name}</p>
+                                 <p className="text-xs font-bold text-slate-400 capitalize flex items-center gap-2">
+                                    <span className="text-[#56CCF2] font-black">{activity.quantity} unid.</span> • 
+                                    {activity.description}
+                                 </p>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="font-black text-rose-500 text-lg">${activity.amount.toLocaleString()}</p>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                                {new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 pt-0 space-y-2">
+                       <div className="bg-slate-50 p-10 rounded-3xl text-center border border-dashed border-slate-200">
+                           <Truck className="text-slate-200 mx-auto mb-4" size={40} />
+                           <p className="text-slate-400 font-bold text-sm">Aún no hay actividad de envíos para mostrar.</p>
+                       </div>
+                    </div>
+                  )}
                </div>
             </div>
          </div>
