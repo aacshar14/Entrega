@@ -8,7 +8,8 @@ import {
   RefreshCcw, 
   Calendar,
   Layers,
-  TrendingDown
+  TrendingDown,
+  Trash2
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { useTenant } from '@/lib/context/tenant-context';
@@ -96,6 +97,11 @@ export default function CustomerInventoryPage() {
     return (item.customer_name || '').toLowerCase().includes(search);
   });
 
+  // Filter products to only show those that have at least one unit outside in any customer
+  const productsToShow = products.filter(p => 
+    summary.some(item => (item.quantities[p.sku] || 0) > 0)
+  );
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
       {/* Customer Detail Modal */}
@@ -161,9 +167,10 @@ export default function CustomerInventoryPage() {
                          </div>
                          <button 
                            onClick={() => handleDeleteMovement(move.id)}
-                           className="w-10 h-10 bg-white border border-white group-hover:border-red-50 rounded-xl flex items-center justify-center text-transparent group-hover:text-red-400 group-hover:hover:bg-red-50 transition-all"
+                           className="w-10 h-10 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                           title="Eliminar Registro"
                          >
-                           <Package size={16} />
+                           <Trash2 size={16} />
                          </button>
                       </div>
                     </div>
@@ -222,7 +229,7 @@ export default function CustomerInventoryPage() {
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/50 z-10">Cliente</th>
-                {products.map(p => (
+                {productsToShow.map(p => (
                   <th key={p.id} className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
                     {p.name}
                   </th>
@@ -235,12 +242,12 @@ export default function CustomerInventoryPage() {
               {loading ? (
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={products.length + 3} className="px-8 py-8"><div className="h-4 bg-slate-100 rounded-full w-full"></div></td>
+                    <td colSpan={productsToShow.length + 3} className="px-8 py-8"><div className="h-4 bg-slate-100 rounded-full w-full"></div></td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={products.length + 3} className="px-8 py-20 text-center text-slate-300">
+                  <td colSpan={productsToShow.length + 3} className="px-8 py-20 text-center text-slate-300">
                     <div className="flex flex-col items-center gap-4">
                       <TrendingDown size={48} className="opacity-20" />
                       <p className="font-bold text-sm uppercase tracking-widest">No hay stock fuera de almacén</p>
@@ -263,7 +270,7 @@ export default function CustomerInventoryPage() {
                       </div>
                     </td>
                     
-                    {products.map(p => {
+                    {productsToShow.map(p => {
                       const qty = item.quantities[p.sku] || 0;
                       return (
                         <td key={p.id} className="px-4 py-6 text-center">
