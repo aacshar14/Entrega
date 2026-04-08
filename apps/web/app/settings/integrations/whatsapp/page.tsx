@@ -15,10 +15,11 @@ import {
 import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function WhatsAppIntegrationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeTenant, refreshUser } = useTenant();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<any>(null);
@@ -39,6 +40,23 @@ export default function WhatsAppIntegrationPage() {
   useEffect(() => {
     fetchStatus();
   }, [activeTenant]);
+
+  // 1b. Check for redirected code (OAuth Callback)
+  useEffect(() => {
+    const code = searchParams.get('code');
+    const urlError = searchParams.get('error');
+    
+    if (code && activeTenant && !loading && status?.status !== 'connected') {
+      completeIntegration(code);
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    if (urlError) {
+      setError(`Meta error: ${urlError}`);
+    }
+  }, [searchParams, activeTenant, status]);
 
   // 2. Load Meta SDK
   useEffect(() => {
