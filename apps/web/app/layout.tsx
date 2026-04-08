@@ -92,7 +92,7 @@ function UI_Shell({ children }) {
   }
 
   // No shell for landing or login
-  const isPublicPath = ['/landing', '/login', '/'].includes(pathname);
+  const isPublicPath = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
   if (isPublicPath) return children;
 
   if (isLoading) {
