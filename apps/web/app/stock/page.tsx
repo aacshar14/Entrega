@@ -28,12 +28,10 @@ interface ProductStock {
   id: string;
   name: string;
   sku: string;
-  cost: number;
   price_menudeo: number;
   price_mayoreo: number;
   price_especial: number;
-  stock_base: number;
-  stock_outside: number;
+  quantity: number;
 }
 
 interface ImportPreviewRow {
@@ -316,7 +314,7 @@ export default function StockPage() {
                            </div>
                            <div className="text-right pr-4">
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actual</p>
-                              <p className="text-xl font-black text-[#1D3146]">{editingProduct.stock_base}</p>
+                              <p className="text-xl font-black text-[#1D3146]">{editingProduct.quantity}</p>
                            </div>
                         </div>
                         <p className="mt-2 text-[10px] font-medium text-slate-400 px-2 italic">Ingresa un valor positivo para sumar o negativo para restar del stock actual.</p>
@@ -371,36 +369,30 @@ export default function StockPage() {
             <table className="w-full text-left border-collapse">
                 <thead className="bg-[#1D3146] text-white sticky top-0 z-10">
                    <tr className="text-[10px] font-black uppercase tracking-widest text-white/70">
-                      <th className="px-8 py-5 text-left">Producto</th>
-                      <th className="px-4 py-5 text-left">SKU</th>
-                      <th className="px-4 py-5 text-right font-black text-[#56CCF2]">Costo</th>
-                      <th className="px-4 py-5 text-center bg-white/5">Stock Base</th>
-                      <th className="px-4 py-5 text-center text-[#F2C94C]">Stock Fuera</th>
+                      <th className="px-8 py-5">Producto</th>
+                      <th className="px-4 py-5">SKU</th>
+                      <th className="px-4 py-5 text-center">Stock</th>
                       <th className="px-4 py-5 text-right">Menudeo</th>
                       <th className="px-4 py-5 text-right font-black text-[#56CCF2]">Mayoreo</th>
+                      <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
                       <th className="pr-8 py-5 text-right">Acciones</th>
                    </tr>
                 </thead>
                <tbody className="divide-y divide-slate-50">
                   {loading ? (
-                    <tr><td colSpan={8} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} /></td></tr>
+                    <tr><td colSpan={5} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} /></td></tr>
                   ) : filteredProducts.map((p) => (
                     <tr key={p.id} className="group hover:bg-slate-50 transition-all font-medium">
                        <td className="px-8 py-5 font-bold text-[#1D3146] group-hover:text-[#56CCF2] transition-colors">{p.name}</td>
                        <td className="px-4 py-5 font-mono text-[10px] font-bold text-slate-400">{p.sku || 'N/A'}</td>
-                       <td className="px-4 py-5 text-right font-black text-slate-400">${p.cost?.toFixed(2) || '0.00'}</td>
-                       <td className="px-4 py-5 text-center bg-slate-50/30">
-                          <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.stock_base > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                             {p.stock_base} u.
-                          </span>
-                       </td>
                        <td className="px-4 py-5 text-center">
-                          <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.stock_outside > 0 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}>
-                             {p.stock_outside} u.
+                          <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                             {p.quantity} unid.
                           </span>
                        </td>
                        <td className="px-4 py-5 text-right font-black text-[#1D3146]">${p.price_menudeo.toFixed(2)}</td>
                        <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_mayoreo.toFixed(2)}</td>
+                       <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_especial.toFixed(2)}</td>
                        <td className="pr-8 py-5 text-right relative">
                           <div className="flex items-center justify-end gap-2 text-slate-400">
                              <button 

@@ -72,7 +72,7 @@ export default function OperationsPage() {
         await Promise.all(promises);
       } else {
         // Create payment
-        await apiRequest('payments', 'POST', {
+        await apiRequest('payments/', 'POST', {
           customer_id: clientId,
           amount: parseFloat(amount),
           method: method
