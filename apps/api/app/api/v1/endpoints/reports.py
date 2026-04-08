@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, desc
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, require_roles, get_active_tenant_id
 from app.models.models import User, InventoryMovement, Payment, Customer, Product, CustomerBalance
@@ -42,8 +42,9 @@ async def get_weekly_report(
     ).one() or 0
     
     # 4. Top Products (by quantity delivered/sold)
+    qty_label = func.sum(func.abs(InventoryMovement.quantity)).label("total_qty")
     top_products_query = (
-        select(Product.name, func.sum(func.abs(InventoryMovement.quantity)).label("total_qty"))
+        select(Product.name, qty_label)
         .join(InventoryMovement, Product.id == InventoryMovement.product_id)
         .where(
             (InventoryMovement.tenant_id == active_tenant_id) &
@@ -54,7 +55,6 @@ async def get_weekly_report(
         .order_by(desc("total_qty"))
         .limit(3)
     )
-    from sqlmodel import desc
     top_products_results = db.exec(top_products_query).all()
     
     # 5. Top Debtors (Highest absolute balance)
