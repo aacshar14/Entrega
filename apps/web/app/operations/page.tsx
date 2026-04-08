@@ -16,10 +16,8 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
-import { useTenant } from '@/lib/context/tenant-context';
 
 export default function OperationsPage() {
-  const { activeTenant } = useTenant();
   const [tab, setTab] = useState<'delivery' | 'payment'>('delivery');
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -39,14 +37,13 @@ export default function OperationsPage() {
 
   useEffect(() => {
     async function loadResources() {
-      if (!activeTenant) return;
       try {
         const [custData, prodData] = await Promise.all([
-          apiRequest('customers', 'GET', null, activeTenant.id),
-          apiRequest('products/stock', 'GET', null, activeTenant.id)
+          apiRequest('customers', 'GET'),
+          apiRequest('products/stock', 'GET')
         ]);
-        setCustomers(custData || []);
-        setProducts(prodData || []);
+        setCustomers(custData);
+        setProducts(prodData);
       } catch (err) {
         console.error('Error loading operational resources:', err);
       } finally {
@@ -54,7 +51,7 @@ export default function OperationsPage() {
       }
     }
     loadResources();
-  }, [activeTenant]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +67,7 @@ export default function OperationsPage() {
             type: 'delivery',
             customer_id: clientId,
             description: 'Entrega registrada via Operaciones'
-          }, activeTenant?.id)
+          })
         );
         await Promise.all(promises);
       } else {
@@ -79,7 +76,7 @@ export default function OperationsPage() {
           customer_id: clientId,
           amount: parseFloat(amount),
           method: method
-        }, activeTenant?.id);
+        });
       }
       
       setSuccess(true);
