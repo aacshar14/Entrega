@@ -146,12 +146,18 @@ async def get_customer_inventory(
         if qty_outside == 0:
             continue # Don't show settled inventory
             
+        # Fallback for old records where snapshot was NULL
+        final_cust_name = cust_name
+        if not final_cust_name:
+            from app.models.models import Customer
+            final_cust_name = db.exec(select(Customer.name).where(Customer.id == cust_id)).first() or "Desconocido"
+            
         # Get product name for friendly display
         p_name = db.exec(select(Product.name).where(Product.sku == sku, Product.tenant_id == active_tenant_id)).first() or sku
         
         inventory_list.append({
             "customer_id": str(cust_id),
-            "customer_name": cust_name or "Desconocido",
+            "customer_name": final_cust_name,
             "sku": sku,
             "product_name": p_name,
             "quantity_outside": qty_outside,
