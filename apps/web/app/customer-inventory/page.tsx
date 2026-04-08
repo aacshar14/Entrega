@@ -224,7 +224,7 @@ export default function CustomerInventoryPage() {
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/50 z-10">Cliente</th>
                 {products.map(p => (
                   <th key={p.id} className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    {p.sku}
+                    {p.name}
                   </th>
                 ))}
                 <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center bg-slate-50/30">Total Fuera</th>
