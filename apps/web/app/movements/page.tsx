@@ -16,6 +16,7 @@ import {
   Plus
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { useTenant } from '@/lib/context/tenant-context';
 
 interface Movement {
   id: string;
@@ -30,14 +31,16 @@ interface Movement {
 }
 
 export default function MovementsPage() {
+  const { activeTenant } = useTenant();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchMovements = async () => {
+    if (!activeTenant) return;
     try {
       setLoading(true);
-      const data = await apiRequest('movements/') as Movement[];
+      const data = await apiRequest('movements/', 'GET', null, activeTenant.id) as Movement[];
       // Sort by date descending
       const sorted = (data || []).sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -51,14 +54,19 @@ export default function MovementsPage() {
   };
 
   useEffect(() => {
-    fetchMovements();
-  }, []);
+    if (activeTenant) {
+      fetchMovements();
+    }
+  }, [activeTenant]);
 
-  const filteredMovements = movements.filter(m => 
-    m.sku?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMovements = movements.filter(m => {
+    const search = searchTerm.toLowerCase();
+    const sku = (m.sku || '').toLowerCase();
+    const desc = (m.description || '').toLowerCase();
+    const type = (m.type || '').toLowerCase();
+    
+    return sku.includes(search) || desc.includes(search) || type.includes(search);
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
