@@ -52,7 +52,10 @@ class EventWorker:
         structlog.contextvars.bind_contextvars(tenant_id=str(tenant.id), event_id=str(event.id))
 
         if event.source == "whatsapp" and event.event_type == "message":
-            payload = event.get_payload()
+            import json
+            payload = event.payload_json
+            if isinstance(payload, str):
+                payload = json.loads(payload)
             sender = payload.get("from")
             body = payload.get("body")
             
