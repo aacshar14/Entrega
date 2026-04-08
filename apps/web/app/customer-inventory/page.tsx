@@ -65,10 +65,10 @@ export default function CustomerInventoryPage() {
             <Users size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Inventario por Cliente</h1>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#56CCF2] rounded-full animate-pulse"></span>
-              Seguimiento de Consignación • ChocoBites V1.1
+            <h1 className="text-xl md:text-3xl font-black text-[#1D3146] tracking-tight">Inventario por Clientes</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+              Distribución actual • ChocoBites V1.1
             </p>
           </div>
         </div>
@@ -130,10 +130,9 @@ export default function CustomerInventoryPage() {
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</th>

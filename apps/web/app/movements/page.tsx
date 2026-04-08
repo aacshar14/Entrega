@@ -78,10 +78,10 @@ export default function MovementsPage() {
             <Clock size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Historial de Movimientos</h1>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <h1 className="text-xl md:text-3xl font-black text-[#1D3146] tracking-tight">Historial de Movimientos</h1>
+            <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              Actualizado en tiempo real • ChocoBites V1.1
+              En vivo • ChocoBites V1.1
             </p>
           </div>
         </div>
@@ -143,9 +143,9 @@ export default function MovementsPage() {
       </div>
 
       {/* Movements Table */}
-      <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha & Hora</th>

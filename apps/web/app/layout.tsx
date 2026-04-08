@@ -232,7 +232,7 @@ function UI_Shell({ children }) {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-grow ${!isPublicPath && !isTenantSetupPath ? 'pl-0 lg:pl-64' : 'pl-0'} flex flex-col min-h-screen`}>
+      <div className={`flex-grow ${!isPublicPath && !isTenantSetupPath ? 'pl-0 lg:pl-64' : 'pl-0'} flex flex-col min-h-screen max-w-full overflow-x-hidden`}>
          {/* Top Header */}
          <header className="h-16 md:h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-3">
@@ -314,7 +314,7 @@ function UI_Shell({ children }) {
          </header>
 
          {/* Viewport */}
-         <main className="p-8 lg:p-10">
+         <main className="flex-grow p-4 md:p-8 lg:p-10">
             {children}
          </main>
       </div>
