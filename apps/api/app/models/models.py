@@ -133,6 +133,7 @@ class Product(SQLModel, table=True):
     price_mayoreo: float = Field(default=0.0)
     price_menudeo: float = Field(default=0.0)
     price_especial: float = Field(default=0.0)
+    cost: float = Field(default=0.0)
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     updated_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=get_utc_now)
@@ -151,11 +152,12 @@ class InventoryMovement(SQLModel, table=True):
     __tablename__ = "inventory_movements"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(foreign_key="tenants.id")
-    product_id: UUID = Field(foreign_key="products.id")
+    product_id: Optional[UUID] = Field(default=None, foreign_key="products.id")
     customer_id: Optional[UUID] = Field(default=None, foreign_key="customers.id")
     quantity: float # positive for stock additions, negative for deliveries
-    type: str # 'delivery', 'restock', 'return', 'adjustment'
+    type: str # 'delivery', 'restock', 'return', 'adjustment', 'sale_reported', 'delivery_to_customer', 'return_from_customer'
     description: Optional[str] = None
+    customer_name_snapshot: Optional[str] = None
     
     # Financial Metadata (Snapshot at time of movement)
     sku: Optional[str] = None
