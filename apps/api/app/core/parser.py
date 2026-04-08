@@ -179,7 +179,17 @@ class ParsingEngine:
         match = re.search(pattern, text)
         extracted_name = match.group(1).strip().upper() if match else f"Cliente {sender_phone[-4:]}"
 
-        # Insert new customer
+        # 🛡️ PROTECT: Check again if the extracted name exists before inserting
+        for c in customers:
+            if self._normalize(c.name) == self._normalize(extracted_name):
+                return c
+        
+        # Also check aliases for the extracted name
+        for a in aliases:
+            if self._normalize(a.alias) == self._normalize(extracted_name):
+                return self.session.get(Customer, a.customer_id)
+
+        # Insert new customer only if truly new
         new_customer = Customer(
             tenant_id=self.tenant.id,
             name=extracted_name,
