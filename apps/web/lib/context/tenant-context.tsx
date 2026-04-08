@@ -185,8 +185,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       } else {
         setIsLoading(false);
         const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
-        // If we are at root and not logged in, force redirect to login
-        if (pathname === '/' || !isPublic) {
+        if (!isPublic) {
           router.replace('/login');
         }
       }
