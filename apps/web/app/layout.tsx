@@ -22,7 +22,8 @@ import {
   ArrowLeft,
   Activity,
   HeartPulse,
-  Coins
+  Coins,
+  Layers
 } from 'lucide-react';
 import { Providers } from '../lib/context/providers';
 import { useTenant } from '../lib/context/tenant-context';
@@ -43,6 +44,7 @@ const tenantMenuItems: MenuItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: Users, label: 'Clientes', href: '/customers' },
     { icon: Package, label: 'Inventario', href: '/stock' },
+    { icon: Layers, label: 'Inventario por Cliente', href: '/customer-inventory' },
     { icon: Layout, label: 'Operaciones', href: '/operations' },
     { icon: Clock, label: 'Movimientos', href: '/movements' },
     { icon: CreditCard, label: 'Pagos', href: '/payments' },

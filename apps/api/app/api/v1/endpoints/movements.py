@@ -52,28 +52,35 @@ async def create_manual_movement(
     unit_price = 0.0
     tier_applied = None
     
-    # 2. If delivery, resolve tier and price
-    if type == "delivery" and customer_id:
+    # 2. If customer-facing movement, enforce customer_id and get snapshot
+    customer_name_snapshot = None
+    if type in ["delivery", "return", "sale_reported", "delivery_to_customer", "return_from_customer"]:
+        if not customer_id:
+            raise HTTPException(status_code=400, detail=f"Customer ID is required for movement type: {type}")
+        
         customer = db.get(Customer, customer_id)
         if not customer or customer.tenant_id != active_tenant_id:
             raise HTTPException(status_code=404, detail="Customer not found")
-            
-        tier = customer.tier or "menudeo"
-        tier_applied = tier
-        
-        # Resolve price based on tier
-        if tier == "mayoreo":
-            unit_price = product.price_mayoreo
-        elif tier == "especial":
-            unit_price = product.price_especial
-        else: # menudeo or default
-            unit_price = product.price_menudeo or product.price
-            
-    # 3. Create movement
+        customer_name_snapshot = customer.name
+
+        # Resolve price tier if it's a delivery
+        if type in ["delivery", "delivery_to_customer"]:
+            if customer.tier == "mayoreo":
+                unit_price = product.price_mayoreo
+                tier_applied = "mayoreo"
+            elif customer.tier == "especial":
+                unit_price = product.price_especial
+                tier_applied = "especial"
+            else:
+                unit_price = product.price_menudeo
+                tier_applied = "menudeo"
+    
+    # 3. Create Movement
     new_movement = InventoryMovement(
         tenant_id=active_tenant_id,
-        product_id=product_id,
+        product_id=product.id,
         customer_id=customer_id,
+        customer_name_snapshot=customer_name_snapshot,
         quantity=quantity,
         type=type,
         description=description,
@@ -88,6 +95,70 @@ async def create_manual_movement(
     db.commit()
     db.refresh(new_movement)
     return new_movement
+
+@router.get("/customer-inventory", dependencies=[Depends(require_roles(["owner", "operator"]))])
+async def get_customer_inventory(
+    db: Session = Depends(get_session),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """
+    Returns current inventory 'outside' (at customer locations).
+    Derived from summing: delivery (+), sale_reported (-), return (-).
+    Note: In our DB, delivery is stored as negative quantity (HQ decrease).
+    To show positive 'outside' qty, we flip the sum.
+    """
+    from sqlalchemy import func
+    from app.models.models import Product
+    
+    # Aggregate by customer and SKU
+    # We filter by movements that affect 'outside' stock
+    # delivery/delivery_to_customer (decreases HQ, increases outside)
+    # return/return_from_customer (increases HQ, decreases outside)
+    # sale_reported (decreases outside, affects finance)
+    
+    outside_types = ["delivery", "delivery_to_customer", "return", "return_from_customer", "sale_reported"]
+    
+    # We use a subquery or direct aggregation
+    # For speed, we'll iterate or use a group_by
+    # SQLModel/SQLAlchemy approach:
+    query = (
+        select(
+            InventoryMovement.customer_id,
+            InventoryMovement.customer_name_snapshot,
+            InventoryMovement.sku,
+            func.sum(InventoryMovement.quantity).label("total_qty"),
+            func.max(InventoryMovement.created_at).label("last_movement")
+        )
+        .where(InventoryMovement.tenant_id == active_tenant_id)
+        .where(InventoryMovement.customer_id != None)
+        .where(InventoryMovement.type.in_(outside_types))
+        .group_by(InventoryMovement.customer_id, InventoryMovement.customer_name_snapshot, InventoryMovement.sku)
+    )
+    
+    results = db.exec(query).all()
+    
+    inventory_list = []
+    for cust_id, cust_name, sku, total_signed_qty, last_at in results:
+        # Since delivery is negative in DB, total_signed_qty will be negative if stock is outside
+        # We flip it to show positive 'outside' quantity
+        qty_outside = -total_signed_qty
+        
+        if qty_outside == 0:
+            continue # Don't show settled inventory
+            
+        # Get product name for friendly display
+        p_name = db.exec(select(Product.name).where(Product.sku == sku, Product.tenant_id == active_tenant_id)).first() or sku
+        
+        inventory_list.append({
+            "customer_id": str(cust_id),
+            "customer_name": cust_name or "Desconocido",
+            "sku": sku,
+            "product_name": p_name,
+            "quantity_outside": qty_outside,
+            "last_movement_at": last_at.isoformat() if last_at else None
+        })
+        
+    return inventory_list
 
 @router.patch("/{id}", dependencies=[Depends(require_roles(["owner"]))])
 async def update_movement(

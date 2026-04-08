@@ -28,6 +28,7 @@ interface Movement {
   created_at: string;
   description: string;
   tier_applied?: string;
+  customer_name_snapshot?: string;
 }
 
 export default function MovementsPage() {
@@ -149,6 +150,7 @@ export default function MovementsPage() {
               <tr className="bg-slate-50/50 border-b border-slate-100">
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha & Hora</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Producto / SKU</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cant / Precio</th>
                 <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
@@ -200,6 +202,11 @@ export default function MovementsPage() {
                          }`}>
                            {movement.type === 'delivery' ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
                            {movement.type === 'delivery' ? 'ENTREGA' : movement.type === 'restock' ? 'RESTOCK' : 'AJUSTE'}
+                         </div>
+                      </td>
+                      <td className="px-8 py-6">
+                         <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[#1D3146]">{movement.customer_name_snapshot || '—'}</span>
                          </div>
                       </td>
                       <td className="px-8 py-6">
