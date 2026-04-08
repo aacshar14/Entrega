@@ -101,7 +101,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       }
 
       // --- ROUTING ENGINE ---
-      const isPublic = ['/landing', '/login', '/', '/select-tenant'].includes(pathname);
+      const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(pathname);
       const isPlatformArea = pathname.startsWith('/platform');
       
       if (!data.user) return; // Wait for session
@@ -147,7 +147,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       if (error.status === 401 || error.status === 403) {
         handleManualLogout();
-        if (!pathname.startsWith('/login')) router.replace('/login');
+        const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(pathname);
+        if (!isPublic) router.replace('/login');
       } else {
         console.error('[TENANT CONTEXT ERROR]', error);
       }
@@ -164,7 +165,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         authIsReady.current = false;
         handleManualLogout();
-        router.replace('/login');
+        const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
+        if (!isPublic) router.replace('/login');
       } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
         if (session && !authIsReady.current) {
           authIsReady.current = true;
@@ -182,7 +184,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setIsLoading(false);
-        const isPublic = ['/landing', '/login'].includes(pathname);
+        const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
         // If we are at root and not logged in, force redirect to login
         if (pathname === '/' || !isPublic) {
           router.replace('/login');
