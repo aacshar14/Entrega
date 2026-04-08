@@ -287,8 +287,8 @@ async def reconcile_all(
             SELECT 
                 customer_id, 
                 SUM(CASE 
-                    WHEN type IN ('delivery', 'delivery_to_customer') THEN -ABS(total_amount)
-                    WHEN type IN ('return', 'return_from_customer') THEN ABS(total_amount)
+                    WHEN type IN ('delivery', 'delivery_to_customer') THEN -ABS(COALESCE(NULLIF(total_amount, 0), quantity * unit_price))
+                    WHEN type IN ('return', 'return_from_customer') THEN ABS(COALESCE(NULLIF(total_amount, 0), quantity * unit_price))
                     ELSE 0 
                 END) as move_balance
             FROM inventory_movements
