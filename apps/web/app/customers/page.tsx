@@ -74,6 +74,7 @@ export default function CustomersPage() {
 
   // Actions state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [confirmingLiquidation, setConfirmingLiquidation] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
@@ -132,19 +133,15 @@ export default function CustomersPage() {
   };
 
   const handleClearTotalDebt = async (customer: Customer) => {
-    if (!activeTenant || !customer.balance || customer.balance >= 0) return;
-    const amount = Math.abs(customer.balance);
-    if (!confirm(`¿Confirmas el pago TOTAL de $${amount.toLocaleString()}? Se liquidará la deuda financiera y el inventario en calle.`)) return;
-    
     setIsDataLoading(true);
     try {
       await apiRequest('payments/clear-total', 'POST', {
         customer_id: customer.id,
-        method: 'cash' // Defaulting to cash for quick liquidation
-      }, activeTenant.id);
+        method: 'cash' 
+      }, activeTenant?.id || '');
       
-      // Reload customers to see updated balance
       await loadCustomers();
+      setConfirmingLiquidation(null);
       setActiveMenu(null);
     } catch (err: any) {
       setError('Error al liquidar la deuda.');
@@ -476,10 +473,10 @@ export default function CustomersPage() {
                                         Editar
                                      </button>
                                      {customer.balance && customer.balance < 0 && (
-                                        <button 
-                                          onClick={() => handleClearTotalDebt(customer)}
-                                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                                        >
+                                         <button 
+                                           onClick={() => { setConfirmingLiquidation(customer); setActiveMenu(null); }}
+                                           className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                         >
                                            <CheckCircle2 size={16} />
                                            Liquidar Deuda
                                         </button>
@@ -506,6 +503,41 @@ export default function CustomersPage() {
                 </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Branded Liquidation Modal */}
+      {confirmingLiquidation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1D3146]/60 backdrop-blur-md animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+              <div className="p-10 text-center">
+                 <div className="w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-6 text-emerald-600 shadow-inner">
+                    <CheckCircle2 size={40} />
+                 </div>
+                 <h2 className="text-3xl font-black text-[#1D3146] mb-4 tracking-tighter">¡Liquidación VIP!</h2>
+                 <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                    ¿Confirmas la recepción de <span className="text-emerald-600 font-black">${Math.abs(confirmingLiquidation.balance || 0).toLocaleString()}</span> para saldar la cuenta de <span className="text-[#1D3146] font-bold">{confirmingLiquidation.name}</span>?
+                    <br/><br/>
+                    <span className="text-[10px] uppercase tracking-widest font-black text-slate-400">Esta acción liberará el inventario en tránsito.</span>
+                 </p>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => setConfirmingLiquidation(null)}
+                      className="px-6 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all"
+                    >
+                       Cancelar
+                    </button>
+                    <button 
+                      onClick={() => handleClearTotalDebt(confirmingLiquidation)}
+                      disabled={isDataLoading}
+                      className="px-6 py-4 bg-[#1D3146] text-white font-black rounded-2xl shadow-xl shadow-[#1D3146]/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                       {isDataLoading ? <Loader2 className="animate-spin" size={20} /> : "Confirmar Pago"}
+                    </button>
+                 </div>
+              </div>
+           </div>
         </div>
       )}
 
