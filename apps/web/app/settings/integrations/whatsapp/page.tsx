@@ -60,6 +60,29 @@ export default function WhatsAppIntegrationPage() {
 
   // 2. Load Meta SDK
   useEffect(() => {
+    // Add event listener for Meta Embedded Signup messages
+    const handleMetaMessage = (event: MessageEvent) => {
+      // Security check: only trust Facebook origins
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log('Meta Embedded Signup Event:', data.event, data.data);
+          
+          if (data.event === 'FINISH_ONBOARDING') {
+            const { phone_number_id, waba_id } = data.data || {};
+            // We can store these for the next exchange call
+            (window as any)._metaOnboardingData = { phone_number_id, waba_id };
+          }
+        }
+      } catch (e) {
+        // Not a JSON or not our event, ignore
+      }
+    };
+
+    window.addEventListener('message', handleMetaMessage);
+    
     apiRequest('/config/public', 'GET')
       .then(res => {
         if (res.whatsapp_app_id) {
@@ -70,6 +93,8 @@ export default function WhatsAppIntegrationPage() {
       .catch(err => {
         console.error("Could not fetch public config", err);
       });
+
+    return () => window.removeEventListener('message', handleMetaMessage);
   }, []);
 
   const initMetaSDK = (appId: string) => {
@@ -101,9 +126,13 @@ export default function WhatsAppIntegrationPage() {
     (window as any).FB.login((response: any) => {
       if (response.authResponse) {
         const code = response.authResponse.code;
-        // The Meta Embedded Signup flow might return more info in the response or via the SDK callback
-        // For simplicity and matching the existing pattern, we exchange the code.
-        completeIntegration(code);
+        const onboardingData = (window as any)._metaOnboardingData || {};
+        
+        completeIntegration(
+          code, 
+          onboardingData.waba_id, 
+          onboardingData.phone_number_id
+        );
       } else {
         setError("Onboarding cancelled or failed.");
       }
@@ -117,12 +146,16 @@ export default function WhatsAppIntegrationPage() {
     });
   };
 
-  const completeIntegration = async (code: string) => {
+  const completeIntegration = async (code: string, waba_id?: string, phone_number_id?: string) => {
     setLoading(true);
     setError(null);
     try {
       // We pass the code to the new backend endpoint
-      await apiRequest('/integrations/whatsapp/complete', 'POST', { code }, activeTenant?.id);
+      await apiRequest('/integrations/whatsapp/complete', 'POST', { 
+        code,
+        waba_id,
+        phone_number_id
+      }, activeTenant?.id);
       await refreshUser();
       await fetchStatus();
     } catch (err: any) {

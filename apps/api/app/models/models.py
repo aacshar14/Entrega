@@ -77,7 +77,7 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     provider: str = Field(default="meta")
     business_name: Optional[str] = None
     waba_id: Optional[str] = Field(default=None, index=True)
-    phone_number_id: Optional[str] = Field(default=None, index=True)
+    phone_number_id: Optional[str] = Field(default=None, index=True, unique=True)
     access_token_encrypted: Optional[str] = None
     status: str = Field(default="pending") # 'pending', 'connected', 'disconnected', 'failed'
     connected_at: datetime = Field(default_factory=get_utc_now)
