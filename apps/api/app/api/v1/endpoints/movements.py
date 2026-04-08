@@ -55,12 +55,12 @@ async def create_manual_movement(
     # 2. If customer-facing movement, enforce customer_id and get snapshot
     customer_name_snapshot = None
     if type in ["delivery", "return", "sale_reported", "delivery_to_customer", "return_from_customer"]:
-        if not customer_id:
-            raise HTTPException(status_code=400, detail=f"Customer ID is required for movement type: {type}")
+        if not customer_id or str(customer_id) == "00000000-0000-0000-0000-000000000000":
+            raise HTTPException(status_code=400, detail=f"A valid Customer ID is required for movement type: {type}. Placeholder IDs are not allowed.")
         
         customer = db.get(Customer, customer_id)
         if not customer or customer.tenant_id != active_tenant_id:
-            raise HTTPException(status_code=404, detail="Customer not found")
+            raise HTTPException(status_code=404, detail="Customer not found in your tenant")
         customer_name_snapshot = customer.name
         
         # Enforce Signs for Business Logic
@@ -143,6 +143,74 @@ async def create_manual_movement(
     db.commit()
     db.refresh(new_movement)
     return new_movement
+
+@router.get("/customer-inventory/summary", dependencies=[Depends(require_roles(["owner", "operator"]))])
+async def get_customer_inventory_summary(
+    db: Session = Depends(get_session),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """
+    Returns a pivoted summary of inventory 'outside' per customer.
+    One row per customer, quantities per active SKU in 'quantities' dict.
+    """
+    # 1. Get all active products for the tenant to define columns
+    products = db.exec(select(Product).where(Product.tenant_id == active_tenant_id)).all()
+    active_skus = [p.sku for p in products]
+    sku_name_map = {p.sku: p.name for p in products}
+
+    # 2. Aggregate movements (Deliveries decrease HQ stock, so qty_outside = -Sum(qty))
+    outside_types = ["delivery", "delivery_to_customer", "return", "return_from_customer", "sale_reported"]
+    
+    query = (
+        select(
+            InventoryMovement.customer_id,
+            InventoryMovement.customer_name_snapshot,
+            InventoryMovement.sku,
+            func.sum(InventoryMovement.quantity).label("total_qty"),
+            func.max(InventoryMovement.created_at).label("last_movement")
+        )
+        .where(InventoryMovement.tenant_id == active_tenant_id)
+        .where(InventoryMovement.customer_id != None)
+        .where(InventoryMovement.type.in_(outside_types))
+        .group_by(InventoryMovement.customer_id, InventoryMovement.customer_name_snapshot, InventoryMovement.sku)
+    )
+    
+    results = db.exec(query).all()
+    
+    # 3. Pivot logic
+    summary_map = {} # customer_id -> summary_object
+    
+    for cust_id, cust_name, sku, total_signed_qty, last_at in results:
+        cid_str = str(cust_id)
+        if cid_str not in summary_map:
+            # Fallback for old records
+            final_name = cust_name
+            if not final_name:
+                final_name = db.exec(select(Customer.name).where(Customer.id == cust_id)).first() or "Desconocido"
+            
+            summary_map[cid_str] = {
+                "customer_id": cid_str,
+                "customer_name": final_name,
+                "quantities": {sku_code: 0 for sku_code in active_skus},
+                "total_outside": 0,
+                "last_movement_at": last_at
+            }
+        
+        qty_outside = -total_signed_qty
+        if sku in active_skus:
+            summary_map[cid_str]["quantities"][sku] = qty_outside
+        
+        summary_map[cid_str]["total_outside"] += qty_outside
+        
+        # Update last movement if more recent
+        if not summary_map[cid_str]["last_movement_at"] or (last_at and last_at > summary_map[cid_str]["last_movement_at"]):
+            summary_map[cid_str]["last_movement_at"] = last_at
+
+    # Convert to list and sort by name
+    summary_list = list(summary_map.values())
+    summary_list.sort(key=lambda x: x["customer_name"])
+    
+    return summary_list
 
 @router.get("/customer-inventory", dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def get_customer_inventory(
