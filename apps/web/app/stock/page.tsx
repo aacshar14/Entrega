@@ -74,6 +74,8 @@ export default function StockPage() {
   const [editingProduct, setEditingProduct] = useState<ProductStock | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+  const [bulkData, setBulkData] = useState<Record<string, ProductStock>>({});
 
   const fetchStock = useCallback(async () => {
     if (!activeTenant) return;
@@ -127,6 +129,53 @@ export default function StockPage() {
       setEditingProduct(null);
     } catch (err: any) {
       setError('Error al actualizar el producto.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const startBulkEdit = () => {
+    const data: Record<string, ProductStock> = {};
+    products.forEach(p => {
+      data[p.id] = { ...p };
+    });
+    setBulkData(data);
+    setIsBulkEditing(true);
+  };
+
+  const handleBulkChange = (id: string, field: keyof ProductStock, value: any) => {
+    setBulkData(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value
+      }
+    }));
+  };
+
+  const saveBulkEdit = async () => {
+    if (!activeTenant) return;
+    setIsSaving(true);
+    try {
+      // We'll save them sequentially or with a bulk endpoint if available. 
+      // Current API has PATCH products/:id, so we'll do sequential promises for simplicity/safety unless we add a bulk endpoint.
+      const promises = Object.values(bulkData).map(p => 
+        apiRequest(`products/${p.id}`, 'PATCH', {
+          name: p.name,
+          sku: p.sku,
+          price_menudeo: Number(p.price_menudeo),
+          price_mayoreo: Number(p.price_mayoreo),
+          price_especial: Number(p.price_especial)
+        }, activeTenant.id)
+      );
+      
+      await Promise.all(promises);
+      await fetchStock();
+      setIsBulkEditing(false);
+      setMessage('✅ Catálogo actualizado correctamente.');
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setError('Error al guardar algunos productos.');
     } finally {
       setIsSaving(false);
     }
@@ -344,11 +393,39 @@ export default function StockPage() {
             </h1>
          </div>
          <div className="flex gap-4">
-            <label className={`cursor-pointer flex items-center gap-2 px-6 py-3 bg-[#1D3146] text-white text-sm font-bold rounded-2xl hover:scale-105 transition-all shadow-xl shadow-[#1D3146]/20 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-               {uploading ? <Loader2 className="animate-spin" /> : <Upload size={18} />}
-               <span>{uploading ? 'Procesando...' : 'Importar Catálogo'}</span>
-               <input type="file" className="hidden" accept=".csv" onChange={handleFilePreview} />
-            </label>
+            {!isBulkEditing ? (
+              <>
+                <button 
+                  onClick={startBulkEdit}
+                  className="flex items-center gap-2 px-6 py-3 bg-[#56CCF2]/20 text-[#1D3146] text-sm font-bold rounded-2xl hover:bg-[#56CCF2]/30 transition-all border border-[#56CCF2]/30"
+                >
+                  <Pencil size={18} />
+                  <span>Edición Rápida</span>
+                </button>
+                <label className={`cursor-pointer flex items-center gap-2 px-6 py-3 bg-[#1D3146] text-white text-sm font-bold rounded-2xl hover:scale-105 transition-all shadow-xl shadow-[#1D3146]/20 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {uploading ? <Loader2 className="animate-spin" /> : <Upload size={18} />}
+                  <span>{uploading ? 'Procesando...' : 'Importar Catálogo'}</span>
+                  <input type="file" className="hidden" accept=".csv" onChange={handleFilePreview} />
+                </label>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setIsBulkEditing(false)}
+                  className="px-6 py-3 text-slate-400 font-bold hover:text-slate-600 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={saveBulkEdit}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-8 py-3 bg-green-500 text-white text-sm font-black rounded-2xl hover:scale-105 transition-all shadow-xl shadow-green-500/20"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                  <span>Guardar Cambios</span>
+                </button>
+              </>
+            )}
          </div>
       </div>
 
@@ -374,49 +451,111 @@ export default function StockPage() {
                       <th className="px-4 py-5 text-center">Stock</th>
                       <th className="px-4 py-5 text-right">Menudeo</th>
                       <th className="px-4 py-5 text-right font-black text-[#56CCF2]">Mayoreo</th>
-                      <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
+                    <th className="px-4 py-5 text-right font-black text-[#F2C94C]">Especial</th>
                       <th className="pr-8 py-5 text-right">Acciones</th>
                    </tr>
                 </thead>
                <tbody className="divide-y divide-slate-50">
-                  {loading ? (
-                    <tr><td colSpan={5} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} /></td></tr>
-                  ) : filteredProducts.map((p) => (
-                    <tr key={p.id} className="group hover:bg-slate-50 transition-all font-medium">
-                       <td className="px-8 py-5 font-bold text-[#1D3146] group-hover:text-[#56CCF2] transition-colors">{p.name}</td>
-                       <td className="px-4 py-5 font-mono text-[10px] font-bold text-slate-400">{p.sku || 'N/A'}</td>
-                       <td className="px-4 py-5 text-center">
-                          <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                             {p.quantity} unid.
-                          </span>
-                       </td>
-                       <td className="px-4 py-5 text-right font-black text-[#1D3146]">${p.price_menudeo.toFixed(2)}</td>
-                       <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_mayoreo.toFixed(2)}</td>
-                       <td className="px-4 py-5 text-right font-black text-slate-500">${p.price_especial.toFixed(2)}</td>
-                       <td className="pr-8 py-5 text-right relative">
-                          <div className="flex items-center justify-end gap-2 text-slate-400">
-                             <button 
-                               onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)}
-                               className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${activeMenu === p.id ? 'bg-slate-100 text-[#1D3146]' : ''}`}
-                             >
-                               <MoreVertical size={18} />
-                             </button>
-                             {activeMenu === p.id && (
-                               <div className="absolute right-8 top-12 z-20 w-44 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2">
-                                  <button onClick={() => { setEditingProduct(p); setActiveMenu(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-[#56CCF2]/5 hover:text-[#56CCF2] rounded-xl transition-all">
-                                     <Pencil size={16} /> Editar
-                                  </button>
-                                  <div className="h-px bg-slate-50 my-1"></div>
-                                  <button onClick={() => handleDeleteProduct(p.id)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">
-                                     <Trash2 size={16} /> Eliminar
-                                  </button>
-                               </div>
+                   {loading ? (
+                     <tr><td colSpan={7} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-[#56CCF2]" size={32} /></td></tr>
+                   ) : filteredProducts.map((p) => {
+                     const isEditingRow = isBulkEditing && bulkData[p.id];
+                     const displayData = isEditingRow ? bulkData[p.id] : p;
+
+                     return (
+                       <tr key={p.id} className={`group hover:bg-slate-50 transition-all font-medium ${isEditingRow ? 'bg-[#56CCF2]/5' : ''}`}>
+                          <td className="px-8 py-5">
+                             {isEditingRow ? (
+                               <input 
+                                 className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-[#56CCF2]"
+                                 value={displayData.name}
+                                 onChange={e => handleBulkChange(p.id, 'name', e.target.value)}
+                               />
+                             ) : (
+                               <span className="font-bold text-[#1D3146] group-hover:text-[#56CCF2] transition-colors">{p.name}</span>
                              )}
-                          </div>
-                       </td>
-                    </tr>
-                  ))}
-               </tbody>
+                          </td>
+                          <td className="px-4 py-5">
+                             {isEditingRow ? (
+                               <input 
+                                 className="w-24 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[10px] font-mono font-bold outline-none focus:border-[#56CCF2]"
+                                 value={displayData.sku}
+                                 onChange={e => handleBulkChange(p.id, 'sku', e.target.value)}
+                               />
+                             ) : (
+                               <span className="font-mono text-[10px] font-bold text-slate-400">{p.sku || 'N/A'}</span>
+                             )}
+                          </td>
+                          <td className="px-4 py-5 text-center">
+                             <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {p.quantity} unid.
+                             </span>
+                          </td>
+                          <td className="px-4 py-5 text-right">
+                             {isEditingRow ? (
+                               <input 
+                                 type="number"
+                                 className="w-24 text-right bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-black outline-none focus:border-[#56CCF2]"
+                                 value={displayData.price_menudeo}
+                                 onChange={e => handleBulkChange(p.id, 'price_menudeo', e.target.value)}
+                               />
+                             ) : (
+                               <span className="font-black text-[#1D3146]">${p.price_menudeo.toFixed(2)}</span>
+                             )}
+                          </td>
+                          <td className="px-4 py-5 text-right font-black text-slate-500">
+                             {isEditingRow ? (
+                               <input 
+                                 type="number"
+                                 className="w-24 text-right bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-black outline-none focus:border-[#1D3146]"
+                                 value={displayData.price_mayoreo}
+                                 onChange={e => handleBulkChange(p.id, 'price_mayoreo', e.target.value)}
+                               />
+                             ) : (
+                               <span>${p.price_mayoreo.toFixed(2)}</span>
+                             )}
+                          </td>
+                          <td className="px-4 py-5 text-right font-black text-slate-500">
+                             {isEditingRow ? (
+                               <input 
+                                 type="number"
+                                 className="w-24 text-right bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-black outline-none focus:border-[#F2C94C]"
+                                 value={displayData.price_especial}
+                                 onChange={e => handleBulkChange(p.id, 'price_especial', e.target.value)}
+                               />
+                             ) : (
+                               <span>${p.price_especial.toFixed(2)}</span>
+                             )}
+                          </td>
+                          <td className="pr-8 py-5 text-right relative">
+                             {!isBulkEditing ? (
+                               <div className="flex items-center justify-end gap-2 text-slate-400">
+                                  <button 
+                                    onClick={() => setActiveMenu(activeMenu === p.id ? null : p.id)}
+                                    className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${activeMenu === p.id ? 'bg-slate-100 text-[#1D3146]' : ''}`}
+                                  >
+                                    <MoreVertical size={18} />
+                                  </button>
+                                  {activeMenu === p.id && (
+                                    <div className="absolute right-8 top-12 z-20 w-44 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2">
+                                       <button onClick={() => { setEditingProduct(p); setActiveMenu(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-[#56CCF2]/5 hover:text-[#56CCF2] rounded-xl transition-all">
+                                          <Pencil size={16} /> Editar
+                                       </button>
+                                       <div className="h-px bg-slate-50 my-1"></div>
+                                       <button onClick={() => handleDeleteProduct(p.id)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">
+                                          <Trash2 size={16} /> Eliminar
+                                       </button>
+                                    </div>
+                                  )}
+                               </div>
+                             ) : (
+                               <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest italic pr-2">Editando...</span>
+                             )}
+                          </td>
+                       </tr>
+                     );
+                   })}
+                </tbody>
             </table>
          </div>
       </div>
