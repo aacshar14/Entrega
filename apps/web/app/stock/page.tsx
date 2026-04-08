@@ -498,7 +498,7 @@ export default function StockPage() {
                                />
                              ) : (
                                <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${p.quantity > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {p.quantity} unid.
+                                  {p.quantity}
                                </span>
                              )}
                           </td>
