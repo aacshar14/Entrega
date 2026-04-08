@@ -36,3 +36,6 @@ Implementado el motor de ruteo y despacho asíncrono.
 
 ## 🚩 Nota de Integridad
 El sistema ahora es capaz de escalar horizontalmente. El motor de webhooks responde en milisegundos y delega la lógica pesada (`EventWorker`) para asegurar alta disponibilidad bajo carga masiva.
+
+## 🛑 Tech Debt (Prioridad Alta)
+- [ ] Restaurar la seguridad de firma criptográfica (`X-Hub-Signature-256`) en `webhooks.py`. Actualmente se encuentra omitida de manera diagnóstica para destrabar pruebas del flujo End-to-End con la IA. Se debe reparar la variable de entorno `WHATSAPP_APP_SECRET` real en Cloud Run y deshacer el bypass en código antes de lanzar al público.
