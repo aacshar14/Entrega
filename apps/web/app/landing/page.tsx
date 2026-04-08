@@ -215,7 +215,7 @@ export default function PublicLanding() {
                <Logo variant="master" className="h-32 w-auto brightness-110" />
                <div className="space-y-1">
                   <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
-                  <Link href="/privacy" className="text-[10px] text-slate-500 hover:text-[#56CCF2] transition-colors font-bold uppercase tracking-widest">
+                  <Link href="/landing/privacy" className="text-[10px] text-slate-500 hover:text-[#56CCF2] transition-colors font-bold uppercase tracking-widest">
                     Política de Privacidad
                   </Link>
                </div>
