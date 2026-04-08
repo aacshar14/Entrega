@@ -358,7 +358,8 @@ export default function OnboardingPage() {
                   <span className="px-2 py-1 bg-[#1D3146] text-[#56CCF2] text-[8px] font-black uppercase rounded-md">Lección 4</span>
                   <h2 className="text-2xl font-black text-[#1D3146] tracking-tight">Canales de Comunicación</h2>
                </div>
-               <p className="text-sm text-slate-500 mb-8 font-medium italic">Habilita avisos automáticos a tus clientes.</p>
+               <p className="text-sm text-slate-500 mb-4 font-medium italic">Habilita avisos automáticos a tus clientes.</p>
+               <p className="text-[10px] text-[#56CCF2] font-semibold mb-8 underline decoration-[#56CCF2]/20">Al conectar Meta, aceptas nuestra <Link href="/landing/privacy">Política de Privacidad</Link>.</p>
                
                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-center">
                     {activeTenant?.whatsapp_status === 'connected' ? (
