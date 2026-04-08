@@ -99,7 +99,9 @@ class ParsingEngine:
         return results
 
     def execute_order(self, customer: Customer, items: List[Dict]):
-        """Executes inventory deductions and traces movements"""
+        """Executes inventory delivery to customer and adds financial debt"""
+        from app.models.models import CustomerBalance
+
         for item in items:
             sku = item['sku']
             qty = item['qty']
@@ -111,29 +113,31 @@ class ParsingEngine:
             if not product:
                 continue
                 
-            # Upsert StockBalance
-            stock = self.session.exec(
-                select(StockBalance).where(StockBalance.tenant_id == self.tenant.id, StockBalance.product_id == product.id)
+            total_charge = product.price_menudeo * qty
+
+            # 1. Update Financial Debt for the Customer (Consignment/Credit)
+            cust_balance = self.session.exec(
+                select(CustomerBalance).where(CustomerBalance.tenant_id == self.tenant.id, CustomerBalance.customer_id == customer.id)
             ).first()
             
-            if not stock:
-                stock = StockBalance(tenant_id=self.tenant.id, product_id=product.id, quantity=0)
-                self.session.add(stock)
+            if not cust_balance:
+                cust_balance = CustomerBalance(tenant_id=self.tenant.id, customer_id=customer.id, balance=0.0)
+                self.session.add(cust_balance)
                 
-            # Resta el inventario
-            stock.quantity -= qty
+            # Resta del saldo (Genera deuda al cliente en negativo)
+            cust_balance.balance -= total_charge
             
-            # Registra el movimiento histórico
+            # 2. Registrar la entrega ("Lo que está afuera")
             movement = InventoryMovement(
                 tenant_id=self.tenant.id,
                 product_id=product.id,
                 customer_id=customer.id,
-                quantity=-qty,
+                quantity=-qty,  # Negative physically means it left HQ -> went to client
                 type="delivery",
-                description="Orden automatizada vía WhatsApp",
+                description="Entrega a consignación/crédito vía WhatsApp",
                 sku=product.sku,
                 unit_price=product.price_menudeo,
-                total_amount=product.price_menudeo * qty
+                total_amount=total_charge
             )
             self.session.add(movement)
 
