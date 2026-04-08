@@ -106,67 +106,62 @@ async def setup_whatsapp_manual(
     db: Session = Depends(get_session)
 ):
     """Surgically persist manual Meta configuration for the current tenant."""
-    try:
-        logger.info("whatsapp_auth.manual_setup_start", 
-                    tenant_id=str(active_tenant_id), 
-                    user_id=str(current_user.id))
+    logger.info("whatsapp_auth.manual_setup_start", 
+                tenant_id=str(active_tenant_id), 
+                user_id=str(current_user.id))
 
-        # 1. Check for cross-tenant phone_number_id collision
-        existing_other = db.exec(
-            select(TenantWhatsAppIntegration)
-            .where(TenantWhatsAppIntegration.phone_number_id == payload.phone_number_id)
-            .where(TenantWhatsAppIntegration.tenant_id != active_tenant_id)
-        ).first()
-        
-        if existing_other:
-            raise HTTPException(status_code=400, detail="This Phone Number ID is already registered to another tenant.")
+    # 1. Check for cross-tenant phone_number_id collision
+    existing_other = db.exec(
+        select(TenantWhatsAppIntegration)
+        .where(TenantWhatsAppIntegration.phone_number_id == payload.phone_number_id)
+        .where(TenantWhatsAppIntegration.tenant_id != active_tenant_id)
+    ).first()
+    
+    if existing_other:
+        raise HTTPException(status_code=400, detail="This Phone Number ID is already registered to another tenant.")
 
-        # 2. Upsert Integration record
-        integration = db.exec(
-            select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.tenant_id == active_tenant_id)
-        ).first()
+    # 2. Upsert Integration record
+    integration = db.exec(
+        select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.tenant_id == active_tenant_id)
+    ).first()
+    
+    if not integration:
+        integration = TenantWhatsAppIntegration(
+            tenant_id=active_tenant_id,
+            created_by_user_id=current_user.id
+        )
+    
+    # 3. Securely pack and update
+    integration.waba_id = payload.waba_id
+    integration.phone_number_id = payload.phone_number_id
+    integration.access_token_encrypted = encrypt_token(payload.access_token)
+    integration.status = "connected"
+    integration.updated_at = datetime.now(timezone.utc)
+    
+    db.add(integration)
+    
+    # 4. Sync Tenant status flags for legacy UI components
+    tenant_obj = db.get(Tenant, active_tenant_id)
+    if tenant_obj:
+        tenant_obj.business_whatsapp_connected = True
+        tenant_obj.whatsapp_status = "connected"
+        tenant_obj.updated_at = datetime.now(timezone.utc)
+        db.add(tenant_obj)
         
-        if not integration:
-            integration = TenantWhatsAppIntegration(
-                tenant_id=active_tenant_id,
-                created_by_user_id=current_user.id
-            )
-        
-        # 3. Securely pack and update
-        integration.waba_id = payload.waba_id
-        integration.phone_number_id = payload.phone_number_id
-        integration.access_token_encrypted = encrypt_token(payload.access_token)
-        integration.status = "connected"
-        integration.updated_at = datetime.now(timezone.utc)
-        
-        db.add(integration)
-        
-        # 4. Sync Tenant status flags for legacy UI components
-        tenant_obj = db.get(Tenant, active_tenant_id)
-        if tenant_obj:
-            tenant_obj.business_whatsapp_connected = True
-            tenant_obj.whatsapp_status = "connected"
-            tenant_obj.updated_at = datetime.now(timezone.utc)
-            db.add(tenant_obj)
-            
-        db.commit()
-        db.refresh(integration)
-        
-        return {
-            "ok": True,
-            "tenant_id": str(active_tenant_id),
-            "status": integration.status,
-            "phone_number_id": integration.phone_number_id,
-            "waba_id": integration.waba_id
-        }
-    except Exception as e:
-        logger.exception("whatsapp_auth.manual_setup_error", error=str(e))
-        # Emergency debug info for the user to report back
-        return {
-            "ok": False,
-            "error": str(e),
-            "detail": "Failed to persist integration. Please check if tenant_whatsapp_integrations table exists."
-        }
+    db.commit()
+    db.refresh(integration)
+    
+    logger.info("whatsapp_auth.manual_setup_success", 
+                tenant_id=str(active_tenant_id),
+                phone_number_id=integration.phone_number_id)
+    
+    return {
+        "ok": True,
+        "tenant_id": str(active_tenant_id),
+        "status": integration.status,
+        "phone_number_id": integration.phone_number_id,
+        "waba_id": integration.waba_id
+    }
 
 @router.get("/setup/manual")
 async def get_manual_setup_status(
