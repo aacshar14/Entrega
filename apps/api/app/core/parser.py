@@ -126,6 +126,7 @@ class ParsingEngine:
                 
             # Resta del saldo (Genera deuda al cliente en negativo)
             cust_balance.balance -= total_charge
+            cust_balance.last_updated = datetime.now(timezone.utc)
             
             # 2. Registrar la entrega ("Lo que está afuera")
             movement = InventoryMovement(
@@ -140,6 +141,37 @@ class ParsingEngine:
                 total_amount=total_charge
             )
             self.session.add(movement)
+
+    def extract_customer(self, text: str, sender_phone: str) -> Customer:
+        """Finds the target customer through Aliases, Names, or Regex."""
+        from app.models.models import CustomerAlias
+        
+        # 1. Check exact aliases and existing customers
+        customers = self.session.exec(select(Customer).where(Customer.tenant_id == self.tenant.id)).all()
+        aliases = self.session.exec(select(CustomerAlias).where(CustomerAlias.tenant_id == self.tenant.id)).all()
+        
+        for a in aliases:
+            if self._normalize(a.alias) in text:
+                return self.session.get(Customer, a.customer_id)
+                
+        for c in customers:
+            if self._normalize(c.name) in text:
+                return c
+
+        # 2. Fallback Regex Extraction (para [el/la] <Nombre>)
+        pattern = r'para\s+(?:el\s+|la\s+|los\s+|las\s+)?([a-z0-9\-\. ]+)'
+        match = re.search(pattern, text)
+        extracted_name = match.group(1).strip().upper() if match else f"Cliente {sender_phone[-4:]}"
+
+        # Insert new customer
+        new_customer = Customer(
+            tenant_id=self.tenant.id,
+            name=extracted_name,
+            phone_number=sender_phone if not match else None # Only assign sender phone if it's implicitly the sender
+        )
+        self.session.add(new_customer)
+        self.session.flush()
+        return new_customer
 
     def process_and_log(self, sender: str, raw_text: str) -> MessageLog:
         """Logs structured order extraction and executes inventory movements."""
@@ -158,21 +190,8 @@ class ParsingEngine:
         self.session.add(log)
         
         if items:
-            # 1. Automáticamente dar de alta (o asociar) al cliente mediante su número
-            customer = self.session.exec(
-                select(Customer).where(Customer.tenant_id == self.tenant.id, Customer.phone_number == sender)
-            ).first()
-            
-            if not customer:
-                customer = Customer(
-                    tenant_id=self.tenant.id, 
-                    phone_number=sender, 
-                    name=f"Cliente {sender[-4:] if len(sender) >= 4 else sender}"
-                )
-                self.session.add(customer)
-                self.session.flush() # Get the new ID right away
-                
-            # 2. Ejecutar la actualización a la base de datos (Inventario y Ventas)
+            normalized_text = self._normalize(raw_text)
+            customer = self.extract_customer(normalized_text, sender)
             self.execute_order(customer, items)
             log.final_status = "processed"
             
