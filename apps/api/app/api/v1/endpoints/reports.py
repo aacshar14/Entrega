@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select, func
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, require_roles, get_active_tenant_id
 from app.models.models import User, InventoryMovement, Payment, Customer
