@@ -28,6 +28,10 @@ async def get_dashboard_summary(
         .where(Payment.tenant_id == tenant_id)
     ).one() or 0.0
     
+    # Debug Info: Check if balance tables are populated
+    stock_balance_count = db.exec(select(func.count(StockBalance.id)).where(StockBalance.tenant_id == tenant_id)).one()
+    customer_balance_count = db.exec(select(func.count(CustomerBalance.id)).where(CustomerBalance.tenant_id == tenant_id)).one()
+
     total_debt = db.exec(
         select(func.sum(CustomerBalance.balance))
         .where(CustomerBalance.tenant_id == tenant_id)
@@ -80,6 +84,10 @@ async def get_dashboard_summary(
             "total_payments": total_payments,
             "total_debt": total_debt_abs,
             "low_stock_count": low_stock_count,
+            "debug": {
+                "stock_records": stock_balance_count,
+                "customer_records": customer_balance_count
+            }
         },
         "stock": [
             {"name": name, "quantity": qty} for name, qty in top_stock_results

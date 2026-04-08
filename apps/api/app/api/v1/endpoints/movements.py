@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, require_roles, get_active_tenant_id
-from app.models.models import User, InventoryMovement
+from app.models.models import User, InventoryMovement, Customer, Product, StockBalance, CustomerBalance
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -239,26 +239,36 @@ async def update_movement(
     return movement
 
 @router.post("/reconcile-all")
-async def reconcile_all(db: Session = Depends(get_session)):
-    """Utility to recalculate all balances from movement history."""
+async def reconcile_all(
+    db: Session = Depends(get_session),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """Utility to recalculate all balances from movement history, scoped to active tenant."""
     from sqlalchemy import text
     try:
         # 1. Correct signs for delivery movements (positive -> negative)
-        db.execute(text("UPDATE inventory_movements SET quantity = -ABS(quantity) WHERE type IN ('delivery', 'delivery_to_customer') AND quantity > 0;"))
+        # Only for the active tenant!
+        db.execute(text("""
+            UPDATE inventory_movements 
+            SET quantity = -ABS(quantity) 
+            WHERE tenant_id = :tid 
+              AND type IN ('delivery', 'delivery_to_customer') 
+              AND quantity > 0
+        """), {"tid": active_tenant_id})
         
-        # 2. Reset and Recalculate Stock Balances (Warehouse)
-        db.execute(text("DELETE FROM stock_balances;"))
+        # 2. Reset and Recalculate Stock Balances (Warehouse) for THIS tenant
+        db.execute(text("DELETE FROM stock_balances WHERE tenant_id = :tid"), {"tid": active_tenant_id})
         sql_stock = """
         INSERT INTO stock_balances (id, tenant_id, product_id, quantity, last_updated)
         SELECT gen_random_uuid(), tenant_id, product_id, SUM(quantity), NOW()
         FROM inventory_movements
-        WHERE type != 'sale_reported'
+        WHERE tenant_id = :tid AND type != 'sale_reported'
         GROUP BY tenant_id, product_id;
         """
-        db.execute(text(sql_stock))
+        db.execute(text(sql_stock), {"tid": active_tenant_id})
         
-        # 3. Reset and Recalculate Customer Balances (Finance)
-        db.execute(text("DELETE FROM customer_balances;"))
+        # 3. Reset and Recalculate Customer Balances (Finance) for THIS tenant
+        db.execute(text("DELETE FROM customer_balances WHERE tenant_id = :tid"), {"tid": active_tenant_id})
         sql_finance = """
         WITH total_movements AS (
             SELECT customer_id, tenant_id,
@@ -266,20 +276,42 @@ async def reconcile_all(db: Session = Depends(get_session)):
                     WHEN type IN ('delivery', 'delivery_to_customer') THEN -ABS(total_amount)
                     WHEN type IN ('return', 'return_from_customer') THEN ABS(total_amount)
                     ELSE 0 END) as move_balance
-            FROM inventory_movements WHERE customer_id IS NOT None GROUP BY customer_id, tenant_id
+            FROM inventory_movements 
+            WHERE tenant_id = :tid AND customer_id IS NOT None 
+            GROUP BY customer_id, tenant_id
         ),
         total_payments AS (
-            SELECT customer_id, SUM(amount) as pay_balance FROM payments GROUP BY customer_id
+            SELECT customer_id, SUM(amount) as pay_balance 
+            FROM payments 
+            WHERE tenant_id = :tid
+            GROUP BY customer_id
         )
         INSERT INTO customer_balances (id, tenant_id, customer_id, balance, last_updated)
-        SELECT gen_random_uuid(), COALESCE(m.tenant_id, (SELECT tenant_id FROM customers WHERE id = COALESCE(m.customer_id, p.customer_id) LIMIT 1)), 
-               COALESCE(m.customer_id, p.customer_id), (COALESCE(m.move_balance, 0) + COALESCE(p.pay_balance, 0)), NOW()
-        FROM total_movements m FULL OUTER JOIN total_payments p ON m.customer_id = p.customer_id;
+        SELECT 
+            gen_random_uuid(), 
+            :tid, 
+            COALESCE(m.customer_id, p.customer_id), 
+            (COALESCE(m.move_balance, 0) + COALESCE(p.pay_balance, 0)), 
+            NOW()
+        FROM total_movements m 
+        FULL OUTER JOIN total_payments p ON m.customer_id = p.customer_id;
         """
-        db.execute(text(sql_finance))
+        db.execute(text(sql_finance), {"tid": active_tenant_id})
         
         db.commit()
-        return {"status": "success", "message": "All balances recalculated from history"}
+        
+        # Verify counts
+        stock_count = db.exec(select(func.count(StockBalance.id)).where(StockBalance.tenant_id == active_tenant_id)).one()
+        cust_count = db.exec(select(func.count(CustomerBalance.id)).where(CustomerBalance.tenant_id == active_tenant_id)).one()
+        
+        return {
+            "status": "success", 
+            "message": "All balances recalculated from history",
+            "stats": {
+                "stock_records": stock_count,
+                "customer_records": cust_count
+            }
+        }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
