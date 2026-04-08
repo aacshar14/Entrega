@@ -401,8 +401,8 @@ export default function CustomersPage() {
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
-                <table className="w-full text-left border-collapse">
+            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-x-auto min-h-[400px]">
+                <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-50/50 text-[11px] font-black uppercase text-slate-400 tracking-[0.15em]">
                       <th className="pl-8 py-5">Cliente</th>

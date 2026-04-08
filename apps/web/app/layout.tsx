@@ -155,6 +155,7 @@ function UI_Shell({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setIsSidebarOpen(false)}
                 className={`flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-sm group ${
                   isActive ? `${activeColor} shadow-lg` : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
@@ -180,14 +181,18 @@ function UI_Shell({ children }) {
          <>
             {isAdmin && (
                <button 
-                onClick={clearTenant}
-                className="mx-4 mb-2 flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 group"
+                onClick={() => { clearTenant(); setIsSidebarOpen(false); }}
+                className="w-full mx-4 mb-2 flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 group"
                >
                   <ArrowLeft size={16} />
                   Regresar a Plataforma
                </button>
             )}
-            <Link href="/settings" className="p-8 border-t border-white/5 hover:bg-white/5 transition-all block cursor-pointer">
+            <Link 
+              href="/settings" 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-8 border-t border-white/5 hover:bg-white/5 transition-all block cursor-pointer"
+            >
                <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                      <Settings size={20} className="text-[#56CCF2]" />
