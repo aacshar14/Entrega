@@ -6,8 +6,14 @@ from app.models.models import User, Payment
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class PaymentCreate(BaseModel):
+    customer_id: UUID
+    amount: float
+    method: str
 
 @router.get("/", response_model=List[Payment], dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def list_payments(
@@ -22,14 +28,16 @@ async def list_payments(
 
 @router.post("", dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def create_payment(
-    customer_id: UUID,
-    amount: float,
-    method: str, # 'cash', 'transfer', 'card'
+    payment: PaymentCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
     """Register a new payment and settle debts/reconcile inventory."""
+    customer_id = payment.customer_id
+    amount = payment.amount
+    method = payment.method
+    
     from app.models.models import CustomerBalance, InventoryMovement, Customer
     
     # 1. Register Payment

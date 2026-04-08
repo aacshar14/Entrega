@@ -6,6 +6,14 @@ from app.models.models import User, InventoryMovement
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
+from pydantic import BaseModel
+
+class MovementManualCreate(BaseModel):
+    product_id: UUID
+    quantity: float
+    type: str
+    customer_id: Optional[UUID] = None
+    description: Optional[str] = None
 
 router = APIRouter()
 
@@ -22,16 +30,18 @@ async def list_movements(
 
 @router.post("/manual", dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def create_manual_movement(
-    product_id: UUID,
-    quantity: float,
-    type: str, # 'restock', 'return', 'delivery', 'adjustment'
-    customer_id: Optional[UUID] = None,
-    description: Optional[str] = None,
+    movement: MovementManualCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
     """Create a manual inventory movement with automated tier-pricing for deliveries."""
+    product_id = movement.product_id
+    quantity = movement.quantity
+    type = movement.type
+    customer_id = movement.customer_id
+    description = movement.description
+    
     from app.models.models import Customer, Product
     
     # 1. Fetch Product for SKU and basic info
