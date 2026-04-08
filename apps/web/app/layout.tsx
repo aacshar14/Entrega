@@ -224,7 +224,7 @@ function UI_Shell({ children }) {
 
       {/* Sidebar (Desktop & Mobile) */}
       {!isPublicPath && !isTenantSetupPath && (
-        <aside className={`fixed inset-y-0 left-0 w-64 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-[70] transition-all duration-500 lg:translate-x-0 ${
+        <aside className={`fixed inset-y-0 left-0 w-64 lg:w-60 xl:w-64 2xl:w-80 ${isPlatformPath ? 'bg-[#0F172A]' : 'bg-[#1D3146]'} text-white flex flex-col z-[70] transition-all duration-500 lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}>
           <SidebarContent />
@@ -232,7 +232,7 @@ function UI_Shell({ children }) {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-grow ${!isPublicPath && !isTenantSetupPath ? 'pl-0 lg:pl-64' : 'pl-0'} flex flex-col min-h-screen max-w-full overflow-x-hidden`}>
+      <div className={`flex-grow ${!isPublicPath && !isTenantSetupPath ? 'pl-0 lg:pl-60 xl:pl-64 2xl:pl-80' : 'pl-0'} flex flex-col min-h-screen max-w-full overflow-x-hidden`}>
          {/* Top Header */}
          <header className="h-16 md:h-20 bg-white/70 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 lg:px-10 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-3">
