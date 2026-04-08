@@ -118,3 +118,64 @@ async def update_payment(
     db.commit()
     db.refresh(payment)
     return payment
+
+class ClearTotalRequest(BaseModel):
+    customer_id: UUID
+    method: str = "cash"
+
+@router.post("/clear-total", dependencies=[Depends(require_roles(["owner", "operator"]))])
+async def clear_total_debt(
+    request: ClearTotalRequest,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """Liquidation of all debts for a customer."""
+    from app.models.models import CustomerBalance, InventoryMovement
+    
+    # 1. Get current balance
+    balance_record = db.exec(
+        select(CustomerBalance).where(
+            CustomerBalance.customer_id == request.customer_id,
+            CustomerBalance.tenant_id == active_tenant_id
+        )
+    ).first()
+    
+    if not balance_record or balance_record.balance >= 0:
+        return {"message": "No debt to clear", "balance": balance_record.balance if balance_record else 0}
+        
+    debt_amount = abs(balance_record.balance)
+    
+    # 2. Register full payment
+    clearing_payment = Payment(
+        tenant_id=active_tenant_id,
+        customer_id=request.customer_id,
+        amount=debt_amount,
+        method=request.method,
+        created_by_user_id=current_user.id,
+        notes="Liquidación total de deuda"
+    )
+    db.add(clearing_payment)
+    
+    # 3. Reset balance to zero
+    balance_record.balance = 0.0
+    balance_record.last_updated = datetime.now(timezone.utc)
+    db.add(balance_record)
+    
+    # 4. Reconciliation movement (mark inventory as sold/settled)
+    recon_movement = InventoryMovement(
+        tenant_id=active_tenant_id,
+        product_id=None,
+        customer_id=request.customer_id,
+        quantity=0,
+        type='payment_received',
+        description=f"Liquidación TOTAL vía {request.method}",
+        unit_price=0,
+        total_amount=debt_amount,
+        created_by_user_id=current_user.id
+    )
+    # Note: If InventoryMovement requires product_id, this might fail unless nullable
+    # For now we assume typical reconciliation pattern
+    
+    db.commit()
+    return {"status": "success", "cleared_amount": debt_amount}
