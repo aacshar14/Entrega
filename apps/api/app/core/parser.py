@@ -159,41 +159,51 @@ class ParsingEngine:
             self.session.add(movement)
 
     def extract_customer(self, text: str, sender_phone: str) -> Customer:
-        """Finds the target customer through Aliases, Names, or Regex."""
+        """Finds the target customer through Aliases, Names, or Fragments."""
         from app.models.models import CustomerAlias
         
-        # 1. Check exact aliases and existing customers
+        normalized_text = self._normalize(text)
         customers = self.session.exec(select(Customer).where(Customer.tenant_id == self.tenant.id)).all()
         aliases = self.session.exec(select(CustomerAlias).where(CustomerAlias.tenant_id == self.tenant.id)).all()
         
+        # 1. Higher Priority: Exact or Alias inclusion
         for a in aliases:
-            if self._normalize(a.alias) in text:
+            if self._normalize(a.alias) in normalized_text:
                 return self.session.get(Customer, a.customer_id)
                 
         for c in customers:
-            if self._normalize(c.name) in text:
+            if self._normalize(c.name) in normalized_text:
                 return c
 
-        # 2. Fallback Regex Extraction (para [el/la] <Nombre>)
+        # 2. Extract fragment after "para"
         pattern = r'para\s+(?:el\s+|la\s+|los\s+|las\s+)?([a-z0-9\-\. ]+)'
-        match = re.search(pattern, text)
-        extracted_name = match.group(1).strip().upper() if match else f"Cliente {sender_phone[-4:]}"
+        match = re.search(pattern, normalized_text)
+        if match:
+            fragment = match.group(1).strip()
+            if len(fragment) > 2: # Ignore very short fragments like "para m"
+                # Search for fragment in names (case insensitive)
+                for c in customers:
+                    if fragment in self._normalize(c.name):
+                        return c
+                for a in aliases:
+                    if fragment in self._normalize(a.alias):
+                        return self.session.get(Customer, a.customer_id)
+            
+            extracted_name = fragment.upper()
+        else:
+            extracted_name = f"Cliente {sender_phone[-4:]}"
 
-        # 🛡️ PROTECT: Check again if the extracted name exists before inserting
+        # 3. Final check: Does this extracted name closely match existing name?
+        # (Exact match of normalized names)
         for c in customers:
             if self._normalize(c.name) == self._normalize(extracted_name):
                 return c
         
-        # Also check aliases for the extracted name
-        for a in aliases:
-            if self._normalize(a.alias) == self._normalize(extracted_name):
-                return self.session.get(Customer, a.customer_id)
-
-        # Insert new customer only if truly new
+        # Create new customer only if no fragment/match found
         new_customer = Customer(
             tenant_id=self.tenant.id,
             name=extracted_name,
-            phone_number=sender_phone if not match else None # Only assign sender phone if it's implicitly the sender
+            phone_number=sender_phone if not match else None 
         )
         self.session.add(new_customer)
         self.session.flush()
