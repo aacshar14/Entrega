@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const host = request.headers.get('host')
 
   // List of domains to redirect to the apex (entrega.space)
-  const domainsToRedirect = ['www.entrega.space', 'web.entrega.space']
+  const domainsToRedirect = ['www.entrega.space', 'web.entrega.space', 'app.entrega.space']
 
   if (host && domainsToRedirect.includes(host)) {
     // Force redirect to apex domain with 308 (Permanent Redirect)
