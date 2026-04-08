@@ -213,7 +213,12 @@ export default function PublicLanding() {
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
                <Logo variant="master" className="h-32 w-auto brightness-110" />
-               <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
+               <div className="space-y-1">
+                  <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
+                  <Link href="/privacy" className="text-[10px] text-slate-500 hover:text-[#56CCF2] transition-colors font-bold uppercase tracking-widest">
+                    Política de Privacidad
+                  </Link>
+               </div>
             </div>
             
             <div className="flex flex-col sm:flex-row items-center gap-8">
