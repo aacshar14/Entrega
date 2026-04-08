@@ -247,7 +247,6 @@ async def reconcile_all(
     from sqlalchemy import text
     try:
         # 1. Correct signs for delivery movements (positive -> negative)
-        # Only for the active tenant!
         db.execute(text("""
             UPDATE inventory_movements 
             SET quantity = -ABS(quantity) 
@@ -255,48 +254,57 @@ async def reconcile_all(
               AND type IN ('delivery', 'delivery_to_customer') 
               AND quantity > 0
         """), {"tid": active_tenant_id})
-        
-        # 2. Reset and Recalculate Stock Balances (Warehouse) for THIS tenant
+
+        # 2. Reconstruct Stock Balances (All products for tenant)
         db.execute(text("DELETE FROM stock_balances WHERE tenant_id = :tid"), {"tid": active_tenant_id})
         sql_stock = """
         INSERT INTO stock_balances (id, tenant_id, product_id, quantity, last_updated)
-        SELECT gen_random_uuid(), tenant_id, product_id, SUM(quantity), NOW()
-        FROM inventory_movements
-        WHERE tenant_id = :tid AND type != 'sale_reported'
-        GROUP BY tenant_id, product_id;
+        SELECT 
+            gen_random_uuid(), 
+            p.tenant_id, 
+            p.id, 
+            COALESCE(SUM(m.quantity), 0), 
+            NOW()
+        FROM products p
+        LEFT JOIN inventory_movements m ON p.id = m.product_id AND m.type != 'sale_reported'
+        WHERE p.tenant_id = :tid
+        GROUP BY p.tenant_id, p.id;
         """
         db.execute(text(sql_stock), {"tid": active_tenant_id})
-        
-        # 3. Reset and Recalculate Customer Balances (Finance) for THIS tenant
+
+        # 3. Reconstruct Customer Balances (All customers for tenant)
         db.execute(text("DELETE FROM customer_balances WHERE tenant_id = :tid"), {"tid": active_tenant_id})
-        sql_finance = """
-        WITH total_movements AS (
-            SELECT customer_id, tenant_id,
-                SUM(CASE 
-                    WHEN type IN ('delivery', 'delivery_to_customer') THEN -ABS(total_amount)
-                    WHEN type IN ('return', 'return_from_customer') THEN ABS(total_amount)
-                    ELSE 0 END) as move_balance
-            FROM inventory_movements 
-            WHERE tenant_id = :tid AND customer_id IS NOT None 
-            GROUP BY customer_id, tenant_id
-        ),
-        total_payments AS (
-            SELECT customer_id, SUM(amount) as pay_balance 
-            FROM payments 
-            WHERE tenant_id = :tid
-            GROUP BY customer_id
-        )
+        sql_customers = """
         INSERT INTO customer_balances (id, tenant_id, customer_id, balance, last_updated)
         SELECT 
             gen_random_uuid(), 
-            :tid, 
-            COALESCE(m.customer_id, p.customer_id), 
-            (COALESCE(m.move_balance, 0) + COALESCE(p.pay_balance, 0)), 
+            c.tenant_id, 
+            c.id,
+            COALESCE(m_bal.move_balance, 0) + COALESCE(p_count.pay_total, 0),
             NOW()
-        FROM total_movements m 
-        FULL OUTER JOIN total_payments p ON m.customer_id = p.customer_id;
+        FROM customers c
+        LEFT JOIN (
+            SELECT 
+                customer_id, 
+                SUM(CASE 
+                    WHEN type IN ('delivery', 'delivery_to_customer') THEN -ABS(total_amount)
+                    WHEN type IN ('return', 'return_from_customer') THEN ABS(total_amount)
+                    ELSE 0 
+                END) as move_balance
+            FROM inventory_movements
+            WHERE tenant_id = :tid
+            GROUP BY customer_id
+        ) m_bal ON c.id = m_bal.customer_id
+        LEFT JOIN (
+            SELECT customer_id, SUM(amount) as pay_total
+            FROM payments
+            WHERE tenant_id = :tid
+            GROUP BY customer_id
+        ) p_count ON c.id = p_count.customer_id
+        WHERE c.tenant_id = :tid
+        GROUP BY c.tenant_id, c.id, m_bal.move_balance, p_count.pay_total;
         """
-        db.execute(text(sql_finance), {"tid": active_tenant_id})
+        db.execute(text(sql_customers), {"tid": active_tenant_id})
         
         db.commit()
         
@@ -314,4 +322,6 @@ async def reconcile_all(
         }
     except Exception as e:
         db.rollback()
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
