@@ -111,6 +111,29 @@ async def create_manual_movement(
             )
         db.add(balance)
 
+    # 5. Synchronize with CustomerBalance (Financial Debt)
+    if customer_id and type in ["delivery", "delivery_to_customer", "return", "return_from_customer"]:
+        from app.models.models import CustomerBalance
+        cb = db.exec(select(CustomerBalance).where(CustomerBalance.customer_id == customer_id)).first()
+        
+        # Delivery increases debt (subtract from balance), Return decreases debt (add to balance)
+        amount_delta = new_movement.total_amount
+        if type in ["delivery", "delivery_to_customer"]:
+            amount_delta = -amount_delta
+            
+        if cb:
+            cb.balance += amount_delta
+            cb.last_updated = datetime.now(timezone.utc)
+            db.add(cb)
+        else:
+            cb = CustomerBalance(
+                tenant_id=active_tenant_id,
+                customer_id=customer_id,
+                balance=amount_delta,
+                last_updated=datetime.now(timezone.utc)
+            )
+            db.add(cb)
+
     db.commit()
     db.refresh(new_movement)
     return new_movement
