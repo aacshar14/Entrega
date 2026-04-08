@@ -15,7 +15,7 @@ class PaymentCreate(BaseModel):
     amount: float
     method: str
 
-@router.get("/", response_model=List[Payment], dependencies=[Depends(require_roles(["owner", "operator"]))])
+@router.get("", response_model=List[Payment], dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def list_payments(
     db: Session = Depends(get_session),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
