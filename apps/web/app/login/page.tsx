@@ -28,12 +28,15 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // Use dynamic origin to avoid domain hardcoding while entrega.space is not ready
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
+      
       if (isRegister) {
         const { error, data } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${siteUrl}/auth/callback`,
             data: { full_name: fullName },
           },
         });

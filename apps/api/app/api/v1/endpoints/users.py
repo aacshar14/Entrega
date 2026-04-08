@@ -138,6 +138,19 @@ async def list_users(
         response.append(u_dict)
     return response
 
+@router.patch("/me", response_model=User)
+async def update_me(
+    full_name: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Allows any authenticated user to update their own full name."""
+    current_user.full_name = full_name
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 @router.post("/", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def create_user(
     email: str,

@@ -12,8 +12,8 @@ export default function PrivacyPage() {
       {/* HEADER: Deep Navy Executive Style */}
       <header className="bg-[#1D3146] pt-20 pb-24 px-6 relative overflow-hidden">
         <div className="max-w-4xl mx-auto relative z-10">
-          <Link href="/landing" className="inline-flex items-center gap-2 text-[#56CCF2] text-xs font-black uppercase tracking-widest mb-10 hover:gap-4 transition-all">
-            <ArrowLeft size={16} /> Volver a la plataforma
+          <Link href="/" className="inline-flex items-center gap-2 text-[#56CCF2] text-xs font-black uppercase tracking-widest mb-10 hover:gap-4 transition-all">
+            <ArrowLeft size={16} /> Volver al Inicio
           </Link>
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">

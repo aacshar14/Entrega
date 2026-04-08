@@ -28,30 +28,40 @@ async def create_business(
     current_user: User = Depends(get_current_user)
 ):
     """Register a new business (Tenant) and assign owner role to the creator."""
-    # Check if slug exists
-    existing = db.exec(select(Tenant).where(Tenant.slug == request.slug)).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Business slug already exists")
+    try:
+        # Check if slug exists
+        existing = db.exec(select(Tenant).where(Tenant.slug == request.slug)).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El nombre de usuario o negocio ya existe")
+            
+        new_tenant = Tenant(
+            name=request.name.strip(),
+            slug=request.slug.strip(),
+            status="active"
+        )
+        db.add(new_tenant)
+        db.flush() 
         
-    new_tenant = Tenant(
-        name=request.name,
-        slug=request.slug,
-        status="active"
-    )
-    db.add(new_tenant)
-    db.flush() # Get ID
-    
-    # Create membership as owner
-    membership = TenantUser(
-        tenant_id=new_tenant.id,
-        user_id=current_user.id,
-        tenant_role="owner",
-        is_default=False # User can change later
-    )
-    db.add(membership)
-    db.commit()
-    db.refresh(new_tenant)
-    return new_tenant
+        # Create membership as owner
+        membership = TenantUser(
+            tenant_id=new_tenant.id,
+            user_id=current_user.id,
+            tenant_role="owner",
+            is_default=True
+        )
+        db.add(membership)
+        db.commit()
+        db.refresh(new_tenant)
+        return new_tenant
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Tenant creation failed for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno al crear el negocio: {str(e)}"
+        )
 
 @router.get("/active", response_model=Tenant)
 async def get_active_business(
