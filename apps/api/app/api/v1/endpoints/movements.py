@@ -92,6 +92,25 @@ async def create_manual_movement(
     )
     
     db.add(new_movement)
+    
+    # 4. Synchronize with StockBalance (Warehouse Stock)
+    # sale_reported only affects 'outside' stock and money, not physical warehouse inventory
+    if type != "sale_reported":
+        from app.models.models import StockBalance
+        balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()
+        if balance:
+            balance.quantity += quantity
+            balance.updated_by_user_id = current_user.id
+            balance.last_updated = datetime.now(timezone.utc)
+        else:
+            balance = StockBalance(
+                tenant_id=active_tenant_id,
+                product_id=product.id,
+                quantity=quantity,
+                updated_by_user_id=current_user.id
+            )
+        db.add(balance)
+
     db.commit()
     db.refresh(new_movement)
     return new_movement
