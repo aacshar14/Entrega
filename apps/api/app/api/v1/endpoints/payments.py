@@ -22,7 +22,9 @@ async def list_payments(
 ):
     """List all payments for the tenant."""
     payments = db.exec(
-        select(Payment).where(Payment.tenant_id == active_tenant_id)
+        select(Payment)
+        .where(Payment.tenant_id == active_tenant_id)
+        .order_by(Payment.created_at.desc())
     ).all()
     return payments
 
