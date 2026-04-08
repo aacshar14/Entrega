@@ -20,6 +20,7 @@ class ProductImportRow(BaseModel):
     price_mayoreo: float = 0.0
     price_menudeo: float = 0.0
     price_especial: float = 0.0
+    aliases: str = ""
 
 class ProductImportPreviewRow(BaseModel):
     row_index: int
@@ -108,6 +109,7 @@ async def import_products_preview(
         price_mayoreo_str = (row.get("price_mayoreo") or row.get("Mayoreo") or "0").strip()
         price_menudeo_str = (row.get("price_menudeo") or row.get("Menudeo") or "0").strip()
         price_especial_str = (row.get("price_especial") or row.get("Especial") or "0").strip()
+        aliases_str = (row.get("aliases") or row.get("Alias") or row.get("Keywords") or "").strip()
         
         if not name:
             errors.append("Product name is required")
@@ -147,7 +149,8 @@ async def import_products_preview(
                 quantity=qty,
                 price_mayoreo=p_may,
                 price_menudeo=p_men,
-                price_especial=p_esp
+                price_especial=p_esp,
+                aliases=aliases_str
             ),
             is_valid=is_valid,
             errors=errors,
@@ -209,6 +212,24 @@ async def import_products_commit(
             db.flush()
             created_count += 1
             
+        # Parse and inject Aliases if provided
+        if row.aliases:
+            alias_list = [a.strip().lower() for a in row.aliases.split(',')]
+            existing_aliases = db.exec(
+                select(ProductAlias).where(ProductAlias.product_id == product.id)
+            ).all()
+            existing_alias_words = {a.alias for a in existing_aliases}
+            
+            for word in alias_list:
+                if word and word not in existing_alias_words:
+                    new_alias = ProductAlias(
+                        tenant_id=tenant_id,
+                        product_id=product.id,
+                        alias=word
+                    )
+                    db.add(new_alias)
+                    existing_alias_words.add(word)
+
         # Add stock
         if row.quantity != 0:
             balance = db.exec(select(StockBalance).where(StockBalance.product_id == product.id)).first()

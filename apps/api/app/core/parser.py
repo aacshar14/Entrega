@@ -89,6 +89,21 @@ class ParsingEngine:
                 if p_obj:
                     sku_found = p_obj.sku
 
+            # D. Fuzzy Matching (Catch typos like 'cokie n crem' or 'doble choco')
+            if not sku_found:
+                import difflib
+                all_valid_words = list(inventory_matches.keys()) + list(alias_map.keys())
+                closest = difflib.get_close_matches(raw_ref, all_valid_words, n=1, cutoff=0.65)
+                if closest:
+                    best_match = closest[0]
+                    if best_match in inventory_matches:
+                        sku_found = inventory_matches[best_match]
+                    elif best_match in alias_map:
+                        p_id = alias_map[best_match]
+                        p_obj = self.session.get(Product, p_id)
+                        if p_obj:
+                            sku_found = p_obj.sku
+
             if sku_found:
                 results.append({
                     "sku": sku_found,
