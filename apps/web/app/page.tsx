@@ -22,21 +22,21 @@ export default function RootPage() {
     <div className="min-h-screen bg-white text-[#1D3146] font-sans selection:bg-[#56CCF2]/30">
       
       {/* 1. STICKY HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100">
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-[#1D3146] border-b border-[#1D3146]/20">
          <div className="max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-               <Logo variant="light" className="h-24 w-auto" />
+               <Logo variant="master" className="h-24 w-auto" />
             </Link>
             
             <nav className="hidden md:flex items-center gap-10">
-               <a href="#como-funciona" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Cómo Funciona</a>
-               <a href="#recursos" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Recursos</a>
-               <a href="#precios" className="text-sm font-bold text-slate-500 hover:text-[#1D3146] transition-colors">Precios</a>
+               <a href="#como-funciona" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Cómo Funciona</a>
+               <a href="#recursos" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Recursos</a>
+               <a href="#precios" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Precios</a>
             </nav>
 
             <div className="flex items-center gap-4">
-               <Link href="/login" className="hidden sm:block text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-slate-50 transition-all">Log in</Link>
-               <Link href="/onboarding" className="bg-[#1D3146] text-[#56CCF2] px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#1D3146]/20 hover:scale-105 active:scale-95 transition-all">
+               <Link href="/login" className="hidden sm:block text-sm font-bold px-6 py-2.5 rounded-xl text-white/80 hover:bg-white/5 transition-all">Log in</Link>
+               <Link href="/onboarding" className="bg-[#56CCF2] text-[#1D3146] px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#1D3146]/20 hover:scale-105 active:scale-95 transition-all">
                   Empieza Gratis
                </Link>
             </div>
