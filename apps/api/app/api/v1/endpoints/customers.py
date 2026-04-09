@@ -40,6 +40,14 @@ class ImportPreviewResponse(BaseModel):
 class ImportCommitRequest(BaseModel):
     rows: List[CustomerImportRow]
 
+class CustomerCreate(BaseModel):
+    name: str
+    phone_number: str
+    email: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    tier: Optional[str] = "menudeo"
+
 class CustomerResponse(BaseModel):
     id: UUID
     name: str
@@ -77,11 +85,7 @@ async def list_customers(
 
 @router.post("", response_model=Customer)
 async def create_customer(
-    name: str,
-    phone_number: str,
-    email: Optional[str] = None,
-    address: Optional[str] = None,
-    notes: Optional[str] = None,
+    customer_data: CustomerCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant)
@@ -89,16 +93,28 @@ async def create_customer(
     """Create a new customer for the active tenant."""
     new_customer = Customer(
         tenant_id=active_tenant.id,
-        name=name,
-        phone_number=phone_number,
-        email=email,
-        address=address,
-        notes=notes,
+        name=customer_data.name,
+        phone_number=customer_data.phone_number,
+        email=customer_data.email,
+        address=customer_data.address,
+        notes=customer_data.notes,
+        tier=customer_data.tier if customer_data.tier in ["mayoreo", "menudeo", "especial"] else "menudeo",
         created_by_user_id=current_user.id
     )
     db.add(new_customer)
     db.commit()
     db.refresh(new_customer)
+    
+    # 💰 Initialize empty balance
+    new_balance = CustomerBalance(
+        tenant_id=active_tenant.id,
+        customer_id=new_customer.id,
+        balance=0.0,
+        last_updated=datetime.now(timezone.utc)
+    )
+    db.add(new_balance)
+    db.commit()
+
     return new_customer
 
 @router.post("/import/preview", response_model=ImportPreviewResponse)

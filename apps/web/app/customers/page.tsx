@@ -74,6 +74,14 @@ export default function CustomersPage() {
 
   // Actions state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    phone_number: '',
+    email: '',
+    tier: 'menudeo',
+    notes: ''
+  });
   const [confirmingLiquidation, setConfirmingLiquidation] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -106,6 +114,22 @@ export default function CustomersPage() {
       setActiveMenu(null);
     } catch (err: any) {
       setError('Error al eliminar el cliente.');
+    }
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTenant) return;
+    setIsSaving(true);
+    try {
+      const created = await apiRequest('customers', 'POST', newCustomer, activeTenant.id);
+      setCustomers(prev => [created, ...prev]);
+      setIsAddingCustomer(false);
+      setNewCustomer({ name: '', phone_number: '', email: '', tier: 'menudeo', notes: '' });
+    } catch (err: any) {
+      setError('Error al crear el cliente.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -234,6 +258,87 @@ export default function CustomersPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 relative min-h-screen pb-20">
+      {/* Create Modal */}
+      {isAddingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D3146]/40 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                 <h2 className="text-2xl font-black text-[#1D3146]">Nuevo Cliente</h2>
+                 <button onClick={() => setIsAddingCustomer(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+                    <X size={24} />
+                 </button>
+              </div>
+              <form onSubmit={handleCreateCustomer} className="p-8 space-y-6">
+                 <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Nombre Completo</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Ej. Juan Pérez"
+                      className="w-full px-6 py-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-bold text-[#1D3146] transition-all"
+                      value={newCustomer.name}
+                      onChange={e => setNewCustomer({...newCustomer, name: e.target.value})}
+                    />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Teléfono</label>
+                        <input 
+                          type="text"
+                          required
+                          placeholder="+52..."
+                          className="w-full px-6 py-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-bold text-[#1D3146] transition-all"
+                          value={newCustomer.phone_number}
+                          onChange={e => setNewCustomer({...newCustomer, phone_number: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Nivel</label>
+                        <select 
+                          className="w-full px-6 py-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-bold text-[#1D3146] transition-all appearance-none"
+                          value={newCustomer.tier}
+                          onChange={e => setNewCustomer({...newCustomer, tier: e.target.value})}
+                        >
+                           <option value="menudeo">Menudeo</option>
+                           <option value="mayoreo">Mayoreo</option>
+                           <option value="especial">Especial</option>
+                        </select>
+                    </div>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Correo (Opcional)</label>
+                    <input 
+                      type="email"
+                      className="w-full px-6 py-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-bold text-[#1D3146] transition-all"
+                      value={newCustomer.email}
+                      onChange={e => setNewCustomer({...newCustomer, email: e.target.value})}
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2 px-2">Notas / Referencias</label>
+                    <textarea 
+                      rows={3}
+                      className="w-full px-6 py-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-[#56CCF2] outline-none font-bold text-[#1D3146] transition-all"
+                      value={newCustomer.notes}
+                      onChange={e => setNewCustomer({...newCustomer, notes: e.target.value})}
+                    />
+                 </div>
+                 <div className="flex gap-4 pt-4">
+                    <button type="button" onClick={() => setIsAddingCustomer(false)} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600">Cancelar</button>
+                    <button 
+                      type="submit" 
+                      disabled={isSaving}
+                      className="flex-1 bg-[#1D3146] text-white py-4 rounded-2xl font-black shadow-xl shadow-[#1D3146]/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                       {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+                       Crear Cliente
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
       {/* Edit Modal */}
       {editingCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D3146]/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -350,6 +455,7 @@ export default function CustomersPage() {
                Importar CSV
             </button>
             <button 
+              onClick={() => setIsAddingCustomer(true)}
               className="px-6 py-2.5 bg-[#1D3146] text-white text-sm font-bold rounded-xl hover:bg-[#2B4764] transition-all flex items-center gap-2 shadow-lg shadow-[#1D3146]/10"
             >
                <Plus size={20} />
