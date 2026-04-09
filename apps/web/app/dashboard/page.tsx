@@ -22,6 +22,8 @@ interface DashboardStats {
   total_payments: number;
   total_debt: number;
   low_stock_count: number;
+  weekly_produced: number;
+  weekly_delivered: number;
 }
 
 interface DashboardData {
@@ -137,11 +139,14 @@ export default function Dashboard() {
                 <Package size={24} />
               </div>
            </div>
-           <div className="flex items-center gap-2">
-             <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${data.stats.low_stock_count > 0 ? 'bg-white/20 text-white' : 'bg-green-500 text-white'}`}>
-                {data.stats.low_stock_count} Stock Bajo
-             </span>
-           </div>
+            <div className="flex flex-col gap-1">
+              <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit ${data.stats.low_stock_count > 0 ? 'bg-white/20 text-white' : 'bg-green-500 text-white'}`}>
+                 {data.stats.low_stock_count} Stock Bajo
+              </span>
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
+                Semana: {data.stats.weekly_produced} In / {data.stats.weekly_delivered} Out
+              </p>
+            </div>
         </div>
       </section>
 

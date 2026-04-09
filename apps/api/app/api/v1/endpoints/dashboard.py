@@ -4,6 +4,7 @@ from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_tenant
 from app.models.models import User, Tenant, Customer, Product, Payment, CustomerBalance, StockBalance
 from typing import List, Dict, Any
+from datetime import datetime, timezone, timedelta
 
 router = APIRouter()
 
@@ -48,17 +49,38 @@ async def get_dashboard_summary(
         .where(StockBalance.quantity <= 10)
     ).one()
     
-    # 4. Top Stock (First 5 products)
+    # 4. Top Stock (Now all active products for the tenant, no more limit 5)
     top_stock_query = (
         select(Product.name, StockBalance.quantity)
         .join(StockBalance, Product.id == StockBalance.product_id)
         .where(Product.tenant_id == tenant_id)
         .order_by(desc(StockBalance.quantity))
-        .limit(5)
     )
     top_stock_results = db.exec(top_stock_query).all()
     
-    # 5. Top Debtors (First 5 customers by balance)
+    # 5. Weekly Stats (Production vs Deliveries)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    
+    from app.models.models import InventoryMovement
+    
+    produced_this_week = db.exec(
+        select(func.sum(InventoryMovement.quantity))
+        .where(InventoryMovement.tenant_id == tenant_id)
+        .where(InventoryMovement.type == "restock")
+        .where(InventoryMovement.created_at >= seven_days_ago)
+    ).one() or 0.0
+    
+    delivered_this_week = db.exec(
+        select(func.sum(InventoryMovement.quantity))
+        .where(InventoryMovement.tenant_id == tenant_id)
+        .where(InventoryMovement.type.in_(["delivery", "delivery_to_customer"]))
+        .where(InventoryMovement.created_at >= seven_days_ago)
+    ).one() or 0.0
+    
+    # Absolute value for deliveries (since they are stored as negative)
+    delivered_abs = abs(float(delivered_this_week))
+
+    # 6. Top Debtors (First 5 customers by balance)
     top_debtors = db.exec(
         select(Customer, CustomerBalance)
         .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
@@ -67,14 +89,13 @@ async def get_dashboard_summary(
         .limit(5)
     ).all()
     
-    # 6. Recent Activity (Last 6 movements)
-    from app.models.models import InventoryMovement
+    # 7. Recent Activity (Last 10 movements)
     recent_movements = db.exec(
         select(InventoryMovement, Customer)
         .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
         .where(InventoryMovement.tenant_id == tenant_id)
         .order_by(desc(InventoryMovement.created_at))
-        .limit(6)
+        .limit(10)
     ).all()
 
     return {
@@ -84,6 +105,8 @@ async def get_dashboard_summary(
             "total_payments": total_payments,
             "total_debt": total_debt_abs,
             "low_stock_count": low_stock_count,
+            "weekly_produced": float(produced_this_week),
+            "weekly_delivered": delivered_abs,
             "debug": {
                 "stock_records": stock_balance_count,
                 "customer_records": customer_balance_count
