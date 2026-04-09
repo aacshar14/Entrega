@@ -52,15 +52,17 @@ export default function RootPage() {
                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#56CCF2] opacity-75"></span>
                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#56CCF2]"></span>
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest">v1.1 Pilot Launch - ChocoBites Ready</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">v1.1 Pilot Launch - Open Beta</span>
                </div>
                
-               <h1 className="text-5xl md:text-7xl font-black leading-[0.95] tracking-tighter">
-                  Tu operación de <span className="text-[#56CCF2] italic">entrega</span> en piloto automático.
+               <h1 className="text-5xl md:text-8xl font-black leading-[0.9] tracking-tighter">
+                  Inteligencia <br/>
+                  <span className="text-[#56CCF2] italic">Logística</span> para <br/>
+                  tu Negocio.
                </h1>
                
                <p className="text-lg md:text-xl text-slate-500 font-medium max-w-2xl leading-relaxed">
-                  Entrega centraliza tus pedidos, clientes y stock en una experiencia <span className="text-[#1D3146] font-bold">mobile-first</span> diseñada para el mundo real. Olvida el caos de WhatsApp y las hojas de cálculo.
+                  Entrega centraliza pedidos, clientes y stock en una experiencia <span className="text-[#1D3146] font-bold">mobile-first</span>. Profesionaliza tu marca y olvida el caos operativo.
                </p>
                
                <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -76,30 +78,32 @@ export default function RootPage() {
                
                <div className="flex items-center gap-8 pt-8 border-t border-slate-50">
                   <div className="flex items-center gap-3">
-                     <div className="flex -space-x-4">
-                        {[1,2,3].map(i => <div key={i} className="w-10 h-10 rounded-full bg-slate-200 border-4 border-white"></div>)}
+                     <div className="flex -space-x-3">
+                        {[
+                          {bg: '#56CCF2', text: '#1D3146', initials: 'JD'},
+                          {bg: '#1D3146', text: '#56CCF2', initials: 'AM'},
+                          {bg: '#F1F5F9', text: '#64748B', initials: 'CB'}
+                        ].map((u, i) => (
+                           <div key={i} className="w-10 h-10 rounded-full border-4 border-white flex items-center justify-center font-black text-[10px]" style={{backgroundColor: u.bg, color: u.text}}>
+                              {u.initials}
+                           </div>
+                        ))}
                      </div>
-                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">+50 Negocios en espera</p>
+                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">+12 Negocios operando</p>
                   </div>
                   <div className="h-10 w-px bg-slate-100 px-0"></div>
                   <div className="flex items-center gap-3">
                      <img src="/chocobites.jpg" className="w-8 h-8 rounded-lg grayscale opacity-50" alt="ChocoBites" />
-                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Pilot: Chocobites</p>
+                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-black italic">Pilot Launch</p>
                   </div>
                </div>
             </div>
             
-             <div className="lg:col-span-5 relative">
-                <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30"></div>
-                <div className="relative bg-[#1D3146] p-3 rounded-[3rem] shadow-2xl rotate-[2deg] group overflow-hidden">
-                   <div className="bg-white rounded-[2.5rem] overflow-hidden aspect-[9/16] relative transition-transform duration-1000 group-hover:scale-105">
-                      <img src="/onboarding_step_1.png" className="w-full h-full object-cover" alt="Entrega Mobile App" />
-                      
-                      {/* STEALTH PATCH: Masking legacy logo with matching background color */}
-                      <div className="absolute top-[8.5%] right-[8.5%] w-[21%] aspect-square bg-[#EBEEF2] rounded-2xl flex items-center justify-center">
-                         <Logo variant="master" className="w-[85%] h-auto opacity-90" />
-                      </div>
-                      
+             <div className="lg:col-span-5 relative group">
+                <div className="absolute inset-0 bg-[#56CCF2]/20 blur-[120px] rounded-full scale-150 opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                <div className="relative bg-[#1D3146] p-1.5 rounded-[3rem] shadow-2xl rotate-[1deg] group-hover:rotate-0 transition-all duration-700">
+                   <div className="bg-white rounded-[2.8rem] overflow-hidden aspect-[4/5] relative transition-transform duration-1000">
+                      <img src="/banner.png" className="w-full h-full object-cover" alt="Entrega Intelligence Dashboard" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1D3146]/20 to-transparent pointer-events-none"></div>
                    </div>
                 </div>
@@ -120,24 +124,24 @@ export default function RootPage() {
                {[
                   { 
                     icon: Users, 
-                    title: 'Formato Clientes (CSV)', 
-                    desc: 'Plantilla estandarizada para cargar tu base de datos masivamente sin errores.',
-                    action: 'Descargar CSV',
-                    href: '/docs/customers-template'
+                    title: 'Formato Clientes', 
+                    desc: 'Aprende a estructurar tu base de datos para una carga masiva sin fallos.',
+                    action: 'Ver Guía Tactica',
+                    href: '/learning'
                   },
                   { 
                     icon: Package, 
                     title: 'Control de Stock', 
                     desc: 'Estructura recomendada para sincronizar inventario inicial y precios.',
-                    action: 'Carga de CSV',
-                    href: '/docs/stock-template'
+                    action: 'Gestionar Stock',
+                    href: '/stock'
                   },
                   { 
                     icon: MessageCircle, 
                     title: 'WhatsApp Business', 
-                    desc: 'Configuración paso a paso para conectar tu número oficial con Entrega.',
+                    desc: 'Configuración técnica para conectar tu número oficial con el motor AI.',
                     action: 'Ver Tutorial',
-                    href: '/docs/whatsapp-guide'
+                    href: '/learning'
                   }
                ].map((card, i) => (
                   <Link key={i} href={card.href} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-[#1D3146]/5 transition-all group cursor-pointer hover:-translate-y-2 block">
@@ -187,7 +191,7 @@ export default function RootPage() {
                   </div>
                   <ul className="text-left space-y-4 mb-12 max-w-xs mx-auto">
                      <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Usuarios Ilimitados</li>
-                     <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Soporte ChocoBites 24/7</li>
+                     <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Soporte Prioritario Beta</li>
                      <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="text-[#56CCF2]" size={18} /> Panel de Costos Avanzado</li>
                   </ul>
                   <Link href="/onboarding" className="inline-block w-full bg-[#56CCF2] text-[#1D3146] px-16 py-6 rounded-3xl font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-2xl shadow-[#56CCF2]/20">
@@ -212,14 +216,17 @@ export default function RootPage() {
          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
             <div className="space-y-4 text-center md:text-left">
                <Logo variant="master" className="h-32 w-auto brightness-110" />
-               <div className="space-y-1">
-                  <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Crafted for ChocoBites & The New Logistics Generation</p>
-                  <Link href="/privacy-policy" className="text-[10px] text-slate-500 hover:text-[#56CCF2] transition-colors font-bold uppercase tracking-widest">
-                    Política de Privacidad
-                  </Link>
-                  <p className="text-[8px] text-slate-600 font-medium uppercase tracking-tighter opacity-50 mt-2">
-                    Entrega is a SaaS platform for business inventory and delivery operations.
-                  </p>
+               <div className="space-y-4">
+                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-4">Crafted for The New Logistics Generation</p>
+                  <div className="flex flex-col gap-4">
+                     <Link href="/privacy-policy" className="inline-flex items-center justify-center md:justify-start gap-2 bg-[#56CCF2]/10 text-[#56CCF2] px-6 py-3 rounded-xl hover:bg-[#56CCF2]/20 transition-all text-xs font-black uppercase tracking-widest border border-[#56CCF2]/20">
+                        <ShieldCheck size={16} />
+                        Política de Privacidad
+                     </Link>
+                     <p className="text-[8px] text-slate-600 font-medium uppercase tracking-tighter opacity-50">
+                        Entrega is a SaaS platform for business inventory and delivery operations.
+                     </p>
+                  </div>
                </div>
             </div>
             
