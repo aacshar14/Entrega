@@ -124,7 +124,7 @@ async def get_dashboard_summary(
         "stats": {
             "customer_count": customer_count,
             "product_count": product_count,
-            "total_payments": total_payments,
+            "total_payments": float(total_payments),
             "total_debt": total_debt_abs,
             "low_stock_count": low_stock_count,
             "weekly_produced": float(produced_this_week),
@@ -134,9 +134,7 @@ async def get_dashboard_summary(
                 "customer_records": customer_balance_count
             }
         },
-        "stock": [
-            {"name": name, "quantity": qty} for name, qty in top_stock_results
-        ],
+        "stock": formatted_stock,
         "debtors": [
             {"name": c.name, "amount": abs(float(cb.balance))} for c, cb in top_debtors if cb.balance < 0
         ],
