@@ -49,24 +49,18 @@ async def get_dashboard_summary(
         .where(StockBalance.quantity <= 10)
     ).one()
     
-    # 4. Top Stock (Now all active products for the tenant, no more limit 5)
-    top_stock_query = (
-        select(Product.name, StockBalance.quantity)
-        .join(StockBalance, Product.id == StockBalance.product_id)
-        .where(Product.tenant_id == tenant_id)
-        .order_by(desc(StockBalance.quantity))
-    )
-    top_stock_results = db.exec(top_stock_query).all()
-    
     # 5. Weekly Stats (Production vs Deliveries)
+    from datetime import timedelta
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     
     from app.models.models import InventoryMovement
     
+    # In Entrega, users sometimes use 'adjustment' to record production
     produced_this_week = db.exec(
         select(func.sum(InventoryMovement.quantity))
         .where(InventoryMovement.tenant_id == tenant_id)
-        .where(InventoryMovement.type == "restock")
+        .where(InventoryMovement.type.in_(["restock", "adjustment"]))
+        .where(InventoryMovement.quantity > 0)
         .where(InventoryMovement.created_at >= seven_days_ago)
     ).one() or 0.0
     
@@ -77,8 +71,36 @@ async def get_dashboard_summary(
         .where(InventoryMovement.created_at >= seven_days_ago)
     ).one() or 0.0
     
-    # Absolute value for deliveries (since they are stored as negative)
     delivered_abs = abs(float(delivered_this_week))
+
+    # 4. Master Stock (Warehouse + Outside)
+    # Get outside quantities per product (delivery - returns - sales)
+    outside_types = ["delivery", "delivery_to_customer", "return", "return_from_customer", "sale_reported"]
+    outside_query = (
+        select(InventoryMovement.product_id, func.sum(InventoryMovement.quantity).label("outside_net"))
+        .where(InventoryMovement.tenant_id == tenant_id)
+        .where(InventoryMovement.type.in_(outside_types))
+        .group_by(InventoryMovement.product_id)
+    )
+    outside_data = {row[0]: -float(row[1]) for row in db.exec(outside_query).all()}
+
+    top_stock_query = (
+        select(Product.id, Product.name, StockBalance.quantity)
+        .join(StockBalance, Product.id == StockBalance.product_id)
+        .where(Product.tenant_id == tenant_id)
+        .order_by(desc(StockBalance.quantity))
+    )
+    top_stock_results = db.exec(top_stock_query).all()
+    
+    formatted_stock = []
+    for p_id, name, qty in top_stock_results:
+        qty_outside = outside_data.get(p_id, 0.0)
+        formatted_stock.append({
+            "name": name,
+            "quantity": qty,
+            "quantity_outside": qty_outside,
+            "total": qty + qty_outside
+        })
 
     # 6. Top Debtors (First 5 customers by balance)
     top_debtors = db.exec(

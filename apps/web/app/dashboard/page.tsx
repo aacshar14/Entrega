@@ -26,9 +26,16 @@ interface DashboardStats {
   weekly_delivered: number;
 }
 
+interface StockItem {
+  name: string;
+  quantity: number;
+  quantity_outside: number;
+  total: number;
+}
+
 interface DashboardData {
   stats: DashboardStats;
-  stock: Array<{ name: string, quantity: number }>;
+  stock: Array<StockItem>;
   debtors: Array<{ name: string, amount: number }>;
   recent_activity?: Array<{
     id: string;
@@ -206,19 +213,41 @@ export default function Dashboard() {
                   <h3 className="font-extrabold text-[#1D3146] text-xl tracking-tight">Stock Maestro</h3>
                   <Link href="/stock" className="text-[10px] font-black uppercase text-[#56CCF2] tracking-widest">IR AL ALMACÉN</Link>
                </div>
-               <div className="p-0">
-                  <div className="grid grid-cols-2 bg-slate-50/50 py-3 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                     <span>PRODUCTO</span>
-                     <span className="text-right">DISPONIBLE</span>
-                  </div>
-                  {data.stock.length > 0 ? data.stock.map((p, i) => (
-                    <div key={i} className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default">
-                       <span className="text-base font-bold text-[#1D3146]">{p.name}</span>
-                       <span className={`text-right text-lg font-black ${p.quantity < 10 ? 'text-rose-500' : 'text-[#1D3146]'}`}>
-                          {p.quantity} <span className="text-[10px] uppercase tracking-tighter opacity-40">unid.</span>
-                       </span>
-                    </div>
-                  )) : (
+               <div className="p-0 px-8 pb-8">
+                  {data.stock.length > 0 ? (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                          <th className="pb-4">Producto</th>
+                          <th className="pb-4 text-center">Almacén</th>
+                          <th className="pb-4 text-center">Fuera</th>
+                          <th className="pb-4 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {data.stock.map((item, idx) => (
+                          <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
+                            <td className="py-4 font-bold text-slate-700">{item.name}</td>
+                            <td className="py-4 text-center">
+                              <span className={`${item.quantity <= 10 ? 'text-orange-600' : 'text-slate-600'} font-medium`}>
+                                {item.quantity}
+                              </span>
+                            </td>
+                            <td className="py-4 text-center text-slate-400 font-medium">
+                              {item.quantity_outside > 0 ? (
+                                <span className="text-blue-500">+{item.quantity_outside}</span>
+                              ) : (
+                                '0'
+                              )}
+                            </td>
+                            <td className="py-4 text-right font-black text-slate-900">
+                              {item.quantity + item.quantity_outside}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
                     <div className="p-10 text-center text-slate-400 text-xs font-bold italic">No hay productos en inventario.</div>
                   )}
                </div>
