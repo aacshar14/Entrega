@@ -22,13 +22,13 @@ export default function RootPage() {
     <div className="min-h-screen bg-white text-[#1D3146] font-sans selection:bg-[#56CCF2]/30">
       
       {/* 1. STICKY HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-[100] bg-[#1D3146] border-b border-[#1D3146]/20">
-         <div className="max-w-7xl mx-auto px-6 h-28 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-[#1D3146] border-b border-[#1D3146]/20 backdrop-blur-md">
+         <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 flex items-center justify-between transition-all duration-300">
             <Link href="/" className="flex items-center gap-3">
-               <Logo variant="master" className="h-24 w-auto" />
+               <Logo variant="master" className="h-12 md:h-32 w-auto drop-shadow-xl" />
             </Link>
             
-            <nav className="hidden md:flex items-center gap-10">
+            <nav className="hidden md:flex items-center gap-6 lg:gap-10">
                <a href="#como-funciona" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Cómo Funciona</a>
                <a href="#recursos" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Recursos</a>
                <a href="#precios" className="text-sm font-bold text-slate-300 hover:text-white transition-colors">Precios</a>
@@ -44,7 +44,7 @@ export default function RootPage() {
       </header>
 
       {/* 2. HERO SECTION */}
-      <section id="como-funciona" className="pt-40 pb-20 px-6">
+      <section id="como-funciona" className="pt-32 md:pt-60 pb-20 px-6">
          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
             <div className="lg:col-span-7 space-y-8">
                <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#56CCF2]/10 text-[#1D3146] rounded-full border border-[#56CCF2]/20">
