@@ -70,7 +70,7 @@ export default function RootPage() {
                      Activar mi Negocio
                      <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
-                  <Link href="/docs" className="h-16 px-10 bg-white border-2 border-slate-100 text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:bg-slate-50 transition-all">
+                  <Link href="/onboarding_demo.webp" target="_blank" rel="noopener noreferrer" className="h-16 px-10 bg-white border-2 border-slate-100 text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:bg-slate-50 transition-all">
                      <PlayCircle size={20} />
                      Ver Demo
                   </Link>
