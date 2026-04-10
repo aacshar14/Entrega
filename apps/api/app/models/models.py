@@ -426,6 +426,12 @@ class TenantInfo(BaseModel):
     timezone: str = "UTC"
     currency: str = "MXN"
 
+    # Billing (V1.3)
+    billing_status: str = "trial"
+    trial_ends_at: Optional[datetime] = None
+    grace_ends_at: Optional[datetime] = None
+    subscription_ends_at: Optional[datetime] = None
+
 
 class MembershipInfo(BaseModel):
     tenant: TenantInfo

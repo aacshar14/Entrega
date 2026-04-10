@@ -78,6 +78,10 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         currency=tenant.currency,
         ready=has_customers
         and has_products,  # Business rule: customers + stock = ready
+        billing_status=tenant.billing_status,
+        trial_ends_at=tenant.trial_ends_at,
+        grace_ends_at=tenant.grace_ends_at,
+        subscription_ends_at=tenant.subscription_ends_at,
     )
 
 

@@ -184,24 +184,6 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                 "retry_count": int(get_val("tenant_retries_24h")),
                 "backlog": int(get_val("tenant_backlog_current")),
                 "support_kpis": support_kpis,
-                "billing": {
-                    "status": tenant.billing_status,
-                    "trial_ends_at": (
-                        tenant.trial_ends_at.isoformat()
-                        if tenant.trial_ends_at
-                        else None
-                    ),
-                    "grace_ends_at": (
-                        tenant.grace_ends_at.isoformat()
-                        if tenant.grace_ends_at
-                        else None
-                    ),
-                    "subscription_ends_at": (
-                        tenant.subscription_ends_at.isoformat()
-                        if tenant.subscription_ends_at
-                        else None
-                    ),
-                },
                 "status": (
                     "hot"
                     if volume_24h > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
@@ -523,6 +505,8 @@ async def update_tenant_billing(
         return {"error": "Tenant not found"}, 404
 
     now = datetime.now(timezone.utc)
+    status_before = tenant.billing_status
+    
     tenant.billing_status = update.status
     tenant.billing_notes = update.notes
     tenant.billing_updated_by = current_user.id
@@ -542,6 +526,16 @@ async def update_tenant_billing(
 
     tenant.updated_at = now
     db.add(tenant)
+
+    # Compliance: Add to AuditLog
+    audit_log = AuditLog(
+        performed_by=current_user.id,
+        action=f"update_billing_status:{tenant.slug}",
+        module="platform_admin",
+        data_before=f"status:{status_before}",
+        data_after=f"status:{update.status}",
+    )
+    db.add(audit_log)
     db.commit()
     db.refresh(tenant)
 

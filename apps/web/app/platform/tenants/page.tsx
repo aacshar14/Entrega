@@ -9,11 +9,14 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  MoreVertical,
   Activity,
-  History
+  History,
+  ShieldAlert,
+  Zap,
+  Clock
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
+import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 
 export default function PlatformTenants() {
@@ -24,6 +27,25 @@ export default function PlatformTenants() {
     m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const updateBilling = async (tenantId: string, status: string, days?: number) => {
+    try {
+      if (!confirm(`Confirmar cambio a estado: ${status.toUpperCase()}?`)) return;
+      await apiRequest(`admin/tenants/${tenantId}/billing`, 'PATCH', {
+        status,
+        trial_days: status === 'trial' ? days : undefined,
+        grace_days: status === 'grace' ? days : undefined,
+        notes: `Manual Registry Action: ${status}`
+      });
+      // Context will likely needs a refresh to show updated data if not real-time
+      // But for now, we tell the user or just window.reload for safety if refreshUser not enough
+      alert('Actualizado. Actualizando vista...');
+      window.location.reload();
+    } catch (err) {
+      console.error('Billing update failed:', err);
+      alert('Error logic billing update');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -68,8 +90,9 @@ export default function PlatformTenants() {
               <th className="pl-10 py-6">Estructura</th>
               <th className="px-6 py-6">ID / Slug</th>
               <th className="px-6 py-6">Status</th>
+              <th className="px-6 py-6">Billing / Plan</th>
               <th className="px-6 py-6 text-center">Ready State</th>
-              <th className="pr-10 py-6 text-right">Acciones</th>
+              <th className="pr-10 py-6 text-right">Acciones Directas</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -97,6 +120,33 @@ export default function PlatformTenants() {
                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                      <span className="text-sm font-bold text-slate-700 capitalize">{m.tenant.status}</span>
                   </div>
+                </td>
+                <td className="px-6 py-6 font-medium border-l border-slate-50">
+                   <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider text-white shadow-sm ${
+                            (m.tenant as any).billing_status === 'active_paid' ? 'bg-emerald-500 shadow-emerald-500/20' :
+                            (m.tenant as any).billing_status === 'trial' ? 'bg-blue-500' :
+                            (m.tenant as any).billing_status === 'grace' ? 'bg-amber-500' :
+                            'bg-rose-500'
+                         }`}>
+                            {(m.tenant as any).billing_status || 'Unknown'}
+                         </span>
+                         <span className="text-[10px] font-black text-[#1D3146] opacity-40">
+                            {(m.tenant as any).billing_status === 'active_paid' ? 'LIFETIME' : (
+                               (m.tenant as any).billing_status === 'trial' ? `${Math.max(0, Math.ceil((new Date((m.tenant as any).trial_ends_at!).getTime() - Date.now()) / (1000*60*60*24)))}d left` :
+                               (m.tenant as any).billing_status === 'grace' ? `${Math.max(0, Math.ceil((new Date((m.tenant as any).grace_ends_at!).getTime() - Date.now()) / (1000*60*60*24)))}d left` :
+                               'EXPIRED'
+                            )}
+                         </span>
+                      </div>
+                      <div className="flex gap-1.5 mt-1">
+                         <button onClick={() => updateBilling(m.tenant.id, 'trial', 7)} className="text-[8px] font-black bg-slate-50 hover:bg-blue-100 hover:text-blue-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">TRIAL</button>
+                         <button onClick={() => updateBilling(m.tenant.id, 'active_paid')} className="text-[8px] font-black bg-slate-50 hover:bg-emerald-100 hover:text-emerald-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">PAID</button>
+                         <button onClick={() => updateBilling(m.tenant.id, 'grace', 3)} className="text-[8px] font-black bg-slate-50 hover:bg-amber-100 hover:text-amber-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">G3</button>
+                         <button onClick={() => updateBilling(m.tenant.id, 'suspended')} className="text-[8px] font-black bg-slate-50 hover:bg-rose-100 hover:text-rose-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">OFF</button>
+                      </div>
+                   </div>
                 </td>
                 <td className="px-6 py-6">
                    <div className="flex justify-center">

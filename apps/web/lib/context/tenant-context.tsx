@@ -30,6 +30,10 @@ interface Tenant {
   whatsapp_app_id?: string;
   timezone?: string;
   currency?: string;
+  billing_status?: string;
+  trial_ends_at?: string;
+  grace_ends_at?: string;
+  subscription_ends_at?: string;
 }
 
 interface Membership {
