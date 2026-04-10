@@ -23,6 +23,7 @@ import {
 import { useTenant } from '../lib/context/tenant-context';
 import { apiRequest } from '../lib/api';
 import Logo from './logo';
+import NotificationCenter from './notification-center';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, activeTenant, memberships, switchTenant, isLoading } = useTenant();
@@ -150,6 +151,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#56CCF2]/40 -mt-2">Branding Oficial v1.2</span>
            </Link>
            
+            {/* Desktop Quick Actions Hub */}
+            <div className="flex items-center justify-between w-full px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
+               <NotificationCenter />
+               <div className="w-px h-6 bg-white/10"></div>
+               <button className="p-3 hover:bg-white/10 rounded-xl transition-all text-slate-300">
+                  <Settings size={20} />
+               </button>
+            </div>
+
            {/* TENANT SWITCHER */}
            <div className="relative w-full">
               <div 
@@ -241,10 +251,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <Logo variant="master" className="w-32 h-auto ml-2" />
          </div>
          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Bell size={22} className="text-slate-300" />
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#56CCF2] border-2 border-[#1D3146] rounded-full"></span>
-            </div>
+            <NotificationCenter />
             <div className="w-9 h-9 rounded-full bg-[#2B4764] border border-white/20 flex items-center justify-center font-black text-xs text-[#56CCF2] shadow-inner">
                {user?.full_name.split(' ').map(n => n[0]).join('')}
             </div>

@@ -516,3 +516,36 @@ class BusinessMetricEvent(SQLModel, table=True):
     metadata_json: Optional[str] = Field(default=None)
 
     created_at: datetime = Field(default_factory=get_utc_now, index=True)
+
+
+class Notification(SQLModel, table=True):
+    """
+    Intelligent notification system for Tenants and Platform Admins.
+    Focuses on actionable signals, not logs.
+    """
+
+    __tablename__ = "notifications"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: Optional[UUID] = Field(
+        default=None, foreign_key="tenants.id", index=True
+    )  # NULL = Platform Admin
+
+    # Categories per V1.6.4 specs:
+    # Tenant: sales, action_required, operations, optimization
+    # Platform: sales_opp, churn_risk, errors, growth
+    category: str = Field(index=True)
+    priority: str = Field(default="medium", index=True)  # low, medium, high, critical
+
+    title: str
+    message: str
+
+    # Direct Actionability
+    cta_label: Optional[str] = None
+    cta_link: Optional[str] = None
+
+    is_read: bool = Field(default=False, index=True)
+    metadata_json: Optional[str] = Field(default=None)
+
+    created_at: datetime = Field(default_factory=get_utc_now, index=True)
+    expires_at: Optional[datetime] = None
