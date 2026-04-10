@@ -29,6 +29,10 @@ def get_application() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     
+    # Enable Proxy Headers (Essential for Cloud Run HTTPS redirects)
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+    
     # Add Observability Middleware
     app.add_middleware(ObservabilityMiddleware)
     

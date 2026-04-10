@@ -81,7 +81,7 @@ export default function SettingsPage() {
   const fetchTeam = async () => {
     if (!activeTenant) return;
     try {
-      const data = await apiRequest('/users/', 'GET', null, activeTenant.id);
+      const data = await apiRequest('/users', 'GET', null, activeTenant.id);
       setTeam(data || []);
     } catch (err) {
       console.error("Error fetching team:", err);
@@ -144,7 +144,7 @@ export default function SettingsPage() {
     if (!activeTenant) return;
     setLoading(true);
     try {
-      await apiRequest('/users/', 'POST', {
+      await apiRequest('/users', 'POST', {
         email: newUser.email,
         full_name: newUser.name,
         role: newUser.role
