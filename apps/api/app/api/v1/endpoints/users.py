@@ -47,20 +47,29 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     # Check WhatsApp
 
     # 🆕 Unified Integration Lookup (V1.4 Source of Truth)
-    wa_integ = db.exec(
-        select(TenantWhatsAppIntegration).where(
-            TenantWhatsAppIntegration.tenant_id == tenant.id
-        )
-    ).first()
-
+    # 🛡️ Hardening: Defensive lookup to prevent /me 500 if DB is out of sync
     status = "not_connected"
     display_number = None
     account_name = None
 
-    if wa_integ:
-        status = wa_integ.status
-        display_number = wa_integ.display_phone_number or wa_integ.phone_number_id
-        account_name = wa_integ.business_name
+    try:
+        wa_integ = db.exec(
+            select(TenantWhatsAppIntegration).where(
+                TenantWhatsAppIntegration.tenant_id == tenant.id
+            )
+        ).first()
+
+        if wa_integ:
+            status = wa_integ.status or "connected"
+            display_number = wa_integ.display_phone_number or wa_integ.phone_number_id
+            account_name = wa_integ.business_name
+    except Exception as e:
+        logger.warning(
+            "users.get_tenant_info.wa_lookup_failed",
+            tenant_id=str(tenant.id),
+            error=str(e),
+        )
+        # Fallback to defaults already set above
 
     has_wa = status == "connected" or status == "verified"
 
