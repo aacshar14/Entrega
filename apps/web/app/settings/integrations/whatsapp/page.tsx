@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTenant } from '@/lib/context/tenant-context';
+import ConfirmModal from '@/components/confirm-modal';
 
 interface WhatsAppStatus {
   status: 'not_connected' | 'connected' | 'token_expired' | 'reconnect_required' | 'disconnected' | 'pending';
@@ -33,10 +34,16 @@ interface WhatsAppStatus {
 }
 
 export default function WhatsAppConfigPage() {
-  const { activeTenant } = useTenant();
+  const { activeTenant, user, memberships } = useTenant();
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+
+  // Check permissions: platform admin or (active tenant membership role in [owner, operator])
+  const activeMembership = memberships.find(m => m.tenant.id === activeTenant?.id);
+  const canManage = user?.platform_role === 'admin' || 
+                    ['owner', 'operator'].includes(activeMembership?.role || '');
 
   const fetchStatus = async () => {
     try {
@@ -158,7 +165,7 @@ export default function WhatsAppConfigPage() {
   };
 
   const handleDisconnect = async () => {
-    if (!confirm('¿Seguro que deseas suspender la integración de WhatsApp?')) return;
+    setShowDisconnectModal(false);
     setProcessing(true);
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/disconnect`, {
@@ -241,29 +248,41 @@ export default function WhatsAppConfigPage() {
                 </p>
               </div>
 
-              {status?.status === 'connected' ? (
-                <div className="flex flex-wrap gap-4 pt-4">
+              <div className="flex flex-wrap gap-4 pt-4">
+                {status?.status === 'connected' ? (
                   <button 
-                    onClick={handleDisconnect}
-                    disabled={processing}
-                    className="flex items-center gap-3 px-8 py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm active:scale-95"
+                    onClick={() => setShowDisconnectModal(true)}
+                    disabled={processing || !canManage}
+                    className="flex items-center gap-3 px-8 py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm active:scale-95 disabled:opacity-30"
                   >
                     <Power size={16} />
                     Desconectar cuenta
                   </button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-4 pt-4">
-                  <button 
-                    onClick={handleLaunchOnboarding}
-                    disabled={processing}
-                    className="flex items-center gap-3 px-10 py-5 bg-[#1D3146] text-[#56CCF2] rounded-3xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1D3146]/20 transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {processing ? <RefreshCw className="animate-spin" size={20} /> : <MessageCircle size={20} />}
-                    {status?.status === 'token_expired' ? 'Re-validar Conexión' : 'Vincular WhatsApp'}
-                  </button>
-                </div>
-              )}
+                ) : (
+                  <>
+                    <button 
+                      onClick={handleLaunchOnboarding}
+                      disabled={processing || !canManage}
+                      className="flex items-center gap-3 px-10 py-5 bg-[#1D3146] text-[#56CCF2] rounded-3xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1D3146]/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {processing ? <RefreshCw className="animate-spin" size={20} /> : <MessageCircle size={20} />}
+                      {status?.status === 'token_expired' ? 'Re-validar Conexión' : 'Vincular WhatsApp'}
+                    </button>
+                    
+                    {/* Allow disconnect if there is some metadata present even if not fully connected */}
+                    {(status?.phone_number_id || status?.status !== 'not_connected') && (
+                      <button 
+                        onClick={() => setShowDisconnectModal(true)}
+                        disabled={processing || !canManage}
+                        className="flex items-center gap-3 px-8 py-4 text-slate-400 hover:text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+                      >
+                        <Power size={16} />
+                        Limpiar Configuración
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="w-full md:w-72 space-y-4">
@@ -325,6 +344,16 @@ export default function WhatsAppConfigPage() {
         </div>
 
       </div>
+
+      <ConfirmModal 
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={handleDisconnect}
+        title="¿Desconectar WhatsApp?"
+        message="Esta acción suspenderá el procesamiento automático de pedidos y eliminará el acceso de EntréGA a tu número oficial de Meta. ¿Deseas continuar?"
+        confirmLabel="Sí, Desconectar"
+        variant="danger"
+      />
     </div>
   );
 }

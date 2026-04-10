@@ -68,6 +68,41 @@ def get_application() -> FastAPI:
 
 app = get_application()
 
+
+@app.on_event("startup")
+async def check_rls_hardening():
+    """
+    Optional Security Guard: Verifies that critical tables have RLS enabled at startup.
+    This ensures that the 'deny-by-default' policy for PostgREST is active.
+    """
+    from app.core.db import engine
+    from sqlalchemy import text
+    from app.core.logging import logger
+
+    critical_tables = ("users", "tenants", "notifications", "audit_logs")
+    query = text("""
+        SELECT relname 
+        FROM pg_class 
+        JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+        WHERE relname IN :tables AND relrowsecurity = false AND pg_namespace.nspname = 'public';
+    """)
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(query, {"tables": critical_tables}).fetchall()
+            if result:
+                vulnerable = [r[0] for r in result]
+                logger.error(
+                    "SECURITY WARNING: Row-Level Security (RLS) is DISABLED on critical tables!",
+                    vulnerable_tables=vulnerable,
+                    action_required="Apply Alembic migration v1_6_5 to ENABLE RLS immediately.",
+                )
+            else:
+                logger.info("SECURITY AUDIT: RLS is verified on all critical tables.")
+    except Exception as e:
+        logger.warning("SECURITY AUDIT: Could not verify RLS state", error=str(e))
+
+
 from fastapi.responses import HTMLResponse
 
 
