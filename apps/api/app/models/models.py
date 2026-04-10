@@ -459,3 +459,27 @@ class ProcessedMessage(SQLModel, table=True):
         # Operational index for cleanup and recovery tasks
         Index("idx_processed_messages_status_updated", "status", "updated_at"),
     )
+
+
+# --- 📊 Business Telemetry (V1.2 Final) ---
+
+
+class BusinessMetricEvent(SQLModel, table=True):
+    """
+    Persistent event log for tenant metrics at scale.
+    Backs the business dashboard without relaying on logs.
+    """
+
+    __tablename__ = "business_metric_events"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
+
+    # Event Types: 'order_processed', 'stock_insufficient', 'processing_failed', 'sale_tracked'
+    event_type: str = Field(index=True)
+
+    # Optional payload for aggregation (e.g. amount for sales)
+    amount: Optional[float] = Field(default=None)
+    metadata_json: Optional[str] = Field(default=None)
+
+    created_at: datetime = Field(default_factory=get_utc_now, index=True)

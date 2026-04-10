@@ -1,11 +1,10 @@
 import re
 import json
 import unicodedata
-from typing import Optional, Dict, List
-from uuid import UUID
-from sqlmodel import Session, select
+import hashlib
 from datetime import datetime, timezone
-
+from typing import List, Dict, Optional, Tuple, Any
+from sqlmodel import Session, select
 from app.models.models import (
     Customer,
     Product,
@@ -14,7 +13,11 @@ from app.models.models import (
     Tenant,
     StockBalance,
     InventoryMovement,
+    CustomerBalance,
+    InboundEvent,
+    BusinessMetricEvent,
 )
+from app.core.logging import logger
 
 
 class ParsingEngine:
@@ -135,7 +138,7 @@ class ParsingEngine:
 
     def execute_order(self, customer: Customer, items: List[Dict]):
         """Executes inventory delivery to customer and adds financial debt"""
-        from app.models.models import CustomerBalance
+        total_delivery_charge = 0.0
 
         for item in items:
             sku = item["sku"]
@@ -151,6 +154,7 @@ class ParsingEngine:
                 continue
 
             total_charge = product.price_menudeo * qty
+            total_delivery_charge += total_charge
 
             # 1. Update Financial Debt for the Customer (Consignment/Credit)
             cust_balance = self.session.exec(
@@ -171,7 +175,6 @@ class ParsingEngine:
             # Resta del saldo (Genera deuda al cliente en negativo)
             cust_balance.balance -= total_charge
             # 2. Update Warehouse Stock (P0 Locking + Refinements)
-            from app.models.models import StockBalance
 
             logger.info(
                 "inventory.lock_request", sku=sku, tenant_id=str(self.tenant.id)
@@ -224,6 +227,15 @@ class ParsingEngine:
                 total_amount=total_charge,
             )
             self.session.add(movement)
+
+        # Emit Business Event: Order Processed
+        self.session.add(
+            BusinessMetricEvent(
+                tenant_id=self.tenant.id,
+                event_type="order_processed",
+                amount=total_delivery_charge,
+            )
+        )
 
     def extract_customer(self, text: str, sender_phone: str) -> Customer:
         """Finds the target customer through Aliases, Names, or Fragments."""
@@ -297,10 +309,23 @@ class ParsingEngine:
         self.session.add(log)
 
         if items:
-            normalized_text = self._normalize(raw_text)
-            customer = self.extract_customer(normalized_text, sender)
-            self.execute_order(customer, items)
-            log.final_status = "processed"
+            try:
+                normalized_text = self._normalize(raw_text)
+                customer = self.extract_customer(normalized_text, sender)
+                self.execute_order(customer, items)
+                log.final_status = "processed"
+            except ValueError as e:
+                self.session.rollback()
+                if "Stock insuficiente" in str(e):
+                    self.session.add(
+                        BusinessMetricEvent(
+                            tenant_id=self.tenant.id,
+                            event_type="stock_insufficient",
+                            metadata_json=json.dumps({"error": str(e)}),
+                        )
+                    )
+                log.final_status = "failed"
+                raise e
 
         self.session.commit()
         return log
