@@ -146,8 +146,8 @@ export default function RootPage() {
                      desc: 'Equivocaciones en entregas y cobros que dañan tu reputación.',
                    }
                 ].map((card, i) => (
-                   <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all group block">
-                      <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mb-8">
+                   <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all group block hover:shadow-xl hover:shadow-[#1D3146]/5">
+                      <div className="w-14 h-14 bg-[#1D3146] text-[#56CCF2] rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-[#1D3146]/20 group-hover:scale-110 transition-transform">
                          <card.icon size={28} />
                       </div>
                       <h4 className="text-xl font-black mb-4 tracking-tight">{card.title}</h4>
@@ -180,8 +180,8 @@ export default function RootPage() {
                      desc: 'El saldo del cliente se ajusta en el dashboard al instante.',
                    }
                 ].map((card, i) => (
-                   <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all group block">
-                      <div className="w-14 h-14 bg-[#56CCF2]/10 text-[#56CCF2] rounded-2xl flex items-center justify-center mb-8">
+                   <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all group block hover:shadow-xl hover:shadow-[#1D3146]/5">
+                      <div className="w-14 h-14 bg-[#1D3146] text-[#56CCF2] rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-[#1D3146]/20 group-hover:scale-110 transition-transform">
                          <card.icon size={28} />
                       </div>
                       <h4 className="text-xl font-black mb-4 tracking-tight">{card.title}</h4>
