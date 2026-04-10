@@ -113,6 +113,21 @@ jobs:
           docker push $API_IMAGE:${{ github.sha }}
           docker push $API_IMAGE:latest
 
+      - name: 🚀 Database Migration (Pre-Deploy Job)
+        run: |-
+          # Ensure Job exists and points to latest image
+          gcloud run jobs deploy migrate-api \
+            --image $API_IMAGE:${{ github.sha }} \
+            --command "python" \
+            --args "-m,alembic,upgrade,head" \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --region $REGION \
+            --quiet
+
+          # Execute Job and wait for completion
+          echo "Executing migration job..."
+          gcloud run jobs execute migrate-api --region $REGION --wait
+
 
       - name: Deploy API to Cloud Run
         run: |-
