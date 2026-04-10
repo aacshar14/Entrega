@@ -105,8 +105,15 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     access_token_encrypted: Optional[str] = None
     status: str = Field(
         default="pending"
-    )  # 'pending', 'connected', 'disconnected', 'failed'
-    connected_at: datetime = Field(default_factory=get_utc_now)
+    )  # 'connected', 'disconnected', 'token_expired', 'reconnect_required', 'pending'
+    connected_at: Optional[datetime] = Field(default=None)
+    last_validated_at: Optional[datetime] = None
+    disconnected_at: Optional[datetime] = None
+    metadata_json: Optional[str] = Field(default=None)
+
+    onboarding_nonce: Optional[str] = None
+    onboarding_nonce_expires_at: Optional[datetime] = None
+
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     updated_at: datetime = Field(default_factory=get_utc_now)
 

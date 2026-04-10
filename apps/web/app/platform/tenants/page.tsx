@@ -38,10 +38,12 @@ export default function PlatformTenants() {
     variant: 'danger' | 'info';
   } | null>(null);
 
-  const filtered = memberships.filter(m => 
-    m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = memberships.filter(m => {
+    const matchesSearch = m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || (m.tenant as any).whatsapp_status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const executeUpdate = async () => {
     if (!modalConfig) return;
@@ -169,6 +171,20 @@ export default function PlatformTenants() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="flex items-center gap-2">
+           <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">WhatsApp Status:</span>
+           <select 
+             className="bg-slate-50 border-none text-xs font-black text-[#1D3146] rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#56CCF2]"
+             value={statusFilter}
+             onChange={(e) => setStatusFilter(e.target.value)}
+           >
+              <option value="all">TODOS</option>
+              <option value="connected">CONECTADOS</option>
+              <option value="token_expired">TOKEN EXPIRADO</option>
+              <option value="not_connected">SIN VINCULAR</option>
+              <option value="disconnected">SUSPENDIDOS</option>
+           </select>
+        </div>
       </div>
 
       {/* Tenants Table */}
@@ -179,6 +195,7 @@ export default function PlatformTenants() {
               <th className="pl-10 py-6">Estructura</th>
               <th className="px-6 py-6">ID / Slug</th>
               <th className="px-6 py-6">Status</th>
+              <th className="px-6 py-6">WhatsApp Registry</th>
               <th className="px-6 py-6">Billing / Plan</th>
               <th className="px-6 py-6 text-center">Ready State</th>
               <th className="pr-10 py-6 text-right">Acciones Directas</th>
@@ -216,6 +233,26 @@ export default function PlatformTenants() {
                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                      <span className="text-sm font-bold text-slate-700 capitalize">{m.tenant.status}</span>
                   </div>
+                </td>
+                <td className="px-6 py-6 border-l border-slate-50">
+                   <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                         <div className={`w-2.5 h-2.5 rounded-full ${
+                            (m.tenant as any).whatsapp_status === 'connected' ? 'bg-[#25D366]' :
+                            (m.tenant as any).whatsapp_status === 'token_expired' ? 'bg-amber-400' :
+                            (m.tenant as any).whatsapp_status === 'not_connected' ? 'bg-slate-300' :
+                            'bg-rose-500'
+                         }`}></div>
+                         <span className="text-[10px] font-black uppercase tracking-tight text-[#1D3146]">
+                            {(m.tenant as any).whatsapp_status || 'not_connected'}
+                         </span>
+                      </div>
+                      {(m.tenant as any).whatsapp_display_number && (
+                        <p className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter">
+                           {(m.tenant as any).whatsapp_display_number}
+                        </p>
+                      )}
+                   </div>
                 </td>
                 <td className="px-6 py-6 font-medium border-l border-slate-50">
                    <div className="flex flex-col">

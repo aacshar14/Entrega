@@ -2,316 +2,289 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
+  ArrowLeft, 
   MessageCircle, 
-  Smartphone,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  ArrowLeft,
+  CheckCircle2, 
+  AlertTriangle, 
+  Power,
+  RefreshCw,
+  Info,
   ExternalLink,
-  ShieldCheck,
-  RefreshCw
+  Smartphone,
+  ShieldCheck
 } from 'lucide-react';
-import { useTenant } from '@/lib/context/tenant-context';
-import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useTenant } from '@/lib/context/tenant-context';
 
-export default function WhatsAppIntegrationPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { activeTenant, refreshUser } = useTenant();
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [metaAppId, setMetaAppId] = useState<string | null>(null);
+interface WhatsAppStatus {
+  status: 'not_connected' | 'connected' | 'token_expired' | 'reconnect_required' | 'disconnected' | 'pending';
+  business_name?: string;
+  phone_number_id?: string;
+  connected_at?: string;
+  last_validated?: string;
+  disconnected_at?: string;
+}
 
-  // 1. Fetch current status
+export default function WhatsAppConfigPage() {
+  const { activeTenant } = useTenant();
+  const [status, setStatus] = useState<WhatsAppStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+
   const fetchStatus = async () => {
-    if (!activeTenant) return;
     try {
-      const data = await apiRequest('/integrations/whatsapp/status', 'GET', null, activeTenant.id);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await res.json();
       setStatus(data);
     } catch (err) {
-      console.error("Error fetching WhatsApp status:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchStatus();
-  }, [activeTenant]);
-
-  // 1b. Check for redirected code (OAuth Callback)
-  useEffect(() => {
-    const code = searchParams.get('code');
-    const urlError = searchParams.get('error');
-    
-    if (code && activeTenant && !loading && status?.status !== 'connected') {
-      completeIntegration(code);
-      // Clean up the URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-
-    if (urlError) {
-      setError(`Meta error: ${urlError}`);
-    }
-  }, [searchParams, activeTenant, status]);
-
-  // 2. Load Meta SDK
-  useEffect(() => {
-    // Add event listener for Meta Embedded Signup messages
-    const handleMetaMessage = (event: MessageEvent) => {
-      // Security check: only trust Facebook origins
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
-      
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data.type === 'WA_EMBEDDED_SIGNUP') {
-          console.log('Meta Embedded Signup Event:', data.event, data.data);
-          
-          if (data.event === 'FINISH_ONBOARDING') {
-            const { phone_number_id, waba_id } = data.data || {};
-            // We can store these for the next exchange call
-            (window as any)._metaOnboardingData = { phone_number_id, waba_id };
-          }
-        }
-      } catch (e) {
-        // Not a JSON or not our event, ignore
-      }
-    };
-
-    window.addEventListener('message', handleMetaMessage);
-    
-    apiRequest('/config/public', 'GET')
-      .then(res => {
-        if (res.whatsapp_app_id) {
-          setMetaAppId(res.whatsapp_app_id);
-          initMetaSDK(res.whatsapp_app_id);
-        }
-      })
-      .catch(err => {
-        console.error("Could not fetch public config", err);
-      });
-
-    return () => window.removeEventListener('message', handleMetaMessage);
-  }, []);
-
-  const initMetaSDK = (appId: string) => {
-    if (!(window as any).FB) {
-      const script = document.createElement('script');
-      script.src = "https://connect.facebook.net/en_US/sdk.js";
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        (window as any).fbAsyncInit = function() {
-          (window as any).FB.init({
-            appId: appId,
-            cookie: true,
-            xfbml: true,
-            version: 'v19.0'
-          });
-        };
-      };
-      document.body.appendChild(script);
-    }
-  };
-
-  const handleConnect = () => {
-    if (!(window as any).FB) {
-      setError("Meta SDK not loaded yet. Please wait a moment.");
-      return;
-    }
-
-    (window as any).FB.login((response: any) => {
-      if (response.authResponse) {
-        const code = response.authResponse.code;
-        const onboardingData = (window as any)._metaOnboardingData || {};
-        
-        completeIntegration(
-          code, 
-          onboardingData.waba_id, 
-          onboardingData.phone_number_id
-        );
-      } else {
-        setError("Onboarding cancelled or failed.");
-      }
-    }, {
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
-      extras: {
-        feature: 'whatsapp_embedded_signup',
-        session_info: { version: 2 },
-        setup_mode: 'direct_enumeration'
-      }
-    });
-  };
-
-  const completeIntegration = async (code: string, waba_id?: string, phone_number_id?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // We pass the code to the new backend endpoint
-      await apiRequest('/integrations/whatsapp/complete', 'POST', { 
-        code,
-        waba_id,
-        phone_number_id
-      }, activeTenant?.id);
-      await refreshUser();
-      await fetchStatus();
-    } catch (err: any) {
-      setError("Connection error: " + (err.message || "Unknown error"));
+      console.error('Failed to fetch status:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!activeTenant) return null;
+  useEffect(() => {
+    fetchStatus();
+    // Load Meta SDK
+    if (!window.FB) {
+      const script = document.createElement('script');
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        window.FB.init({
+          appId: '', // Will be fetched from backend
+          cookie: true,
+          xfbml: true,
+          version: 'v21.0'
+        });
+      };
+      document.body.appendChild(script);
+    }
+  }, []);
 
-  const isConnected = status?.status === 'connected';
+  const handleLaunchOnboarding = async () => {
+    setProcessing(true);
+    try {
+      // 1. Get secure nonce and AppID from backend
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/onboarding-url`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const { nonce, app_id } = await res.json();
+
+      // 2. Launch Meta Embedded Signup
+      window.FB.login((response: any) => {
+        if (response.authResponse) {
+          const code = response.authResponse.code;
+          completeOnboarding(code, nonce);
+        } else {
+          setProcessing(false);
+        }
+      }, {
+        config_id: '', // Meta Configuration ID if any, or use default flow
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup_nonce: nonce
+        }
+      });
+    } catch (err) {
+      setProcessing(false);
+    }
+  };
+
+  const completeOnboarding = async (code: string, state: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/complete`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        },
+        body: JSON.stringify({ code, state })
+      });
+      if (res.ok) {
+        await fetchStatus();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('¿Seguro que deseas suspender la integración de WhatsApp?')) return;
+    setProcessing(true);
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/disconnect`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      await fetchStatus();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (loading || !activeTenant) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="animate-spin text-[#56CCF2]" size={32} />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
-      
+    <div className="max-w-4xl mx-auto space-y-10 pb-20 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-center gap-6">
-         <Link href="/settings" className="p-4 bg-white rounded-2xl border border-slate-100 text-slate-400 hover:text-[#1D3146] transition-colors shadow-sm active:scale-95">
+         <Link href="/settings/integrations" className="p-4 bg-white rounded-2xl border border-slate-100 text-slate-400 hover:text-[#1D3146] transition-colors shadow-sm active:scale-95">
             <ArrowLeft size={20} />
          </Link>
          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#56CCF2]">
-              Configuración / Integraciones
-            </div>
             <h2 className="text-3xl font-black text-[#1D3146] tracking-tight flex items-center gap-3">
-               WhatsApp Business API
+               <div className="bg-[#25D366] p-2 rounded-xl text-white">
+                  <MessageCircle size={24} />
+               </div>
+               WhatsApp Business
             </h2>
+            <p className="text-sm text-slate-500 font-medium italic">Automatización nativa de pedidos vía Cloud API.</p>
          </div>
       </div>
 
-      {error && (
-        <div className="bg-rose-50 border border-rose-100 p-6 rounded-[2rem] flex items-center gap-4 text-rose-600 font-bold animate-in slide-in-from-top-4">
-           <AlertCircle size={24} />
-           <div className="text-sm">{error}</div>
-        </div>
-      )}
-
-      {/* Main Status Card */}
-      <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-slate-100 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+      <div className="grid grid-cols-1 gap-8">
         
-        <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-2xl ${
-              isConnected ? 'bg-[#25D366] text-white shadow-[#25D366]/30' : 'bg-slate-100 text-slate-400 shadow-slate-200/50'
-            }`}>
-              <MessageCircle size={40} />
-            </div>
+        {/* Main Status Card */}
+        <div className={`rounded-[3rem] p-10 border transition-all ${
+          status?.status === 'connected' ? 'bg-emerald-50/50 border-emerald-100' : 
+          status?.status === 'token_expired' || status?.status === 'reconnect_required' ? 'bg-amber-50/50 border-amber-100' :
+          'bg-white border-slate-100'
+        }`}>
+          <div className="flex flex-col md:flex-row gap-10 items-center md:items-start">
             
-            <div className="space-y-2">
-              <h3 className="text-2xl font-black text-[#1D3146]">
-                {isConnected ? status.business_name || 'Conectado con Meta' : 'Conecta tu WhatsApp'}
-              </h3>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                {isConnected 
-                  ? `Gestiona tus pedidos y clientes directamente desde tu número oficial de WhatsApp.` 
-                  : 'Digitaliza tu operación de campo integrando el canal de comunicación más potente del mundo.'}
-              </p>
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-3">
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  status?.status === 'connected' ? 'bg-emerald-500 text-white animate-pulse' :
+                  status?.status === 'token_expired' || status?.status === 'reconnect_required' ? 'bg-amber-500 text-white' :
+                  'bg-slate-200 text-slate-500'
+                }`}>
+                  {status?.status === 'connected' ? '🟢 Conectado' : 
+                   status?.status === 'token_expired' ? '🟠 Token Expirado' :
+                   status?.status === 'disconnected' ? '🔴 Suspendido' :
+                   '⚪ No Configurado'}
+                </span>
+                {status?.last_validated && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">
+                    Validado: {new Date(status.last_validated).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-4xl font-black text-[#1D3146] leading-tight">
+                  {status?.status === 'connected' ? 'Tu negocio ya está en piloto automático' : 
+                   status?.status === 'token_expired' ? 'Se requiere acción inmediata' :
+                   'Conecta tu cuenta oficial de Meta'}
+                </h3>
+                <p className="text-slate-500 font-medium leading-relaxed max-w-lg">
+                  {status?.status === 'connected' ? 
+                    `EntréGA está procesando mensajes automáticamente para ${status.business_name || 'tu negocio'}. No necesitas hacer nada más.` :
+                    'Vincula tu WhatsApp Business Account (WABA) para que EntréGA pueda leer pedidos y actualizar tu stock en tiempo real.'}
+                </p>
+              </div>
+
+              {status?.status === 'connected' ? (
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <button 
+                    onClick={handleDisconnect}
+                    disabled={processing}
+                    className="flex items-center gap-3 px-8 py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm active:scale-95"
+                  >
+                    <Power size={16} />
+                    Desconectar cuenta
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <button 
+                    onClick={handleLaunchOnboarding}
+                    disabled={processing}
+                    className="flex items-center gap-3 px-10 py-5 bg-[#1D3146] text-[#56CCF2] rounded-3xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1D3146]/20 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {processing ? <RefreshCw className="animate-spin" size={20} /> : <MessageCircle size={20} />}
+                    {status?.status === 'token_expired' ? 'Re-validar Conexión' : 'Vincular WhatsApp'}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {isConnected && (
-              <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 opacity-70">Phone Number ID</p>
-                  <p className="text-xs font-black text-emerald-900">{status.phone_number_id}</p>
+            <div className="w-full md:w-72 space-y-4">
+              <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center gap-3 text-[#1D3146]">
+                  <Smartphone size={18} className="text-[#56CCF2]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Metadata Técnica</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Phone ID</p>
+                    <p className="text-xs font-mono font-bold text-[#1D3146] truncate">{status?.phone_number_id || '---'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Proveedor</p>
+                    <p className="text-xs font-bold text-[#1D3146]">Meta Cloud API v21.0</p>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {!isConnected ? (
-              <button 
-                onClick={handleConnect}
-                disabled={loading || !metaAppId}
-                className="group h-20 px-10 bg-[#25D366] text-white rounded-3xl flex items-center justify-center gap-4 font-black uppercase text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#25D366]/30 disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : <MessageCircle size={24} />}
-                Conectar WhatsApp
-              </button>
-            ) : (
-              <>
-                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</span>
-                    <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[10px] font-black uppercase">
-                      <CheckCircle2 size={12} /> Activo
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Proveedor</span>
-                    <span className="text-[10px] font-black uppercase text-[#1D3146]">Meta Cloud API</span>
-                  </div>
+              
+              <div className="p-6 bg-[#1D3146]/5 rounded-3xl space-y-3">
+                <div className="flex items-center gap-2 text-amber-600">
+                  <Info size={14} />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Importante</span>
                 </div>
-                
-                <button 
-                  onClick={handleConnect}
-                  className="h-16 px-8 bg-white text-[#1D3146] border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all"
-                >
-                  <RefreshCw size={16} /> Re-sincronizar
-                </button>
-              </>
-            )}
+                <p className="text-[11px] font-medium text-slate-500 leading-snug">
+                  Asegúrate de tener un método de pago válido en tu Meta Business Center para evitar interrupciones.
+                </p>
+                <a href="https://business.facebook.com/" target="_blank" className="flex items-center gap-2 text-[#56CCF2] text-[9px] font-black uppercase tracking-widest hover:underline">
+                  Meta Business Suite <ExternalLink size={10} />
+                </a>
+              </div>
+            </div>
 
-            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">
-              <ShieldCheck size={12} className="inline mr-1" /> Conexión auditada y encriptada (AES-256)
-            </p>
           </div>
         </div>
-      </div>
 
-      {/* Info Section */}
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-[#1D3146] text-white p-10 rounded-[3rem] space-y-6">
-          <h4 className="text-lg font-black text-[#56CCF2] tracking-tight flex items-center gap-3">
-            <Smartphone size={20} /> Multi-Tenant Ready
-          </h4>
-          <p className="text-sm text-slate-400 font-medium leading-relaxed">
-            A diferencia de otras plataformas, EntréGA permite que **{activeTenant.name}** mantenga el control total de su propio activo en Meta. 
-            No usamos números compartidos; tu marca es la que habla con tus clientes.
-          </p>
-          <ul className="space-y-3">
-            {[
-              'Propiedad total de tus activos Meta',
-              'Historial de mensajes privado por tenant',
-              'Soporte nativo para WhatsApp Embedded Signup'
-            ].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 text-xs font-bold text-slate-300">
-                <CheckCircle2 size={14} className="text-[#56CCF2]" /> {item}
-              </li>
-            ))}
-          </ul>
+        {/* Requirements Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center text-blue-500 shadow-sm">
+                <ShieldCheck size={28} />
+              </div>
+              <h4 className="text-xl font-black text-[#1D3146]">Privacidad de Datos</h4>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Tus conversaciones solo son procesadas por nuestra IA para extraer pedidos. Nunca guardamos el historial completo ni usamos tus datos para otros fines.
+              </p>
+           </div>
+           
+           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm">
+                <CheckCircle2 size={28} />
+              </div>
+              <h4 className="text-xl font-black text-[#1D3146]">Certificación Tech</h4>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Somos Tech Providers oficiales. La conexión se realiza directamente mediante el <b>Embedded Signup</b> oficial de Meta, garantizando máxima seguridad.
+              </p>
+           </div>
         </div>
 
-        <div className="bg-white p-10 rounded-[3rem] border border-slate-100 space-y-6">
-          <h4 className="text-lg font-black text-[#1D3146] tracking-tight flex items-center gap-3">
-            <ExternalLink size={20} className="text-[#56CCF2]" /> Requisitos Previos
-          </h4>
-          <p className="text-sm text-slate-500 font-medium leading-relaxed">
-            Para una integración exitosa, asegúrate de tener:
-          </p>
-          <div className="space-y-4">
-            <div className="flex gap-4 p-4 bg-slate-50 rounded-2xl">
-              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#1D3146] shadow-sm">1</div>
-              <p className="text-xs font-bold text-slate-600">Cuenta de Meta Business Suite verificada (recomendado).</p>
-            </div>
-            <div className="flex gap-4 p-4 bg-slate-50 rounded-2xl">
-              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#1D3146] shadow-sm">2</div>
-              <p className="text-xs font-bold text-slate-600">Un número de teléfono libre (que no tenga WhatsApp activo).</p>
-            </div>
-          </div>
-        </div>
       </div>
-
     </div>
   );
 }

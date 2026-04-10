@@ -63,6 +63,25 @@ class WhatsAppService:
         with httpx.Client() as client:
             try:
                 response = client.post(url, headers=headers, json=payload, timeout=10.0)
+                if response.status_code in [401, 403]:
+                    logger.error("whatsapp.auth_failure", tenant_id=str(tenant.id))
+                    # Mark integration as expired
+                    config_rec = self.db.exec(
+                        select(WhatsAppConfig).where(
+                            WhatsAppConfig.tenant_id == tenant.id
+                        )
+                    ).first()
+                    # Also update new integration table
+                    integration = self.db.exec(
+                        select(TenantWhatsAppIntegration).where(
+                            TenantWhatsAppIntegration.tenant_id == tenant.id
+                        )
+                    ).first()
+                    if integration:
+                        integration.status = "token_expired"
+                        self.db.add(integration)
+                        self.db.commit()
+
                 if response.status_code != 200:
                     logger.error(
                         "whatsapp.api_error",

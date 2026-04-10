@@ -174,10 +174,19 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
         # Support Metrics (Real-time Telemetry V1.2)
         support_kpis = get_tenant_metrics(db, t_id)
 
+        integration = db.exec(
+            select(TenantWhatsAppIntegration).where(
+                TenantWhatsAppIntegration.tenant_id == t_id
+            )
+        ).first()
+
         pressure_map.append(
             {
                 "tenant_id": t_id,
                 "tenant_name": tenant.name,
+                "whatsapp_status": (
+                    integration.status if integration else "not_connected"
+                ),
                 "volume_24h": volume_24h,
                 "p95_processing_ms": round(get_val("tenant_p95_processing_ms_24h"), 2),
                 "failed_count": int(get_val("tenant_failures_24h")),

@@ -15,6 +15,24 @@ import Link from 'next/link';
 
 export default function IntegrationsPage() {
   const { activeTenant } = useTenant();
+  const [whatsappStatus, setWhatsappStatus] = React.useState<string>('loading');
+
+  React.useEffect(() => {
+    async function fetchStatus() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/status`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however auth is handled
+          }
+        });
+        const data = await res.json();
+        setWhatsappStatus(data.status || 'not_connected');
+      } catch (err) {
+        setWhatsappStatus('not_connected');
+      }
+    }
+    fetchStatus();
+  }, []);
 
   const integrations = [
     {
@@ -24,7 +42,10 @@ export default function IntegrationsPage() {
       icon: MessageCircle,
       color: 'bg-[#25D366]',
       href: '/settings/integrations/whatsapp',
-      status: activeTenant?.business_whatsapp_connected ? 'Connected' : 'Configure'
+      status: whatsappStatus === 'connected' ? 'Connected' : 
+              whatsappStatus === 'not_connected' ? 'Configure' : 
+              whatsappStatus === 'token_expired' ? 'Reconnect Required' : 
+              whatsappStatus === 'disconnected' ? 'Suspended' : 'Loading...'
     },
     {
       id: 'shopify',
