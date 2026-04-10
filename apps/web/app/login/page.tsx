@@ -53,7 +53,11 @@ export default function LoginPage() {
         window.location.assign('/'); 
       }
     } catch (err: any) {
-      setError(err.message || 'Error en la autenticación');
+      let msg = err.message || 'Error en la autenticación';
+      if (msg.toLowerCase().includes('data breach') || msg.toLowerCase().includes('leaked')) {
+        msg = 'Tu contraseña no es segura. Usa una más fuerte y única.';
+      }
+      setError(msg);
       setLoading(false);
     }
   };
