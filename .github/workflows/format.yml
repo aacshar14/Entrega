@@ -3,8 +3,6 @@ name: 🧹 Auto-Format Python (Black)
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'apps/api/**/*.py'
   workflow_dispatch:
 
 jobs:
