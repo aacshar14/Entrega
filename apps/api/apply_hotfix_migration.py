@@ -7,11 +7,12 @@ sys.path.append(os.getcwd())
 
 from app.core.config import settings
 
+
 def apply_hotfix_migration():
     engine = create_engine(settings.DATABASE_URL)
     with engine.connect() as conn:
         print("Applying Hotfix Migration: Adding missing columns...")
-        
+
         sql = """
         -- Add missing columns to tenant_whatsapp_integrations table for V1.4 Normalization
         ALTER TABLE tenant_whatsapp_integrations ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;
@@ -26,10 +27,11 @@ def apply_hotfix_migration():
             END IF;
         END $$;
         """
-        
+
         conn.execute(text(sql))
         conn.commit()
         print("Migration completed successfully.")
+
 
 if __name__ == "__main__":
     apply_hotfix_migration()

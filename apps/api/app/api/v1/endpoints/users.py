@@ -140,7 +140,9 @@ async def get_me(
                 if active_membership and t.id == active_membership.tenant_id:
                     active_tenant_info = t_info
             except Exception as e:
-                logger.error("users.get_me.admin_tenant_error", tenant_id=str(t.id), error=str(e))
+                logger.error(
+                    "users.get_me.admin_tenant_error", tenant_id=str(t.id), error=str(e)
+                )
 
         # fallback: if no active tenant, but we have memberships, pick default or first
         if not active_tenant_info and membership_infos:
@@ -176,7 +178,9 @@ async def get_me(
             if active_membership and tu.tenant_id == active_membership.tenant_id:
                 active_tenant_info = t_info
         except Exception as e:
-            logger.error("users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e))
+            logger.error(
+                "users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e)
+            )
 
     return MeResponse(
         user=current_user,

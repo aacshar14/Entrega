@@ -11,6 +11,7 @@ from app.models.models import User, Tenant, TenantWhatsAppIntegration, MeRespons
 from app.api.v1.endpoints.users import get_tenant_info
 from app.core.config import settings
 
+
 def debug_serialization():
     engine = create_engine(settings.DATABASE_URL)
     db = Session(engine)
@@ -29,12 +30,15 @@ def debug_serialization():
     for t in tenants:
         info = get_tenant_info(db, t)
         from app.models.models import MembershipInfo
-        membership_infos.append(MembershipInfo(tenant=info, role="owner", is_default=False))
+
+        membership_infos.append(
+            MembershipInfo(tenant=info, role="owner", is_default=False)
+        )
 
     response = MeResponse(
         user=user,
         active_tenant=membership_infos[0].tenant if membership_infos else None,
-        memberships=membership_infos
+        memberships=membership_infos,
     )
 
     try:
@@ -45,7 +49,9 @@ def debug_serialization():
     except Exception as e:
         print(f"❌ Serialization FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     debug_serialization()

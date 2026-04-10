@@ -9,6 +9,7 @@ from app.models.models import User, Tenant, TenantWhatsAppIntegration, WhatsAppC
 from app.api.v1.endpoints.users import get_tenant_info
 from app.core.config import settings
 
+
 def debug_me():
     engine = create_engine(settings.DATABASE_URL)
     db = Session(engine)
@@ -27,7 +28,9 @@ def debug_me():
         except Exception as e:
             print(f"    FAILED for {t.name}: {str(e)}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     debug_me()
