@@ -9,7 +9,7 @@ from app.core.logging import logger
 from datetime import datetime, timezone
 from uuid import UUID
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import httpx
 
 router = APIRouter()
