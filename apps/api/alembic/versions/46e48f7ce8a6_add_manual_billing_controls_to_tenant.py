@@ -12,7 +12,6 @@ from alembic import op
 import sqlalchemy as sa
 import sqlmodel  # added
 
-
 # revision identifiers, used by Alembic.
 revision: str = "46e48f7ce8a6"
 down_revision: Union[str, None] = "909b7521037d"
@@ -25,10 +24,14 @@ def upgrade() -> None:
     op.add_column("tenants", sa.Column("billing_status", sa.String(), nullable=True))
     op.add_column("tenants", sa.Column("trial_ends_at", sa.DateTime(), nullable=True))
     op.add_column("tenants", sa.Column("grace_ends_at", sa.DateTime(), nullable=True))
-    op.add_column("tenants", sa.Column("subscription_ends_at", sa.DateTime(), nullable=True))
+    op.add_column(
+        "tenants", sa.Column("subscription_ends_at", sa.DateTime(), nullable=True)
+    )
     op.add_column("tenants", sa.Column("billing_notes", sa.String(), nullable=True))
     op.add_column("tenants", sa.Column("billing_updated_by", sa.UUID(), nullable=True))
-    op.add_column("tenants", sa.Column("billing_updated_at", sa.DateTime(), nullable=True))
+    op.add_column(
+        "tenants", sa.Column("billing_updated_at", sa.DateTime(), nullable=True)
+    )
 
     # Initialize existing tenants: Grace period of 7 days
     # Note: We use raw SQL to avoid dependency on SQLModel during migration

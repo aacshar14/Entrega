@@ -506,7 +506,7 @@ async def update_tenant_billing(
 
     now = datetime.now(timezone.utc)
     status_before = tenant.billing_status
-    
+
     tenant.billing_status = update.status
     tenant.billing_notes = update.notes
     tenant.billing_updated_by = current_user.id
