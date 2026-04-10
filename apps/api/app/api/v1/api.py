@@ -42,7 +42,9 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(balances.router, prefix="/balances", tags=["balances"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
-api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(
+    notifications.router, prefix="/notifications", tags=["notifications"]
+)
 
 # 🛡️ Hardening: Using string reference "MeResponse" to avoid circular startup crashes
 api_router.get("/me", response_model=None, tags=["identity"])(users.get_me)

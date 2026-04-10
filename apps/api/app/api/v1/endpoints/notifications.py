@@ -9,31 +9,33 @@ import uuid
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[Notification])
 async def get_notifications(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    tenant_id: Optional[uuid.UUID] = Depends(get_optional_active_tenant_id)
+    tenant_id: Optional[uuid.UUID] = Depends(get_optional_active_tenant_id),
 ):
     """
     Fetch unread notifications. Scoped by active tenant.
     If no tenant active and user is admin, returns platform notifications.
     """
     # If user is admin and in platform mode (no tenant), get platform notifs
-    if current_user.platform_role == 'admin' and not tenant_id:
+    if current_user.platform_role == "admin" and not tenant_id:
         return NotificationService.get_unread(db, tenant_id=None)
-    
+
     # Otherwise return tenant-scoped
     if not tenant_id:
         return []
-        
+
     return NotificationService.get_unread(db, tenant_id=tenant_id)
+
 
 @router.patch("/{notification_id}/read")
 async def mark_read(
     notification_id: uuid.UUID,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Mark a notification as read.

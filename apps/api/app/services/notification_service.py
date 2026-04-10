@@ -4,6 +4,7 @@ from typing import Optional, Dict
 import uuid
 from datetime import datetime, timezone
 
+
 class NotificationService:
     @staticmethod
     def notify(
@@ -15,10 +16,10 @@ class NotificationService:
         priority: str = "medium",
         cta_label: Optional[str] = None,
         cta_link: Optional[str] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
     ) -> Notification:
         import json
-        
+
         notif = Notification(
             tenant_id=tenant_id,
             category=category,
@@ -27,7 +28,7 @@ class NotificationService:
             message=message,
             cta_label=cta_label,
             cta_link=cta_link,
-            metadata_json=json.dumps(metadata) if metadata else None
+            metadata_json=json.dumps(metadata) if metadata else None,
         )
         db.add(notif)
         db.commit()
@@ -37,10 +38,12 @@ class NotificationService:
     @staticmethod
     def get_unread(db: Session, tenant_id: Optional[uuid.UUID] = None, limit: int = 10):
         # tenant_id is None for platform admin notifications
-        stmt = select(Notification).where(
-            Notification.is_read == False,
-            Notification.tenant_id == tenant_id
-        ).order_by(Notification.created_at.desc()).limit(limit)
+        stmt = (
+            select(Notification)
+            .where(Notification.is_read == False, Notification.tenant_id == tenant_id)
+            .order_by(Notification.created_at.desc())
+            .limit(limit)
+        )
         return db.exec(stmt).all()
 
     @staticmethod
