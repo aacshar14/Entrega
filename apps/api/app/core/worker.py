@@ -47,12 +47,51 @@ class EventWorker:
 
     def _process_single_event(self, event: InboundEvent):
         """
-        Logic for a single event type with strict idempotency (V1.2).
+        Logic for a single event type with strict idempotency and retry logic (V1.2).
+        """
+        from sqlalchemy.exc import OperationalError
+        import time
+
+        max_retries = 3
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                self._execute_single_event_transactional(event)
+                return  # Success
+            except OperationalError as e:
+                # Retry on deadlock or connection issues
+                last_error = e
+                logger.warning(
+                    "worker.db_contention",
+                    attempt=attempt + 1,
+                    event_id=str(event.id),
+                    error=str(e),
+                )
+                self.db.rollback()
+                time.sleep(1 * (attempt + 1))  # Exponential-ish backoff
+            except Exception as e:
+                # Non-recoverable logic error
+                self.db.rollback()
+                raise e
+
+        if last_error:
+            logger.error(
+                "worker.max_retries_exhausted",
+                event_id=str(event.id),
+                error=str(last_error),
+            )
+            raise last_error
+
+    def _execute_single_event_transactional(self, event: InboundEvent):
+        """
+        Inner transactional logic for event processing.
         """
         from app.models.models import ProcessedMessage
         from sqlalchemy.exc import IntegrityError
         from sqlalchemy import text
         from datetime import datetime, timezone, timedelta
+        import json
 
         # Resolve Tenant
         tenant = self.db.get(Tenant, event.tenant_id)
@@ -84,7 +123,6 @@ class EventWorker:
                 # 2. Collision! Check if we can reclaim (Atomic Reclaim)
                 self.db.rollback()
 
-                # Atomic Reclaim SQL: Reclaim if FAILED or TIMED OUT (10 min)
                 reclaim_sql = text("""
                     UPDATE processed_messages 
                     SET status = 'processing', updated_at = :now
@@ -106,15 +144,12 @@ class EventWorker:
                 self.db.commit()
 
                 if result.rowcount == 0:
-                    # Message is already PROCESSED or being processed by another worker within safe window
                     logger.info("idempotency.duplicate_ignored", message_id=msg_id)
                     return
 
                 logger.warning("idempotency.reclaimed_event", message_id=msg_id)
 
             # --- ⚙️ PHASE 2: BUSINESS LOGIC ---
-            import json
-
             payload = event.payload_json
             if isinstance(payload, str):
                 payload = json.loads(payload)
@@ -125,54 +160,30 @@ class EventWorker:
                 logger.warning("Empty message body, skipping parsing")
                 return
 
-            try:
-                # Call Parsing Engine
-                engine = ParsingEngine(self.db, tenant)
-                log = engine.process_and_log(sender=sender, raw_text=body)
+            # Call Parsing Engine
+            engine = ParsingEngine(self.db, tenant)
+            engine.process_and_log(sender=sender, raw_text=body)
 
-                # --- ✅ PHASE 3: CONDITIONAL SUCCESS ---
-                success_sql = text("""
-                    UPDATE processed_messages 
-                    SET status = 'processed', updated_at = :now
-                    WHERE tenant_id = :tenant_id AND message_id = :message_id AND status = 'processing'
-                """)
-                result = self.db.execute(
-                    success_sql,
-                    {
-                        "now": datetime.now(timezone.utc),
-                        "tenant_id": tenant.id,
-                        "message_id": msg_id,
-                    },
-                )
-                self.db.commit()
+            # --- ✅ PHASE 3: CONDITIONAL SUCCESS ---
+            success_sql = text("""
+                UPDATE processed_messages 
+                SET status = 'processed', updated_at = :now
+                WHERE tenant_id = :tenant_id AND message_id = :message_id AND status = 'processing'
+            """)
+            result = self.db.execute(
+                success_sql,
+                {
+                    "now": datetime.now(timezone.utc),
+                    "tenant_id": tenant.id,
+                    "message_id": msg_id,
+                },
+            )
+            self.db.commit()
 
-                if result.rowcount == 1:
-                    logger.info("idempotency.success", message_id=msg_id)
-                else:
-                    logger.error("idempotency.success_write_lost", message_id=msg_id)
-
-            except Exception as e:
-                # --- ❌ PHASE 4: CONDITIONAL FAILURE ---
-                self.db.rollback()
-                logger.error(
-                    "idempotency.logic_failed", message_id=msg_id, error=str(e)
-                )
-
-                fail_sql = text("""
-                    UPDATE processed_messages 
-                    SET status = 'failed', updated_at = :now
-                    WHERE tenant_id = :tenant_id AND message_id = :message_id AND status = 'processing'
-                """)
-                self.db.execute(
-                    fail_sql,
-                    {
-                        "now": datetime.now(timezone.utc),
-                        "tenant_id": tenant.id,
-                        "message_id": msg_id,
-                    },
-                )
-                self.db.commit()
-                raise e
+            if result.rowcount == 1:
+                logger.info("idempotency.success", message_id=msg_id)
+            else:
+                logger.error("idempotency.success_write_lost", message_id=msg_id)
 
         else:
             logger.warning(

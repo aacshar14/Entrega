@@ -172,7 +172,27 @@ class ParsingEngine:
             cust_balance.balance -= total_charge
             cust_balance.last_updated = datetime.now(timezone.utc)
 
-            # 2. Registrar la entrega ("Lo que está afuera")
+            # 2. Update Warehouse Stock (P0 Locking)
+            from app.models.models import StockBalance
+
+            balance = self.session.exec(
+                select(StockBalance)
+                .where(StockBalance.product_id == product.id)
+                .with_for_update()
+            ).first()
+
+            if balance:
+                balance.quantity -= qty
+                balance.last_updated = datetime.now(timezone.utc)
+            else:
+                balance = StockBalance(
+                    tenant_id=self.tenant.id,
+                    product_id=product.id,
+                    quantity=-qty,
+                )
+            self.session.add(balance)
+
+            # 3. Registrar la entrega ("Lo que está afuera")
             movement = InventoryMovement(
                 tenant_id=self.tenant.id,
                 product_id=product.id,
