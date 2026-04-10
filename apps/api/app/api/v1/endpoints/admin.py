@@ -21,6 +21,9 @@ from app.core.metrics import MetricsAggregator
 from app.core.thresholds import PLATFORM_THRESHOLDS
 from app.services.metrics_service import get_tenant_metrics
 import json
+from datetime import datetime, timezone, timedelta
+from pydantic import BaseModel
+from app.core.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -181,6 +184,24 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                 "retry_count": int(get_val("tenant_retries_24h")),
                 "backlog": int(get_val("tenant_backlog_current")),
                 "support_kpis": support_kpis,
+                "billing": {
+                    "status": tenant.billing_status,
+                    "trial_ends_at": (
+                        tenant.trial_ends_at.isoformat()
+                        if tenant.trial_ends_at
+                        else None
+                    ),
+                    "grace_ends_at": (
+                        tenant.grace_ends_at.isoformat()
+                        if tenant.grace_ends_at
+                        else None
+                    ),
+                    "subscription_ends_at": (
+                        tenant.subscription_ends_at.isoformat()
+                        if tenant.subscription_ends_at
+                        else None
+                    ),
+                },
                 "status": (
                     "hot"
                     if volume_24h > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
@@ -477,3 +498,51 @@ async def refresh_metrics(db: Session = Depends(get_session)):
     aggregator = MetricsAggregator(db)
     aggregator.refresh_all_snapshots()
     return {"status": "success", "refreshed_at": get_utc_now()}
+
+
+# --- V1.3 Billing Management ---
+
+
+class BillingUpdate(BaseModel):
+    status: str  # 'trial', 'grace', 'active_paid', 'suspended'
+    trial_days: Optional[int] = None
+    grace_days: Optional[int] = None
+    notes: Optional[str] = None
+
+
+@router.patch("/tenants/{tenant_id}/billing")
+async def update_tenant_billing(
+    tenant_id: UUID,
+    update: BillingUpdate,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    # Security: Ensure current_user is platform admin (already handled by router/deps usually)
+    tenant = db.get(Tenant, tenant_id)
+    if not tenant:
+        return {"error": "Tenant not found"}, 404
+
+    now = datetime.now(timezone.utc)
+    tenant.billing_status = update.status
+    tenant.billing_notes = update.notes
+    tenant.billing_updated_by = current_user.id
+    tenant.billing_updated_at = now
+
+    if update.status == "trial":
+        days = update.trial_days or 7
+        tenant.trial_ends_at = now + timedelta(days=days)
+        tenant.grace_ends_at = None
+    elif update.status == "grace":
+        days = update.grace_days or 3
+        tenant.grace_ends_at = now + timedelta(days=days)
+    elif update.status == "active_paid":
+        tenant.trial_ends_at = None
+        tenant.grace_ends_at = None
+        # subscription_ends_at logic would go here if recurring
+
+    tenant.updated_at = now
+    db.add(tenant)
+    db.commit()
+    db.refresh(tenant)
+
+    return {"message": "Billing updated", "status": tenant.billing_status}

@@ -160,19 +160,27 @@ async def get_dashboard_summary(
         .limit(10)
     ).all()
 
-    # 6. Billing & Conversion (V1.3 Funnel)
+    # 6. Billing & Conversion (V1.3 Hardening)
     now = datetime.now(timezone.utc)
-    # Grace period: anyone before 2026-04-10 gets 7 days from today.
-    release_date = datetime(2026, 4, 10, tzinfo=timezone.utc)
+    status = active_tenant.billing_status or "trial"
 
-    tenant_start = active_tenant.created_at or now
-    if tenant_start < release_date:
-        trial_expires_at = release_date + timedelta(days=7)
-    else:
-        trial_expires_at = tenant_start + timedelta(days=7)
+    is_expired = False
+    days_remaining = 0
 
-    trial_days_remaining = (trial_expires_at - now).days
-    is_expired = now > trial_expires_at
+    if status == "suspended":
+        is_expired = True
+    elif status == "active_paid":
+        is_expired = False
+    elif status == "trial":
+        if not active_tenant.trial_ends_at or now > active_tenant.trial_ends_at:
+            is_expired = True
+        else:
+            days_remaining = (active_tenant.trial_ends_at - now).days
+    elif status == "grace":
+        if not active_tenant.grace_ends_at or now > active_tenant.grace_ends_at:
+            is_expired = True
+        else:
+            days_remaining = (active_tenant.grace_ends_at - now).days
 
     # Operational triggers
     total_deliveries = db.exec(
@@ -203,7 +211,7 @@ async def get_dashboard_summary(
             "weekly_delivered": delivered_abs,
         },
         "billing": {
-            "trial_days_remaining": trial_days_remaining,
+            "trial_days_remaining": days_remaining,
             "is_expired": is_expired,
             "total_orders": total_deliveries,
             "sales_today": float(sales_today),

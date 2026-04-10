@@ -47,6 +47,24 @@ export default function PlatformOverview() {
     loadData();
   }, []);
 
+  const updateBilling = async (tenantId: string, status: string, days?: number) => {
+    try {
+      if (!confirm(`Confirmar cambio a estado: ${status.toUpperCase()}?`)) return;
+      await apiRequest(`admin/tenants/${tenantId}/billing`, 'PATCH', {
+        status,
+        trial_days: status === 'trial' ? days : undefined,
+        grace_days: status === 'grace' ? days : undefined,
+        notes: `Manual admin update: ${status}`
+      });
+      // Refresh current data
+      const pres = await apiRequest('admin/tenants/pressure', 'GET');
+      setPressure(pres || []);
+    } catch (err) {
+      console.error('Billing update failed:', err);
+      alert('Error al actualizar facturación');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy': return { text: 'text-emerald-600', bg: 'bg-emerald-100', iconColor: 'text-emerald-400' };
@@ -161,12 +179,14 @@ export default function PlatformOverview() {
                   <thead>
                     <tr className="border-b border-slate-50">
                        <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Tenant</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Billing</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Plan Actions</th>
                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Volumen</th>
-                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">p95 Proc</th>
-                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Sales(H)</th>
-                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-rose-500">Err Stock</th>
-                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-orange-500">Err Proc</th>
-                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Backlog</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">p95 Proc</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Sales(H)</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-rose-500">Err Stock</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-orange-500">Err Proc</th>
+                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Backlog</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -176,6 +196,33 @@ export default function PlatformOverview() {
                            <div className="flex items-center gap-2">
                               <div className={`w-1.5 h-1.5 rounded-full ${p.status === 'hot' ? 'bg-rose-500 animate-pulse' : p.status === 'warning' ? 'bg-amber-400' : 'bg-emerald-500'}`}></div>
                               <span className="text-sm font-bold text-[#1D3146]">{p.tenant_name}</span>
+                           </div>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <div className="flex flex-col items-center">
+                              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                 p.billing?.status === 'active_paid' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
+                                 p.billing?.status === 'trial' ? 'bg-blue-500 text-white' :
+                                 p.billing?.status === 'grace' ? 'bg-amber-500 text-white' :
+                                 'bg-rose-500 text-white'
+                              }`}>
+                                 {p.billing?.status || 'Unknown'}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                 {p.billing?.status === 'active_paid' ? '∞' : (
+                                    p.billing?.status === 'trial' ? `${Math.max(0, Math.ceil((new Date(p.billing.trial_ends_at).getTime() - Date.now()) / (1000*60*60*24)))}d` :
+                                    p.billing?.status === 'grace' ? `${Math.max(0, Math.ceil((new Date(p.billing.grace_ends_at).getTime() - Date.now()) / (1000*60*60*24)))}d` :
+                                    'OFF'
+                                 )}
+                              </span>
+                           </div>
+                        </td>
+                        <td className="px-4 py-5 font-mono text-[9px] text-slate-400">
+                           <div className="flex flex-wrap gap-2 justify-center">
+                              <button onClick={() => updateBilling(p.tenant_id, 'trial', 7)} className="bg-slate-50 hover:bg-blue-50 hover:text-blue-600 px-2 py-1 rounded-md border border-slate-100 transition-all font-black" title="Start 7-Day Trial">TRIAL</button>
+                              <button onClick={() => updateBilling(p.tenant_id, 'active_paid')} className="bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 px-2 py-1 rounded-md border border-slate-100 transition-all font-black" title="Activate Paid">PAID</button>
+                              <button onClick={() => updateBilling(p.tenant_id, 'grace', 3)} className="bg-slate-50 hover:bg-amber-50 hover:text-amber-600 px-2 py-1 rounded-md border border-slate-100 transition-all font-black" title="Grace 3d">G3</button>
+                              <button onClick={() => updateBilling(p.tenant_id, 'suspended')} className="bg-slate-50 hover:bg-rose-50 hover:text-rose-600 px-2 py-1 rounded-md border border-slate-100 transition-all font-black" title="Suspend">OFF</button>
                            </div>
                         </td>
                         <td className="px-4 py-5 text-center">

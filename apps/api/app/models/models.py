@@ -49,6 +49,17 @@ class Tenant(SQLModel, table=True):
     whatsapp_app_id: Optional[str] = None
     whatsapp_connected_at: Optional[datetime] = None
 
+    # Billing & Lifecycle (V1.3)
+    billing_status: str = Field(
+        default="trial"
+    )  # 'trial', 'grace', 'active_paid', 'suspended'
+    trial_ends_at: Optional[datetime] = None
+    grace_ends_at: Optional[datetime] = None
+    subscription_ends_at: Optional[datetime] = None
+    billing_notes: Optional[str] = None
+    billing_updated_by: Optional[UUID] = None
+    billing_updated_at: Optional[datetime] = None
+
     created_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
