@@ -231,7 +231,14 @@ async def get_active_tenant_id(
     return membership.tenant_id
 
 def require_tenant_role(roles: List[str]):
-    async def role_dependency(membership: Any = Depends(get_active_membership)):
+    async def role_dependency(
+        membership: Any = Depends(get_active_membership),
+        current_user: Any = Depends(get_current_user)
+    ):
+        # 👑 Superuser Bypass: Platform admins navigate all tenant contexts
+        if current_user.platform_role == "admin":
+            return membership
+            
         if not membership or membership.tenant_role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return membership

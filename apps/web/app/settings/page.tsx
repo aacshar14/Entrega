@@ -321,7 +321,7 @@ export default function SettingsPage() {
          {/* Team Management */}
          <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
-               <SettingsIcon size={16} /> Gestión de Equipo (Chocobites)
+               <SettingsIcon size={16} /> Gestión de Equipo ({activeTenant.name})
             </h3>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

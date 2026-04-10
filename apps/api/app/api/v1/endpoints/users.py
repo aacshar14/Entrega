@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel
+
 from sqlmodel import Session, select, func
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_membership, require_roles, get_active_tenant_id
@@ -151,11 +153,14 @@ async def update_me(
     db.refresh(current_user)
     return current_user
 
+class UserCreate(BaseModel):
+    email: str
+    full_name: str
+    role: str = "operator"
+
 @router.post("/", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def create_user(
-    email: str,
-    full_name: str,
-    role: str = "operator",
+    request: UserCreate,
     db: Session = Depends(get_session),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
 ):
@@ -164,12 +169,12 @@ async def create_user(
     In the pilot, we create a local user and a membership.
     """
     # Check if user already exists globally
-    user = db.exec(select(User).where(User.email == email)).first()
+    user = db.exec(select(User).where(User.email == request.email)).first()
     
     if not user:
         user = User(
-            email=email,
-            full_name=full_name,
+            email=request.email,
+            full_name=request.full_name,
             platform_role="user"
         )
         db.add(user)
@@ -187,7 +192,7 @@ async def create_user(
         membership = TenantUser(
             tenant_id=active_tenant_id,
             user_id=user.id,
-            tenant_role=role
+            tenant_role=request.role
         )
         db.add(membership)
     
