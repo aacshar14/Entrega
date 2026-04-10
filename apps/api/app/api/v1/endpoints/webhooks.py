@@ -139,6 +139,7 @@ async def receive_whatsapp_event(
         return {"status": "accepted_duplicate"}
 
     # 2. 🏛️ Resolve Tenant based on meta phone_number_id
+    try:
         # We check both the new integration table (preferred) and the legacy config table
         from app.models.models import TenantWhatsAppIntegration, WhatsAppConfig
         
