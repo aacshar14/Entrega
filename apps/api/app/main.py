@@ -14,6 +14,7 @@ from app.core.logging import setup_logging, logger
 # 🛡️ Hardening: Ensure logging is initialized first
 setup_logging()
 
+
 # Delayed import of api_router to prevent top-level circular crashes
 def get_application() -> FastAPI:
     app = FastAPI(
@@ -21,21 +22,23 @@ def get_application() -> FastAPI:
         version=settings.VERSION,
         description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        redirect_slashes=True
+        redirect_slashes=True,
     )
-    
+
     # Setup Rate Limiting
     from app.core.limiter import limiter
+
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    
+
     # Enable Proxy Headers (Essential for Cloud Run HTTPS redirects)
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
     app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-    
+
     # Add Observability Middleware
     app.add_middleware(ObservabilityMiddleware)
-    
+
     # Include CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
@@ -49,20 +52,24 @@ def get_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Include API Router (Lazy load to break circularity)
     from app.api.v1.api import api_router
+
     app.include_router(api_router, prefix=settings.API_V1_STR)
-    
+
     # 🔗 Root Webhook Gateway (Required for Meta standard compliance)
     from app.api.v1.endpoints import webhooks
+
     app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
-    
+
     return app
+
 
 app = get_application()
 
 from fastapi.responses import HTMLResponse
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

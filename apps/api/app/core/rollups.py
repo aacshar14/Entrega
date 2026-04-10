@@ -6,6 +6,7 @@ from app.models.models import InboundEvent, MetricSnapshot, Tenant
 
 logger = structlog.get_logger()
 
+
 def perform_rollups():
     """
     EntréGA Capacity Engineering:
@@ -14,7 +15,7 @@ def perform_rollups():
     """
     now = datetime.now(timezone.utc)
     fifteen_mins_ago = now - timedelta(minutes=15)
-    
+
     with Session(engine) as db:
         # 1. Global Latency Snapshot (p95)
         # We calculate the difference between created_at and processed_at for 'done' events
@@ -24,13 +25,13 @@ def perform_rollups():
             WHERE status = 'done' AND processed_at > :since
         """)
         p95_latency = db.execute(latency_stmt, {"since": fifteen_mins_ago}).scalar()
-        
+
         if p95_latency:
             snapshot = MetricSnapshot(
                 metric_name="latency_p95_ms",
                 metric_value=float(p95_latency),
                 period_start=fifteen_mins_ago,
-                period_end=now
+                period_end=now,
             )
             db.add(snapshot)
             logger.info("rollup.latency_created", ms=p95_latency)
@@ -43,18 +44,21 @@ def perform_rollups():
                 .where(InboundEvent.tenant_id == tenant.id)
                 .where(InboundEvent.status == "pending")
             ).one()
-            
+
             if backlog_count > 0:
-                db.add(MetricSnapshot(
-                    tenant_id=tenant.id,
-                    metric_name="backlog_size",
-                    metric_value=float(backlog_count),
-                    period_start=fifteen_mins_ago,
-                    period_end=now
-                ))
-        
+                db.add(
+                    MetricSnapshot(
+                        tenant_id=tenant.id,
+                        metric_name="backlog_size",
+                        metric_value=float(backlog_count),
+                        period_start=fifteen_mins_ago,
+                        period_end=now,
+                    )
+                )
+
         db.commit()
         logger.info("rollup.completed")
+
 
 if __name__ == "__main__":
     perform_rollups()

@@ -8,10 +8,15 @@ from typing import List
 
 router = APIRouter()
 
-@router.get("/", response_model=List[CustomerBalance], dependencies=[Depends(require_roles(["owner", "operator"]))])
+
+@router.get(
+    "/",
+    response_model=List[CustomerBalance],
+    dependencies=[Depends(require_roles(["owner", "operator"]))],
+)
 async def list_balances(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id)
+    active_tenant_id: UUID = Depends(get_active_tenant_id),
 ):
     """List all current customer balances (owner, operator)."""
     balances = db.exec(

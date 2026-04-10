@@ -1,7 +1,7 @@
-
 from app.core.db import engine
 from sqlalchemy import text
 import json
+
 
 def get_metrics():
     with engine.connect() as conn:
@@ -14,7 +14,7 @@ def get_metrics():
                 COUNT(*) FILTER (WHERE status = 'failed') as failed
             FROM inbound_events
         """)).fetchone()
-        
+
         # 2. Latencies (Processing)
         latencies = conn.execute(text("""
             SELECT 
@@ -38,16 +38,17 @@ def get_metrics():
                 "total": counts[0],
                 "done": counts[1],
                 "pending": counts[2],
-                "failed": counts[3]
+                "failed": counts[3],
             },
             "processing_latency": {
                 "p50": round(latencies[0] or 0, 3),
                 "p95": round(latencies[1] or 0, 3),
-                "p99": round(latencies[2] or 0, 3)
+                "p99": round(latencies[2] or 0, 3),
             },
-            "oldest_pending_age_sec": round(oldest or 0, 3)
+            "oldest_pending_age_sec": round(oldest or 0, 3),
         }
         print(json.dumps(metrics, indent=2))
+
 
 if __name__ == "__main__":
     get_metrics()

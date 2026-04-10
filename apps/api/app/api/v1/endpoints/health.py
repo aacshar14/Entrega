@@ -7,6 +7,7 @@ import time
 
 router = APIRouter()
 
+
 @router.get("/ready")
 async def readiness_check(db: Session = Depends(get_session)):
     """Validates that the database is reachable and accepting connections."""
@@ -16,15 +17,16 @@ async def readiness_check(db: Session = Depends(get_session)):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Database not ready: {str(e)}")
 
+
 @router.get("/", status_code=200)
 async def health_check(request: Request):
     """General health status of the application. Branded for browsers."""
-    
+
     health_data = {
         "status": "healthy",
         "version": settings.VERSION,
         "name": settings.PROJECT_NAME,
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
     }
 
     accept_header = request.headers.get("Accept", "")
@@ -178,5 +180,5 @@ async def health_check(request: Request):
         </body>
         </html>
         """)
-    
+
     return JSONResponse(content=health_data)

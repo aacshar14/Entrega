@@ -18,6 +18,7 @@ JWKS_CACHE: Dict[str, Any] = {}
 JWKS_LAST_FETCH = 0
 JWKS_TTL = 3600  # 1 hour
 
+
 async def get_jwks():
     """
     Fetches the JSON Web Key Set (JWKS) from Supabase.
@@ -27,7 +28,7 @@ async def get_jwks():
     current_time = time.time()
     if JWKS_CACHE and (current_time - JWKS_LAST_FETCH < JWKS_TTL):
         return JWKS_CACHE
-        
+
     jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
     async with httpx.AsyncClient() as client:
         try:
@@ -38,24 +39,32 @@ async def get_jwks():
             return JWKS_CACHE
         except Exception as e:
             from app.core.logging import logger
-            logger.error("SYSTEM ERROR: Failed to fetch JWKS from Supabase", url=jwks_url, error=str(e))
-            return JWKS_CACHE 
+
+            logger.error(
+                "SYSTEM ERROR: Failed to fetch JWKS from Supabase",
+                url=jwks_url,
+                error=str(e),
+            )
+            return JWKS_CACHE
+
 
 def get_db():
     from app.core.db import engine
+
     with Session(engine) as session:
         yield session
 
+
 async def get_current_user(
     token: Optional[HTTPAuthorizationCredentials] = Security(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
     """
     EntréGA Authentication Layer (Hardened ES256):
     Exclusively validates Supabase tokens using Elliptic Curve Cryptography (ES256).
     """
     from app.core.logging import logger
-    
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,14 +82,17 @@ async def get_current_user(
         # Determine algorithm
         unverified_headers = jwt.get_unverified_header(token.credentials)
         alg = unverified_headers.get("alg")
-        
+
         if alg != "ES256":
-            logger.error("AUTH FAILURE: Project policy strictly enforces ES256. Received:", alg=alg)
+            logger.error(
+                "AUTH FAILURE: Project policy strictly enforces ES256. Received:",
+                alg=alg,
+            )
             raise credentials_exception
 
         payload = None
         jwt_secret_raw = settings.SUPABASE_JWT_SECRET
-        
+
         # 1. Primary: Use local JWK from environment
         if jwt_secret_raw and jwt_secret_raw.strip().startswith("{"):
             try:
@@ -90,18 +102,23 @@ async def get_current_user(
                     jwk_dict,
                     algorithms=["ES256"],
                     audience="authenticated",
-                    options={"verify_aud": True, "verify_iss": False, "leeway": 60}
+                    options={"verify_aud": True, "verify_iss": False, "leeway": 60},
                 )
                 logger.debug("AUTH: Validated via local ES256 key")
             except Exception as e:
-                logger.warning("AUTH: Local ES256 validation failed, attempting remote JWKS", error=str(e))
+                logger.warning(
+                    "AUTH: Local ES256 validation failed, attempting remote JWKS",
+                    error=str(e),
+                )
 
         # 2. Secondary: Fallback to remote JWKS
         if not payload:
             jwks = await get_jwks()
             kid = unverified_headers.get("kid")
-            target_jwk = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
-            
+            target_jwk = next(
+                (k for k in jwks.get("keys", []) if k.get("kid") == kid), None
+            )
+
             if target_jwk:
                 try:
                     payload = jwt.decode(
@@ -109,11 +126,14 @@ async def get_current_user(
                         target_jwk,
                         algorithms=["ES256"],
                         audience="authenticated",
-                        options={"verify_aud": True, "verify_iss": False, "leeway": 60}
+                        options={"verify_aud": True, "verify_iss": False, "leeway": 60},
                     )
                     logger.info("AUTH SUCCESS: Validated via Remote JWKS")
                 except Exception as e:
-                    logger.error("AUTH FAILURE: ES256 validation failed on both local and remote keys", error=str(e))
+                    logger.error(
+                        "AUTH FAILURE: ES256 validation failed on both local and remote keys",
+                        error=str(e),
+                    )
                     raise credentials_exception
             else:
                 logger.error("AUTH FAILURE: Signing key not found in JWKS collection")
@@ -127,23 +147,33 @@ async def get_current_user(
 
         # Identity Mapping & Auto-Provisioning
         from app.models.models import User
-        user = db.exec(select(User).where(User.auth_provider_id == supabase_uid)).first()
-        
+
+        user = db.exec(
+            select(User).where(User.auth_provider_id == supabase_uid)
+        ).first()
+
         if user is None:
             user = db.exec(select(User).where(User.email == email)).first()
             if user:
-                logger.info("IDENTITY LINK: Binding Supabase Identity to existing User profile", email=email)
+                logger.info(
+                    "IDENTITY LINK: Binding Supabase Identity to existing User profile",
+                    email=email,
+                )
                 user.auth_provider_id = supabase_uid
                 db.add(user)
                 db.commit()
                 db.refresh(user)
             else:
                 # Auto-provision user if they don't exist
-                logger.info("PROVISIONING: Creating new local User profile from Supabase identity", email=email)
+                logger.info(
+                    "PROVISIONING: Creating new local User profile from Supabase identity",
+                    email=email,
+                )
                 user = User(
                     email=email,
                     auth_provider_id=supabase_uid,
-                    full_name=payload.get("user_metadata", {}).get("full_name") or email.split("@")[0]
+                    full_name=payload.get("user_metadata", {}).get("full_name")
+                    or email.split("@")[0],
                 )
                 db.add(user)
                 db.commit()
@@ -151,31 +181,39 @@ async def get_current_user(
 
         # 🛡️ Hardening: Bind user_id to session context immediately
         structlog.contextvars.bind_contextvars(user_id=str(user.id))
-        
+
         if not user.is_active:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive account")
-            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Inactive account"
+            )
+
         return user
 
     except HTTPException:
         raise
     except Exception as e:
         from app.core.logging import logger
+
         logger.error("AUTH SYSTEM ERROR", error=str(e))
         raise credentials_exception
+
 
 async def get_active_membership(
     request: Request,
     current_user: Any = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Optional[Any]:
     from app.models.models import TenantUser
     from app.core.logging import logger
-    
+
     # 1. Capture Header Intent
     header_tenant_id = request.headers.get("X-Tenant-Id")
-    
-    logger.debug("tenant_resolution.start", user_id=str(current_user.id), header_tenant_id=header_tenant_id)
+
+    logger.debug(
+        "tenant_resolution.start",
+        user_id=str(current_user.id),
+        header_tenant_id=header_tenant_id,
+    )
 
     # 👑 Superuser Resolution: Admins see EVERYTHING
     if current_user.platform_role == "admin":
@@ -184,39 +222,47 @@ async def get_active_membership(
                 target_id = UUID(header_tenant_id)
                 # Ensure the tenant actually exists
                 from app.models.models import Tenant
+
                 tenant = db.get(Tenant, target_id)
                 if not tenant:
-                    raise HTTPException(status_code=404, detail="Requested tenant does not exist.")
-                
+                    raise HTTPException(
+                        status_code=404, detail="Requested tenant does not exist."
+                    )
+
                 # Synthetic membership for admin bypass
                 membership = TenantUser(
                     tenant_id=target_id,
                     user_id=current_user.id,
-                    tenant_role="owner", # Admin acts as owner
-                    is_active=True
+                    tenant_role="owner",  # Admin acts as owner
+                    is_active=True,
                 )
-                logger.debug("tenant_resolution.admin_bypass", tenant_id=header_tenant_id)
+                logger.debug(
+                    "tenant_resolution.admin_bypass", tenant_id=header_tenant_id
+                )
             except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format.")
+                raise HTTPException(
+                    status_code=400, detail="Invalid X-Tenant-Id format."
+                )
         else:
             # Fallback for admin: Pick first tenant if none specified
             from app.models.models import Tenant
+
             first_tenant = db.exec(select(Tenant)).first()
             if first_tenant:
                 membership = TenantUser(
                     tenant_id=first_tenant.id,
                     user_id=current_user.id,
                     tenant_role="owner",
-                    is_active=True
+                    is_active=True,
                 )
             else:
                 # Still no tenants in the system at all
                 return None
 
         if membership:
-             structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
-             return membership
-             
+            structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+            return membership
+
     # 🕵️ Standard User Resolution Logic
     if header_tenant_id:
         try:
@@ -225,74 +271,102 @@ async def get_active_membership(
                 select(TenantUser).where(
                     TenantUser.user_id == current_user.id,
                     TenantUser.tenant_id == target_id,
-                    TenantUser.is_active == True
+                    TenantUser.is_active == True,
                 )
             ).first()
-            
+
             if not membership:
-                logger.warning("tenant_resolution.unauthorized", user_id=str(current_user.id), requested_tenant=header_tenant_id)
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have access to the requested tenant.")
+                logger.warning(
+                    "tenant_resolution.unauthorized",
+                    user_id=str(current_user.id),
+                    requested_tenant=header_tenant_id,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You do not have access to the requested tenant.",
+                )
         except ValueError:
-            logger.error("tenant_resolution.invalid_uuid", user_id=str(current_user.id), header_tenant_id=header_tenant_id)
+            logger.error(
+                "tenant_resolution.invalid_uuid",
+                user_id=str(current_user.id),
+                header_tenant_id=header_tenant_id,
+            )
             raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format.")
     else:
         # Fallback to default/first membership if no header
         membership = db.exec(
-            select(TenantUser).where(
-                TenantUser.user_id == current_user.id,
-                TenantUser.is_active == True
-            ).order_by(TenantUser.is_default.desc())
+            select(TenantUser)
+            .where(TenantUser.user_id == current_user.id, TenantUser.is_active == True)
+            .order_by(TenantUser.is_default.desc())
         ).first()
 
     if not membership:
         logger.warning("tenant_resolution.no_membership", user_id=str(current_user.id))
-        raise HTTPException(status_code=400, detail="No active tenant context found for user.")
-    
+        raise HTTPException(
+            status_code=400, detail="No active tenant context found for user."
+        )
+
     # 🛡️ Hardening: Bind tenant_id to session context immediately
     structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
-    logger.info("tenant_resolution.success", user_id=str(current_user.id), tenant_id=str(membership.tenant_id))
-    
+    logger.info(
+        "tenant_resolution.success",
+        user_id=str(current_user.id),
+        tenant_id=str(membership.tenant_id),
+    )
+
     return membership
 
+
 async def get_active_tenant(
-    membership: Any = Depends(get_active_membership),
-    db: Session = Depends(get_db)
+    membership: Any = Depends(get_active_membership), db: Session = Depends(get_db)
 ) -> Any:
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
     from app.models.models import Tenant
+
     return db.get(Tenant, membership.tenant_id)
 
+
 async def get_active_tenant_id(
-    membership: Any = Depends(get_active_membership)
+    membership: Any = Depends(get_active_membership),
 ) -> UUID:
     if not membership:
         raise HTTPException(status_code=400, detail="No active tenant context")
     return membership.tenant_id
 
+
 def require_tenant_role(roles: List[str]):
     async def role_dependency(
         membership: Any = Depends(get_active_membership),
-        current_user: Any = Depends(get_current_user)
+        current_user: Any = Depends(get_current_user),
     ):
         # 👑 Superuser Bypass: Platform admins navigate all tenant contexts
         if current_user.platform_role == "admin":
             return membership
-            
+
         if not membership or membership.tenant_role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
         return membership
+
     return role_dependency
+
 
 def require_platform_role(authorized_roles: List[str]):
     async def role_dependency(current_user: Any = Depends(get_current_user)):
         if current_user.platform_role not in authorized_roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
         return current_user
+
     return role_dependency
+
 
 # Backward Compatibility & Logic Aliases
 require_roles = require_tenant_role
+
 
 async def get_current_user_id(current_user: Any = Depends(get_current_user)) -> UUID:
     """

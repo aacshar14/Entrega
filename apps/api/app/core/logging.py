@@ -3,6 +3,7 @@ import sys
 import structlog
 from app.core.config import settings
 
+
 def setup_logging():
     shared_processors = [
         structlog.contextvars.merge_contextvars,
@@ -15,15 +16,9 @@ def setup_logging():
     ]
 
     if settings.ENVIRONMENT == "development":
-        logging_processors = [
-            *shared_processors,
-            structlog.dev.ConsoleRenderer()
-        ]
+        logging_processors = [*shared_processors, structlog.dev.ConsoleRenderer()]
     else:
-        logging_processors = [
-            *shared_processors,
-            structlog.processors.JSONRenderer()
-        ]
+        logging_processors = [*shared_processors, structlog.processors.JSONRenderer()]
 
     structlog.configure(
         processors=logging_processors,
@@ -37,5 +32,6 @@ def setup_logging():
         stream=sys.stdout,
         level=logging.INFO,
     )
+
 
 logger = structlog.get_logger()

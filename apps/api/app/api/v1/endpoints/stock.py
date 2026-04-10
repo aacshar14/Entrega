@@ -8,10 +8,11 @@ from datetime import datetime, timezone
 
 router = APIRouter()
 
+
 @router.get("/", dependencies=[Depends(require_roles(["owner", "operator"]))])
 async def list_stock(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id)
+    active_tenant_id: UUID = Depends(get_active_tenant_id),
 ):
     """List current stock levels."""
     stock = db.exec(
@@ -19,14 +20,15 @@ async def list_stock(
     ).all()
     return stock
 
+
 @router.post("/adjustments", dependencies=[Depends(require_roles(["owner"]))])
 async def adjust_stock(
-    product_id: UUID, 
-    quantity: float, 
+    product_id: UUID,
+    quantity: float,
     description: str = "Adjustment",
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant_id: UUID = Depends(get_active_tenant_id)
+    active_tenant_id: UUID = Depends(get_active_tenant_id),
 ):
     """
     Manually adjust stock (owner only).
@@ -38,18 +40,18 @@ async def adjust_stock(
         quantity=quantity,
         type="adjustment",
         description=description,
-        created_by_user_id=current_user.id
+        created_by_user_id=current_user.id,
     )
     db.add(new_movement)
-    
+
     # Update balance
     balance = db.exec(
         select(StockBalance).where(
             StockBalance.tenant_id == active_tenant_id,
-            StockBalance.product_id == product_id
+            StockBalance.product_id == product_id,
         )
     ).first()
-    
+
     if balance:
         balance.quantity += quantity
         balance.updated_by_user_id = current_user.id
@@ -60,9 +62,9 @@ async def adjust_stock(
             tenant_id=active_tenant_id,
             product_id=product_id,
             quantity=quantity,
-            updated_by_user_id=current_user.id
+            updated_by_user_id=current_user.id,
         )
         db.add(new_balance)
-        
+
     db.commit()
     return {"status": "Stock adjusted successfully"}

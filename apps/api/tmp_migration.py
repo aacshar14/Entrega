@@ -48,6 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_metric_snapshots_lookup
 ON metric_snapshots(metric_name, created_at);
 """
 
+
 def apply():
     engine = create_engine(DATABASE_URL)
     with Session(engine) as session:
@@ -55,6 +56,7 @@ def apply():
         session.execute(text(migration_sql))
         session.commit()
     print("Migration applied successfully.")
+
 
 if __name__ == "__main__":
     apply()

@@ -9,11 +9,13 @@ _key_bytes = _key_source.encode()
 _key = base64.urlsafe_b64encode(_key_bytes[:32].ljust(32, b"0"))
 fernet = Fernet(_key)
 
+
 def encrypt_token(token: str) -> str:
     """Encrypt a plain text token using AES-256 (Fernet)."""
     if not token:
         return None
     return fernet.encrypt(token.encode()).decode()
+
 
 def decrypt_token(encrypted_token: str) -> str:
     """Decrypt an encrypted token back to plain text."""

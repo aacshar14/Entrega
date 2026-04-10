@@ -10,29 +10,27 @@ from sqlmodel import Session, select, create_engine, SQLModel, text
 from app.core.config import settings
 from app.models.models import User, Tenant, TenantUser
 
+
 def seed():
-    print(f"Connecting to: {settings.DATABASE_URL.split('@')[-1]}") # Log safe URL
+    print(f"Connecting to: {settings.DATABASE_URL.split('@')[-1]}")  # Log safe URL
     engine = create_engine(settings.DATABASE_URL, echo=True)
-    
+
     # 0. Ensure tables are created IN THE SAME SESSION
     print("Forcing table creation...")
     SQLModel.metadata.create_all(engine)
-    
+
     with Session(engine) as session:
         # Check current search path
         path = session.exec(text("SHOW search_path")).first()
         print(f"Current search path: {path}")
-        
+
         # 1. Tenant ChocoBites
         statement = select(Tenant).where(Tenant.slug == "chocobites")
         tenant = session.exec(statement).first()
         if not tenant:
             print("Creating ChocoBites Tenant...")
             tenant = Tenant(
-                id=uuid4(),
-                name="ChocoBites",
-                slug="chocobites",
-                status="active"
+                id=uuid4(), name="ChocoBites", slug="chocobites", status="active"
             )
             session.add(tenant)
         else:
@@ -49,7 +47,7 @@ def seed():
                 email="test@entrega.space",
                 full_name="Test User",
                 auth_provider_id=supabase_uid,
-                platform_role="admin"
+                platform_role="admin",
             )
             session.add(user)
         else:
@@ -61,8 +59,7 @@ def seed():
 
         # 3. Membership
         statement = select(TenantUser).where(
-            TenantUser.tenant_id == tenant.id,
-            TenantUser.user_id == user.id
+            TenantUser.tenant_id == tenant.id, TenantUser.user_id == user.id
         )
         membership = session.exec(statement).first()
         if not membership:
@@ -72,13 +69,14 @@ def seed():
                 tenant_id=tenant.id,
                 user_id=user.id,
                 tenant_role="owner",
-                is_default=True
+                is_default=True,
             )
             session.add(membership)
             session.commit()
             print("--- SEED COMPLETE ---")
         else:
             print("Membership already exists.")
+
 
 if __name__ == "__main__":
     seed()
