@@ -162,9 +162,11 @@ export default function PlatformOverview() {
                     <tr className="border-b border-slate-50">
                        <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Tenant</th>
                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Volumen</th>
-                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">p95 Proc</th>
-                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Failed</th>
-                       <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-rose-500">Backlog</th>
+                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">p95 Proc</th>
+                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Sales(H)</th>
+                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-rose-500">Err Stock</th>
+                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center text-orange-500">Err Proc</th>
+                        <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Backlog</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -185,8 +187,18 @@ export default function PlatformOverview() {
                            </span>
                         </td>
                         <td className="px-4 py-5 text-center">
-                           <span className={`text-xs font-black ${p.failed_count > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                              {p.failed_count}
+                           <span className={`text-xs font-black ${p.support_kpis?.sales_today > 0 ? 'text-emerald-500' : 'text-slate-300'}`}>
+                              ${p.support_kpis?.sales_today || 0}
+                           </span>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className={`text-xs font-black ${p.support_kpis?.stock_errors_today > 0 ? 'text-rose-500' : 'text-slate-300'}`}>
+                              {p.support_kpis?.stock_errors_today || 0}
+                           </span>
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                           <span className={`text-xs font-black ${p.support_kpis?.failed_attempts_today > 0 ? 'text-orange-500' : 'text-slate-300'}`}>
+                              {p.support_kpis?.failed_attempts_today || 0}
                            </span>
                         </td>
                         <td className="px-4 py-5 text-center">

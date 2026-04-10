@@ -24,13 +24,7 @@ async def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant),
 ):
-    """
-    Returns a comprehensive summary for the active tenant dashboard.
-    """
     tenant_id = active_tenant.id
-
-    # 0. Business KPIs (V1.2 Final)
-    business_kpis = get_tenant_metrics(db, tenant_id)
 
     # 1. Main Stats
     customer_count = db.exec(
@@ -180,7 +174,6 @@ async def get_dashboard_summary(
                 "customer_records": customer_balance_count,
             },
         },
-        "business_kpis": business_kpis,
         "stock": formatted_stock,
         "debtors": [
             {"name": c.name, "amount": abs(float(cb.balance))}

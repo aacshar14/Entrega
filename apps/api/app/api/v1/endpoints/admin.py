@@ -19,6 +19,7 @@ from app.core.dependencies import require_platform_role, get_current_user_id
 from app.core.config import settings
 from app.core.metrics import MetricsAggregator
 from app.core.thresholds import PLATFORM_THRESHOLDS
+from app.services.metrics_service import get_tenant_metrics
 import json
 
 router = APIRouter()
@@ -169,6 +170,9 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
             ).first()
             return val or 0
 
+        # Support Metrics (V1.2 Support Edition)
+        support_kpis = get_tenant_metrics(db, t_id)
+
         pressure_map.append(
             {
                 "tenant_id": t_id,
@@ -178,6 +182,7 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                 "failed_count": int(get_val("tenant_failures_24h")),
                 "retry_count": int(get_val("tenant_retries_24h")),
                 "backlog": int(get_val("tenant_backlog_current")),
+                "support_kpis": support_kpis,
                 "status": (
                     "hot"
                     if snap.metric_value > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
