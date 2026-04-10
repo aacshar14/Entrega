@@ -93,8 +93,10 @@ export default function RootPage() {
                   </div>
                   <div className="h-10 w-px bg-slate-100 px-0"></div>
                   <div className="flex items-center gap-3">
-                     <img src="/chocobites.jpg" className="w-8 h-8 rounded-lg grayscale opacity-50" alt="ChocoBites" />
-                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-black italic">Pilot Launch</p>
+                     <div className="w-8 h-8 rounded-lg bg-[#56CCF2]/10 flex items-center justify-center text-[#56CCF2]">
+                        <ShieldCheck size={18} />
+                     </div>
+                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-black italic">Operación Validada</p>
                   </div>
                </div>
             </div>
@@ -117,7 +119,7 @@ export default function RootPage() {
             <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#56CCF2]">Onboarding Academy</h2>
                <h3 className="text-4xl md:text-5xl font-black tracking-tight italic">Entrega Academy: Tu formación operativa.</h3>
-               <p className="text-slate-500 font-medium italic">Accede a las lecciones tácticas y recursos que usamos para activar ChocoBites.</p>
+               <p className="text-slate-500 font-medium italic">Accede a las lecciones tácticas y recursos diseñados para escalar operaciones logísticas en campo.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -168,7 +170,7 @@ export default function RootPage() {
                   </div>
                   <div className="md:w-1/2 flex justify-center translate-y-8">
                      <div className="bg-white/5 p-4 rounded-[2rem] border border-white/10 backdrop-blur-3xl shadow-inner w-full max-w-sm">
-                        <img src="/docs_mock.png" className="w-full rounded-2xl shadow-2xl border border-white/20" alt="Entrega Glass Interface" />
+                        <img src="/settings_whatsapp.png" className="w-full rounded-2xl shadow-2xl border border-white/20" alt="Entrega WhatsApp Configuration" />
                      </div>
                   </div>
                </div>
@@ -184,7 +186,7 @@ export default function RootPage() {
             <div className="max-w-2xl mx-auto bg-[#1D3146] p-16 rounded-[4rem] text-white overflow-hidden relative group shadow-2xl shadow-[#1D3146]/20">
                <div className="absolute top-0 right-0 w-64 h-64 bg-[#56CCF2]/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
                <div className="relative z-10">
-                  <p className="text-[#56CCF2] font-black uppercase tracking-[0.3em] text-sm mb-6">Plan Único Prototipo</p>
+                  <p className="text-[#56CCF2] font-black uppercase tracking-[0.3em] text-sm mb-6">Plan Beta Founders Only</p>
                   <div className="flex items-end justify-center gap-2 mb-12">
                      <span className="text-8xl font-black">$0</span>
                      <span className="text-slate-400 font-bold uppercase tracking-widest mb-3">/ fase beta</span>
