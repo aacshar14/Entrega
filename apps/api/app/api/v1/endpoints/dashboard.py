@@ -11,7 +11,7 @@ from app.models.models import (
     CustomerBalance,
     StockBalance,
 )
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 from app.services.metrics_service import get_tenant_metrics
 
@@ -160,19 +160,46 @@ async def get_dashboard_summary(
         .limit(10)
     ).all()
 
+    # 6. Billing & Conversion (V1.3 Funnel)
+    now = datetime.now(timezone.utc)
+    created_at = active_tenant.created_at or now
+    days_running = (now - created_at).days
+    trial_days_remaining = max(0, 7 - days_running)
+    is_expired = days_running >= 7
+
+    # Operational triggers
+    total_deliveries = db.exec(
+        select(func.count(InventoryMovement.id))
+        .where(InventoryMovement.tenant_id == tenant_id)
+        .where(InventoryMovement.type == "delivery")
+    ).one()
+
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    sales_today = (
+        db.exec(
+            select(func.sum(InventoryMovement.total_amount))
+            .where(InventoryMovement.tenant_id == tenant_id)
+            .where(InventoryMovement.type == "delivery")
+            .where(InventoryMovement.created_at >= today_start)
+        ).one()
+        or 0.0
+    )
+
     return {
         "stats": {
-            "customer_count": customer_count,
-            "product_count": product_count,
-            "total_payments": float(total_payments),
-            "total_debt": total_debt_abs,
+            "customers": customer_count,
+            "products": product_count,
+            "stock_value": total_payments,  # Legacy field name
+            "total_debt": total_debt,
             "low_stock_count": low_stock_count,
             "weekly_produced": float(produced_this_week),
             "weekly_delivered": delivered_abs,
-            "debug": {
-                "stock_records": stock_balance_count,
-                "customer_records": customer_balance_count,
-            },
+        },
+        "billing": {
+            "trial_days_remaining": trial_days_remaining,
+            "is_expired": is_expired,
+            "total_orders": total_deliveries,
+            "sales_today": float(sales_today),
         },
         "stock": formatted_stock,
         "debtors": [

@@ -48,6 +48,12 @@ interface DashboardData {
   }>;
   welcome_message: string;
   business_name: string;
+  billing: {
+    trial_days_remaining: number;
+    is_expired: boolean;
+    total_orders: number;
+    sales_today: number;
+  };
 }
 
 export default function Dashboard() {
@@ -85,11 +91,82 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-[1400px] animate-in fade-in duration-500">
+      {/* Trial / Expiry Banners */}
+      {data.billing.is_expired ? (
+        <div className="p-10 rounded-[2.5rem] bg-rose-600 text-white shadow-2xl shadow-rose-500/30 flex flex-col md:flex-row items-center justify-between gap-8 border-4 border-rose-400/20 animate-in slide-in-from-top duration-700">
+          <div className="space-y-2 text-center md:text-left">
+            <h3 className="text-3xl font-black tracking-tight">Ya estás vendiendo con Entrega</h3>
+            <p className="text-rose-100 font-medium">Activa tu plan para recuperar el control total de tu dashboard, stock y reportes.</p>
+          </div>
+          <Link href="/onboarding" className="h-16 px-12 bg-white text-rose-600 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-xl">
+            Activar mi plan
+          </Link>
+        </div>
+      ) : data.billing.trial_days_remaining <= 2 && (
+        <div className="p-6 rounded-[2rem] bg-amber-500 text-white shadow-xl shadow-amber-500/20 flex items-center justify-between gap-6 border-2 border-amber-300/30">
+          <p className="font-bold flex items-center gap-3">
+             <AlertCircle size={20} className="animate-pulse" />
+             Tu periodo gratis termina en {data.billing.trial_days_remaining} {data.billing.trial_days_remaining === 1 ? 'día' : 'días'}
+          </p>
+          <Link href="/onboarding" className="text-xs font-black uppercase tracking-widest bg-white/20 px-6 py-3 rounded-xl backdrop-blur-md hover:bg-white/30 transition-all">
+             Asegurar mi cuenta
+          </Link>
+        </div>
+      )}
+
+      {/* Operational Trigger Prompts */}
+      {!data.billing.is_expired && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.billing.total_orders >= 5 && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4 text-emerald-700 animate-in zoom-in duration-500">
+               <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center grow-0 shrink-0">
+                  <Truck size={20} />
+               </div>
+               <p className="text-sm font-black uppercase tracking-tight">Ya estás usando Entrega para vender ({data.billing.total_orders} envíos)</p>
+            </div>
+          )}
+          {data.billing.sales_today > 0 && (
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center gap-4 text-blue-700 animate-in zoom-in duration-700">
+               <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center grow-0 shrink-0">
+                  <Banknote size={20} />
+               </div>
+               <p className="text-sm font-black uppercase tracking-tight">Hoy generaste ${data.billing.sales_today.toLocaleString()} con Entrega</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="mb-2">
          <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">{data.welcome_message}</h1>
          <p className="text-slate-500 font-medium italic mt-1">Hoy en {data.business_name || 'Entrega'}</p>
       </div>
+
+      <div className={`space-y-8 relative ${data.billing.is_expired ? 'overflow-hidden rounded-[3rem]' : ''}`}>
+        {/* Soft Paywall Overlay */}
+        {data.billing.is_expired && (
+          <div className="absolute inset-0 z-50 bg-white/40 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
+             <div className="max-w-md space-y-8 animate-in fade-in zoom-in duration-700">
+                <div className="w-24 h-24 bg-rose-500 text-white rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-rose-500/40 rotate-6">
+                   <AlertCircle size={48} />
+                </div>
+                <div className="space-y-4">
+                   <h2 className="text-4xl font-black text-[#1D3146] tracking-tight">Acceso Restringido</h2>
+                   <p className="text-slate-600 font-bold leading-relaxed">
+                      Para ver tus métricas detalladas, inventario y reportes, necesitas activar tu suscripción.
+                   </p>
+                </div>
+                <div className="flex flex-col gap-4">
+                   <Link href="/onboarding" className="h-16 bg-[#1D3146] text-white rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-sm shadow-2xl shadow-[#1D3146]/30 hover:scale-105 active:scale-95 transition-all">
+                      Activar suscripción ahora
+                   </Link>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center justify-center gap-2">
+                      <Truck size={12} /> WhatsApp sigue funcionando para tu operación
+                   </p>
+                </div>
+             </div>
+          </div>
+        )}
 
       {/* 4 Cards Principales */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -274,6 +351,7 @@ export default function Dashboard() {
                </div>
             </div>
          </div>
+       </div>
       </div>
     </div>
   );
