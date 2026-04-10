@@ -16,39 +16,45 @@ from app.core.worker import EventWorker
 
 router = APIRouter()
 
+
 @router.get("/whatsapp")
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_session),
 ):
     """WhatsApp webhook verification for Meta Cloud API integration."""
     # 🔍 Dynamic Verification Policy
     verify_token = settings.WHATSAPP_VERIFY_TOKEN
     try:
         # Check if we have a dynamic token in system_settings
-        result = db.execute(text("SELECT value FROM system_settings WHERE key = 'whatsapp_verify_token'")).first()
+        result = db.execute(
+            text(
+                "SELECT value FROM system_settings WHERE key = 'whatsapp_verify_token'"
+            )
+        ).first()
         if result and result[0]:
             verify_token = str(result[0]).strip()
     except Exception:
-        pass # Fallback to settings if table doesn't exist
+        pass  # Fallback to settings if table doesn't exist
 
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
         # 🛡️ Meta requires the challenge to be returned as plain text
         return PlainTextResponse(content=hub_challenge)
-    
+
     raise HTTPException(status_code=403, detail="Verification token mismatch")
+
 
 @router.post("/whatsapp")
 @limiter.limit("20/minute")
 async def receive_whatsapp_event(
     request: Request,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_session),
 ):
     """
-    Handles incoming WhatsApp events. 
+    Handles incoming WhatsApp events.
     1. Validates X-Hub-Signature-256 signature from Meta.
     2. Implements 'Learning Mode' strategy by logging every message.
     """
@@ -70,12 +76,14 @@ async def receive_whatsapp_event(
 
         secret = settings.WHATSAPP_APP_SECRET
         if not secret:
-            raise HTTPException(status_code=500, detail="Webhook security not configured")
+            raise HTTPException(
+                status_code=500, detail="Webhook security not configured"
+            )
 
         body_bytes = await request.body()
 
         try:
-            expected_sig = signature[len("sha256="):].strip()
+            expected_sig = signature[len("sha256=") :].strip()
             h = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256)
 
             if not hmac.compare_digest(h.hexdigest(), expected_sig):
@@ -85,28 +93,29 @@ async def receive_whatsapp_event(
             raise HTTPException(status_code=401, detail="Invalid signature format")
 
     import time
+
     start_time = time.perf_counter()
-    
+
     # Use the local body_bytes to avoid re-reading the consumed stream
     payload = json.loads(body_bytes)
-    
+
     # --- 2. EXTRACTION & IDEMPOTENCY PRE-CHECK (P0 - V1.2) ---
     try:
-        entry = payload.get('entry', [])[0]
-        changes = entry.get('changes', [])[0]
-        value = changes.get('value', {})
-        metadata = value.get('metadata', {})
-        business_number_id = metadata.get('phone_number_id')
-        messages = value.get('messages', [])
-        
+        entry = payload.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+        metadata = value.get("metadata", {})
+        business_number_id = metadata.get("phone_number_id")
+        messages = value.get("messages", [])
+
         if not messages:
             return {"status": "accepted"}
 
         msg = messages[0]
-        msg_id = msg.get('id')
-        from_number = msg.get('from')
-        body = msg.get('text', {}).get('body')
-        
+        msg_id = msg.get("id")
+        from_number = msg.get("from")
+        body = msg.get("text", {}).get("body")
+
         if not body or not msg_id:
             return {"status": "ignored_non_compliant"}
 
@@ -116,12 +125,11 @@ async def receive_whatsapp_event(
 
     # Optimization: Early skip if already known (Non-atomic pre-check)
     from app.models.models import ProcessedMessage
+
     existing = db.exec(
-        select(ProcessedMessage).where(
-            ProcessedMessage.message_id == msg_id
-        )
+        select(ProcessedMessage).where(ProcessedMessage.message_id == msg_id)
     ).first()
-    if existing and existing.status == 'processed':
+    if existing and existing.status == "processed":
         logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
         return {"status": "accepted_duplicate"}
 
@@ -129,25 +137,32 @@ async def receive_whatsapp_event(
     try:
         # We check both the new integration table (preferred) and the legacy config table
         from app.models.models import TenantWhatsAppIntegration, WhatsAppConfig
-        
+
         # Priority 1: New multi-tenant integration table
         integration = db.exec(
-            select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.phone_number_id == str(business_number_id))
+            select(TenantWhatsAppIntegration).where(
+                TenantWhatsAppIntegration.phone_number_id == str(business_number_id)
+            )
         ).first()
-        
+
         target_tenant_id = None
         if integration:
             target_tenant_id = integration.tenant_id
         else:
             # Priority 2: Legacy WhatsAppConfig table
             config = db.exec(
-                select(WhatsAppConfig).where(WhatsAppConfig.meta_phone_number_id == str(business_number_id))
+                select(WhatsAppConfig).where(
+                    WhatsAppConfig.meta_phone_number_id == str(business_number_id)
+                )
             ).first()
             if config:
                 target_tenant_id = config.tenant_id
 
         if not target_tenant_id:
-            logger.warning("No tenant mapping found for meta phone number id", phone_number_id=business_number_id)
+            logger.warning(
+                "No tenant mapping found for meta phone number id",
+                phone_number_id=business_number_id,
+            )
             return {"status": "error", "detail": "Tenant not recognized"}
 
         # Bind tenant context for ALL subsequent logs in this request
@@ -163,34 +178,36 @@ async def receive_whatsapp_event(
             from_number=from_number,
             message_sid=msg_id,
             body=body,
-            raw_payload=json.dumps(payload)
+            raw_payload=json.dumps(payload),
         )
         db.add(new_msg)
 
         # 4. 📭 Enqueue Event for Async Processing
         qm = QueueManager(db)
-        
+
         # Calculate intake duration
         duration_ms = (time.perf_counter() - start_time) * 1000
-        
+
         qm.enqueue(
             tenant_id=tenant.id,
             source="whatsapp",
             event_type="message",
             message_sid=msg_id,
             payload={"from": from_number, "body": body},
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
-        
+
         db.commit()
 
         # 🚀 Immediate Background Dispatcher
         worker = EventWorker(db)
         background_tasks.add_task(worker.process_pending_events, limit=5)
 
-        logger.info("webhooks.whatsapp_enqueued", message_id=msg_id, intake_ms=duration_ms)
+        logger.info(
+            "webhooks.whatsapp_enqueued", message_id=msg_id, intake_ms=duration_ms
+        )
         return {"status": "accepted"}
-        
+
     except Exception as e:
         logger.error(f"Webhook Error: {str(e)}")
         return {"status": "error", "message": str(e)}
