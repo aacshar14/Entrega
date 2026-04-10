@@ -170,27 +170,45 @@ class ParsingEngine:
 
             # Resta del saldo (Genera deuda al cliente en negativo)
             cust_balance.balance -= total_charge
-            cust_balance.last_updated = datetime.now(timezone.utc)
-
-            # 2. Update Warehouse Stock (P0 Locking)
+            # 2. Update Warehouse Stock (P0 Locking + Refinements)
             from app.models.models import StockBalance
 
+            logger.info(
+                "inventory.lock_request", sku=sku, tenant_id=str(self.tenant.id)
+            )
             balance = self.session.exec(
                 select(StockBalance)
-                .where(StockBalance.product_id == product.id)
+                .where(
+                    StockBalance.tenant_id == self.tenant.id,
+                    StockBalance.product_id == product.id,
+                )
                 .with_for_update()
             ).first()
 
-            if balance:
-                balance.quantity -= qty
-                balance.last_updated = datetime.now(timezone.utc)
-            else:
+            if not balance:
+                # Initialize balance if missing
                 balance = StockBalance(
                     tenant_id=self.tenant.id,
                     product_id=product.id,
-                    quantity=-qty,
+                    quantity=0,
                 )
-            self.session.add(balance)
+                self.session.add(balance)
+
+            # 🛡️ Business Rule: Prevent negative stock anomalies
+            if balance.quantity < qty:
+                logger.error(
+                    "inventory.insufficient_stock",
+                    sku=sku,
+                    available=balance.quantity,
+                    requested=qty,
+                )
+                raise ValueError(
+                    f"Stock insuficiente para {sku}: disponible {balance.quantity}, solicitado {qty}"
+                )
+
+            balance.quantity -= qty
+            balance.last_updated = datetime.now(timezone.utc)
+            logger.info("inventory.lock_acquired_and_updated", sku=sku)
 
             # 3. Registrar la entrega ("Lo que está afuera")
             movement = InventoryMovement(

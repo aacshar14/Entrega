@@ -60,16 +60,16 @@ class EventWorker:
                 self._execute_single_event_transactional(event)
                 return  # Success
             except OperationalError as e:
-                # Retry on deadlock or connection issues
-                last_error = e
+                # ️⚠️ LOCK CONTENTION (Audit Log)
                 logger.warning(
-                    "worker.db_contention",
+                    "worker.db_lock_contention",
                     attempt=attempt + 1,
                     event_id=str(event.id),
-                    error=str(e),
+                    wait_time=0.1 * (attempt + 1),
                 )
                 self.db.rollback()
-                time.sleep(1 * (attempt + 1))  # Exponential-ish backoff
+                time.sleep(0.1 * (attempt + 1))  # Calibrated progressive backoff
+                last_error = e
             except Exception as e:
                 # Non-recoverable logic error
                 self.db.rollback()
