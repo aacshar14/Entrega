@@ -105,6 +105,14 @@ jobs:
           docker push $API_IMAGE:${{ github.sha }}
           docker push $API_IMAGE:latest
 
+      - name: 🧪 Code Quality Gate (format + syntax)
+        run: |
+          pip install black
+          echo "Running Black format check..."
+          black --check .
+          echo "Running Python syntax validation..."
+          python -m compileall .
+
       - name: Deploy API to Cloud Run
         run: |-
           gcloud run deploy entrega-api \
