@@ -84,8 +84,7 @@ async def exchange_meta_code(
 
             if not integration:
                 integration = TenantWhatsAppIntegration(
-                    tenant_id=active_tenant_id,
-                    created_by_user_id=current_user.id
+                    tenant_id=active_tenant_id, created_by_user_id=current_user.id
                 )
 
             # 🛡️ Hardening: Meta IDs from payload (provided by SDK)
@@ -109,12 +108,14 @@ async def exchange_meta_code(
                 integration.setup_completed = False
 
             db.add(integration)
-            
+
             # Sync Tenant status flags for legacy UI components
             tenant_obj = db.get(Tenant, active_tenant_id)
             if tenant_obj:
                 tenant_obj.business_whatsapp_connected = True
-                tenant_obj.whatsapp_status = "connected" if integration.status == "connected" else "pending"
+                tenant_obj.whatsapp_status = (
+                    "connected" if integration.status == "connected" else "pending"
+                )
                 tenant_obj.updated_at = datetime.now(timezone.utc)
                 db.add(tenant_obj)
 

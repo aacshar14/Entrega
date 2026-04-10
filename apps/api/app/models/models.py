@@ -107,11 +107,11 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     phone_number_id: Optional[str] = Field(default=None, index=True, unique=True)
     access_token_encrypted: Optional[str] = None
     token_expires_at: Optional[datetime] = None
-    
+
     # Metadata & Display
     display_phone_number: Optional[str] = None
     setup_completed: bool = Field(default=False)
-    
+
     status: str = Field(
         default="pending"
     )  # 'connected', 'disconnected', 'token_expired', 'reconnect_required', 'pending'

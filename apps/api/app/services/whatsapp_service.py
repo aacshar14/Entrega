@@ -19,7 +19,9 @@ class WhatsAppService:
         """
         # 1. Resolve Credentials (V1.4 Unified)
         config = self.db.exec(
-            select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.tenant_id == tenant.id)
+            select(TenantWhatsAppIntegration).where(
+                TenantWhatsAppIntegration.tenant_id == tenant.id
+            )
         ).first()
 
         if not config or not config.access_token_encrypted:

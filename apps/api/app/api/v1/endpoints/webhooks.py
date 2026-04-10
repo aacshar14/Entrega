@@ -145,7 +145,9 @@ async def receive_whatsapp_event(
         ).first()
 
         if not integration:
-            logger.warning("webhooks.tenant_not_found", phone_number_id=business_number_id)
+            logger.warning(
+                "webhooks.tenant_not_found", phone_number_id=business_number_id
+            )
             return {"status": "error", "message": "Tenant not integrated"}
 
         target_tenant_id = integration.tenant_id
