@@ -22,6 +22,8 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -41,6 +43,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
@@ -73,6 +77,11 @@ jobs:
     needs: build_api
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -99,6 +108,11 @@ jobs:
     needs: migrate_db
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -114,7 +128,8 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }},WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }},WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}"
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }},WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }},WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}" \
+            --wait
 
       - name: API Health Check
         run: |-
@@ -143,6 +158,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -168,6 +185,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
@@ -195,12 +214,12 @@ jobs:
 
       - name: Deploy Web to Cloud Run
         run: |-
-            gcloud run deploy entrega-web \
-              --image $WEB_IMAGE:${{ github.sha }} \
-              --region $REGION \
-              --platform managed \
-              --allow-unauthenticated \
-              --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }},NEXT_PUBLIC_META_APP_ID=${{ secrets.WHATSAPP_APP_ID }}"
+          gcloud run deploy entrega-web \
+            --image $WEB_IMAGE:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }},NEXT_PUBLIC_META_APP_ID=${{ secrets.WHATSAPP_APP_ID }}"
 
   finalize:
     name: Final Smoke Test
