@@ -101,42 +101,44 @@ async def receive_whatsapp_event(
     start_time = time.perf_counter()
     
     # Use the local body_bytes to avoid re-reading the consumed stream
-        # --- 2. EXTRACTION & IDEMPOTENCY PRE-CHECK (P0 - V1.2) ---
-        try:
-            entry = payload.get('entry', [])[0]
-            changes = entry.get('changes', [])[0]
-            value = changes.get('value', {})
-            metadata = value.get('metadata', {})
-            business_number_id = metadata.get('phone_number_id')
-            messages = value.get('messages', [])
-            
-            if not messages:
-                return {"status": "accepted"}
+    payload = json.loads(body_bytes)
+    
+    # --- 2. EXTRACTION & IDEMPOTENCY PRE-CHECK (P0 - V1.2) ---
+    try:
+        entry = payload.get('entry', [])[0]
+        changes = entry.get('changes', [])[0]
+        value = changes.get('value', {})
+        metadata = value.get('metadata', {})
+        business_number_id = metadata.get('phone_number_id')
+        messages = value.get('messages', [])
+        
+        if not messages:
+            return {"status": "accepted"}
 
-            msg = messages[0]
-            msg_id = msg.get('id')
-            from_number = msg.get('from')
-            body = msg.get('text', {}).get('body')
-            
-            if not body or not msg_id:
-                return {"status": "ignored_non_compliant"}
+        msg = messages[0]
+        msg_id = msg.get('id')
+        from_number = msg.get('from')
+        body = msg.get('text', {}).get('body')
+        
+        if not body or not msg_id:
+            return {"status": "ignored_non_compliant"}
 
-        except (IndexError, KeyError, TypeError, AttributeError) as e:
-            logger.error("webhooks.payload_parsing_failed", error=str(e))
-            return {"status": "error", "message": "Malformed Meta payload"}
+    except (IndexError, KeyError, TypeError, AttributeError) as e:
+        logger.error("webhooks.payload_parsing_failed", error=str(e))
+        return {"status": "error", "message": "Malformed Meta payload"}
 
-        # Optimization: Early skip if already known (Non-atomic pre-check)
-        from app.models.models import ProcessedMessage
-        existing = db.exec(
-            select(ProcessedMessage).where(
-                ProcessedMessage.message_id == msg_id
-            )
-        ).first()
-        if existing and existing.status == 'processed':
-            logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
-            return {"status": "accepted_duplicate"}
+    # Optimization: Early skip if already known (Non-atomic pre-check)
+    from app.models.models import ProcessedMessage
+    existing = db.exec(
+        select(ProcessedMessage).where(
+            ProcessedMessage.message_id == msg_id
+        )
+    ).first()
+    if existing and existing.status == 'processed':
+        logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
+        return {"status": "accepted_duplicate"}
 
-        # 2. 🏛️ Resolve Tenant based on meta phone_number_id
+    # 2. 🏛️ Resolve Tenant based on meta phone_number_id
         # We check both the new integration table (preferred) and the legacy config table
         from app.models.models import TenantWhatsAppIntegration, WhatsAppConfig
         
