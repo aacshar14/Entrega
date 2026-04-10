@@ -214,7 +214,7 @@ async def get_dashboard_summary(
             "customer_count": customer_count,
             "product_count": product_count,
             "total_payments": total_payments,
-            "total_debt": total_debt,
+            "total_debt": abs(float(total_debt)),
             "low_stock_count": low_stock_count,
             "weekly_produced": float(produced_this_week),
             "weekly_delivered": delivered_abs,
