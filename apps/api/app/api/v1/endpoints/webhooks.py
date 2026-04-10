@@ -55,47 +55,34 @@ async def receive_whatsapp_event(
     # --- 1. SIGNATURE VALIDATION (Security P0 / Stabilization V1.2) ---
     if settings.ALLOW_INSECURE_WEBHOOKS:
         if settings.ENVIRONMENT == "production":
-            logger.critical("PRODUCTION SECURITY BREACH: Webhook signature bypass enabled in production!", security_event="bypass_enabled_in_prod")
+            logger.critical("PRODUCTION SECURITY BREACH")
         else:
-            logger.warning("INSECURE MODE: Webhook signature validation bypassed", security_event="bypass_active")
+            logger.warning("INSECURE MODE")
+        body_bytes = await request.body()
     else:
-        # 1.1 Header Presence
         signature = request.headers.get("X-Hub-Signature-256")
+
         if not signature:
-            logger.error("SECURITY FAILURE: Missing X-Hub-Signature-256 header", security_event="missing_signature")
             raise HTTPException(status_code=401, detail="Signature missing")
 
-        # 1.2 Format Validation
         if not signature.startswith("sha256="):
-            logger.error("SECURITY FAILURE: Invalid signature header format", security_event="invalid_signature_format")
             raise HTTPException(status_code=401, detail="Invalid signature format")
 
-        # 1.3 Secret Configuration Check
         secret = settings.WHATSAPP_APP_SECRET
         if not secret:
-            logger.critical("SECURITY MISCONFIGURATION: WHATSAPP_APP_SECRET is not set", security_event="missing_secret")
             raise HTTPException(status_code=500, detail="Webhook security not configured")
 
-        # 1.4 HMAC Validation (Using Raw Body)
-        # 📦 Body Caching Fix: Store for downstream reuse if needed
         body_bytes = await request.body()
-        request.state.raw_body = body_bytes 
-        
+
         try:
-            # Hardened signature extraction
             expected_sig = signature[len("sha256="):].strip()
-            
-            # Use explicit encoding best practice
             h = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256)
-            computed_sig = h.hexdigest()
-            
-            # Timing-attack safe comparison
-            if not hmac.compare_digest(computed_sig, expected_sig):
-                logger.error("SECURITY FAILURE: HMAC signature mismatch", security_event="hmac_mismatch")
+
+            if not hmac.compare_digest(h.hexdigest(), expected_sig):
                 raise HTTPException(status_code=401, detail="Invalid signature")
-        except (IndexError, ValueError) as e:
-            logger.error(f"SECURITY FAILURE: Signature processing error: {str(e)}", security_event="processing_error")
-            raise HTTPException(status_code=401, detail="Could not verify signature")
+
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid signature format")
 
     import time
     start_time = time.perf_counter()
