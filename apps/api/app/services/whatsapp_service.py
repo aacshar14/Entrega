@@ -37,23 +37,12 @@ class WhatsAppService:
             )
             return
 
-        # 2. Build Human-Friendly Message
-        # Logic: If balance is 0 or positive, it's paid.
-        # If balance is negative, it's a debt.
-        balance_val = data["balance"]
-        balance_label = "Saldo pendiente"
-        if balance_val >= 0:
-            balance_label = "Pagado"
-
-        balance_abs = abs(balance_val)
-
         message = (
             f"🧾 *Pedido registrado*\n\n"
-            f"*Cliente:* {data['customer_name']}\n\n"
-            f"*Productos:*\n{data['product_list']}\n\n"
-            f"*Total:* ${data['total_amount']:,.2f}\n"
-            f"*{balance_label}:* ${balance_abs:,.2f}\n\n"
-            f"---\n"
+            f"Cliente: {data['customer_name']}\n\n"
+            f"Productos:\n{data['product_list']}\n\n"
+            f"Total: ${int(data['total_amount']) if data['total_amount'] % 1 == 0 else data['total_amount']}\n\n"
+            f"—\n"
             f"Entrega 🚀"
         )
 

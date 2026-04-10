@@ -230,7 +230,7 @@ class ParsingEngine:
                 total_amount=total_charge,
             )
             self.session.add(movement)
-            product_summary.append(f"• {qty}x {item['product_name']}")
+            product_summary.append(f"- {item['product_name']} x{qty}")
 
         # Emit Business Event: Order Processed
         self.session.add(
