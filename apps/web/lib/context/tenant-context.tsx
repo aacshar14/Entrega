@@ -206,12 +206,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       };
     }, [supabase, fetchContext, handleManualLogout, router]);
 
-  const switchTenant = useCallback((tenantId: string) => {
+  const switchTenant = useCallback(async (tenantId: string) => {
     setIsLoading(true);
     setActiveTenantId(tenantId);
     setIsTenantEntryExplicit(true);
-    fetchContext(tenantId);
-  }, [fetchContext]);
+    try {
+      await fetchContext(tenantId);
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Switch failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchContext, router]);
 
   const clearTenant = useCallback(() => {
     setActiveTenantId(null);
