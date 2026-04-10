@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None
 
     # Security
+    ALLOW_INSECURE_WEBHOOKS: bool = False # MUST REMAIN FALSE IN PRODUCTION
     SECRET_KEY: str = "development_secret_key_change_me_in_production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
 
