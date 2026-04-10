@@ -211,9 +211,9 @@ async def get_dashboard_summary(
 
     return {
         "stats": {
-            "customers": customer_count,
-            "products": product_count,
-            "stock_value": total_payments,  # Legacy field name
+            "customer_count": customer_count,
+            "product_count": product_count,
+            "total_payments": total_payments,
             "total_debt": total_debt,
             "low_stock_count": low_stock_count,
             "weekly_produced": float(produced_this_week),
