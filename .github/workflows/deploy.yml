@@ -85,6 +85,14 @@ jobs:
         run: |-
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
+      - name: 🧪 Code Quality Gate (format + syntax)
+        run: |
+          pip install black==26.3.1
+          echo "Running Black format check..."
+          black --check .
+          echo "Running Python syntax validation..."
+          python -m compileall .
+
       - name: Build API
         id: build-api
         run: |-
@@ -105,13 +113,6 @@ jobs:
           docker push $API_IMAGE:${{ github.sha }}
           docker push $API_IMAGE:latest
 
-      - name: 🧪 Code Quality Gate (format + syntax)
-        run: |
-          pip install black
-          echo "Running Black format check..."
-          black --check .
-          echo "Running Python syntax validation..."
-          python -m compileall .
 
       - name: Deploy API to Cloud Run
         run: |-
