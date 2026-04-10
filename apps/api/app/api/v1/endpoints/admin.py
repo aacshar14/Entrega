@@ -14,6 +14,7 @@ from app.models.models import (
     AuditLog,
     MetricSnapshot,
     SystemSetting,
+    TenantWhatsAppIntegration,
 )
 from app.core.dependencies import require_platform_role, get_current_user_id
 from app.core.config import settings

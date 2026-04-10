@@ -15,9 +15,10 @@ from app.models.models import (
     TenantUser,
     Customer,
     Product,
-    MeResponse,
     MembershipInfo,
     TenantInfo,
+    TenantWhatsAppIntegration,
+    WhatsAppConfig,
 )
 from typing import List, Optional
 from uuid import UUID
@@ -44,13 +45,36 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     )
 
     # Check WhatsApp
-    from app.models.models import WhatsAppConfig
 
-    wa_config = db.exec(
-        select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == tenant.id)
+    # 🆕 Modern Integration Lookup (V1.4 Source of Truth)
+    wa_integ = db.exec(
+        select(TenantWhatsAppIntegration).where(
+            TenantWhatsAppIntegration.tenant_id == tenant.id
+        )
     ).first()
 
-    has_wa = wa_config is not None and wa_config.meta_onboarding_status == "verified"
+    # 🛡️ Legacy Check for backward compatibility during transition
+    wa_config = None
+    if not wa_integ:
+        wa_config = db.exec(
+            select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == tenant.id)
+        ).first()
+
+    # Determine status from best available record
+    status = "not_connected"
+    display_number = None
+    account_name = None
+
+    if wa_integ:
+        status = wa_integ.status
+        display_number = wa_integ.phone_number_id
+        account_name = wa_integ.business_name
+    elif wa_config:
+        status = wa_config.meta_onboarding_status
+        display_number = wa_config.display_phone_number
+        account_name = wa_config.whatsapp_business_account_name
+
+    has_wa = status == "connected" or status == "verified"
 
     return TenantInfo(
         id=tenant.id,
@@ -67,13 +91,9 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         clients_imported=has_customers,
         stock_imported=has_products,
         business_whatsapp_connected=has_wa,
-        whatsapp_status=(
-            wa_config.meta_onboarding_status if wa_config else "disconnected"
-        ),
-        whatsapp_display_number=wa_config.display_phone_number if wa_config else None,
-        whatsapp_account_name=(
-            wa_config.whatsapp_business_account_name if wa_config else None
-        ),
+        whatsapp_status=status,
+        whatsapp_display_number=display_number,
+        whatsapp_account_name=account_name,
         timezone=tenant.timezone,
         currency=tenant.currency,
         ready=has_customers
