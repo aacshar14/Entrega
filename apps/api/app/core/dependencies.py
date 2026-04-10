@@ -177,7 +177,47 @@ async def get_active_membership(
     
     logger.debug("tenant_resolution.start", user_id=str(current_user.id), header_tenant_id=header_tenant_id)
 
-    # 2. Resolution Logic
+    # 👑 Superuser Resolution: Admins see EVERYTHING
+    if current_user.platform_role == "admin":
+        if header_tenant_id:
+            try:
+                target_id = UUID(header_tenant_id)
+                # Ensure the tenant actually exists
+                from app.models.models import Tenant
+                tenant = db.get(Tenant, target_id)
+                if not tenant:
+                    raise HTTPException(status_code=404, detail="Requested tenant does not exist.")
+                
+                # Synthetic membership for admin bypass
+                membership = TenantUser(
+                    tenant_id=target_id,
+                    user_id=current_user.id,
+                    tenant_role="owner", # Admin acts as owner
+                    is_active=True
+                )
+                logger.debug("tenant_resolution.admin_bypass", tenant_id=header_tenant_id)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format.")
+        else:
+            # Fallback for admin: Pick first tenant if none specified
+            from app.models.models import Tenant
+            first_tenant = db.exec(select(Tenant)).first()
+            if first_tenant:
+                membership = TenantUser(
+                    tenant_id=first_tenant.id,
+                    user_id=current_user.id,
+                    tenant_role="owner",
+                    is_active=True
+                )
+            else:
+                # Still no tenants in the system at all
+                return None
+
+        if membership:
+             structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+             return membership
+             
+    # 🕵️ Standard User Resolution Logic
     if header_tenant_id:
         try:
             target_id = UUID(header_tenant_id)

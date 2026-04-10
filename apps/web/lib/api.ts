@@ -23,7 +23,8 @@ export async function apiRequest(
   activeTenantId?: string,
   accessToken?: string
 ) {
-  const cleanEndpoint = `/${endpoint.replace(/^\/+|\/+$/g, '')}`;
+  // 🔗 Endpoint Normalization: Ensure prefix but preserve intent (trailing slashes)
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   // 🔐 Token Resolution: Prioritize injected token to avoid redundant session fetches

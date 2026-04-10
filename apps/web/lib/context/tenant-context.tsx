@@ -147,7 +147,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       if (error.status === 401 || error.status === 403) {
         handleManualLogout();
-        const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(pathname);
+        const currentPath = window.location.pathname;
+        const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(currentPath);
         if (!isPublic) router.replace('/login');
       } else {
         console.error('[TENANT CONTEXT ERROR]', error);
@@ -155,44 +156,51 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTenantId, pathname, router, handleManualLogout, isTenantEntryExplicit]);
+  }, [activeTenantId, router, handleManualLogout, isTenantEntryExplicit]);
 
   // Ref guard to prevent double-bootstrap in concurrent re-renders
   const authIsReady = React.useRef(false);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        authIsReady.current = false;
-        handleManualLogout();
-        const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
-        if (!isPublic) router.replace('/login');
-      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-        if (session && !authIsReady.current) {
-          authIsReady.current = true;
-          await fetchContext(undefined, session.access_token);
+    // 🔄 Bootstrapper: Recovers identity and context on load or auth change
+    useEffect(() => {
+      // Create a subscription once to handle sign-ins and sign-outs globally
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          authIsReady.current = false;
+          handleManualLogout();
+          // We check the DOM directly to avoid re-running this effect on every pathname change
+          const currentPath = window.location.pathname;
+          const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(currentPath);
+          if (!isPublic) router.replace('/login');
+        } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+          if (session && !authIsReady.current) {
+            authIsReady.current = true;
+            await fetchContext(undefined, session.access_token);
+          }
         }
-      }
-    });
+      });
 
-    // Proactive check for SSR-compatible session recovery
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        if (!authIsReady.current) {
-          authIsReady.current = true;
-          await fetchContext(undefined, session.access_token);
+      // Initialize recovery
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (session) {
+          if (!authIsReady.current) {
+            authIsReady.current = true;
+            await fetchContext(undefined, session.access_token);
+          }
+        } else {
+          setIsLoading(false);
+          const currentPath = window.location.pathname;
+          const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(currentPath);
+          if (!isPublic) {
+            router.replace('/login');
+          }
         }
-      } else {
-        setIsLoading(false);
-        const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
-        if (!isPublic) {
-          router.replace('/login');
-        }
-      }
-    });
+      });
 
-    return () => subscription.unsubscribe();
-  }, [supabase, fetchContext, handleManualLogout, pathname, router]);
+      return () => {
+        subscription.unsubscribe();
+      };
+    }, [supabase, fetchContext, handleManualLogout, router]);
 
   const switchTenant = useCallback((tenantId: string) => {
     setIsLoading(true);
