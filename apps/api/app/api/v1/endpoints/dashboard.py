@@ -162,10 +162,17 @@ async def get_dashboard_summary(
 
     # 6. Billing & Conversion (V1.3 Funnel)
     now = datetime.now(timezone.utc)
-    created_at = active_tenant.created_at or now
-    days_running = (now - created_at).days
-    trial_days_remaining = max(0, 7 - days_running)
-    is_expired = days_running >= 7
+    # Grace period: anyone before 2026-04-10 gets 7 days from today.
+    release_date = datetime(2026, 4, 10, tzinfo=timezone.utc)
+
+    tenant_start = active_tenant.created_at or now
+    if tenant_start < release_date:
+        trial_expires_at = release_date + timedelta(days=7)
+    else:
+        trial_expires_at = tenant_start + timedelta(days=7)
+
+    trial_days_remaining = (trial_expires_at - now).days
+    is_expired = now > trial_expires_at
 
     # Operational triggers
     total_deliveries = db.exec(
