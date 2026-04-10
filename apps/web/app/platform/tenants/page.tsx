@@ -25,6 +25,7 @@ import ConfirmModal from '@/components/confirm-modal';
 export default function PlatformTenants() {
   const { memberships, switchTenant } = useTenant();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
