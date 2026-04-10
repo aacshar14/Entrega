@@ -13,6 +13,7 @@ from app.models.models import (
 )
 from typing import List, Dict, Any
 from datetime import datetime, timezone, timedelta
+from app.services.metrics_service import get_tenant_metrics
 
 router = APIRouter()
 
@@ -27,6 +28,9 @@ async def get_dashboard_summary(
     Returns a comprehensive summary for the active tenant dashboard.
     """
     tenant_id = active_tenant.id
+
+    # 0. Business KPIs (V1.2 Final)
+    business_kpis = get_tenant_metrics(db, tenant_id)
 
     # 1. Main Stats
     customer_count = db.exec(
@@ -176,6 +180,7 @@ async def get_dashboard_summary(
                 "customer_records": customer_balance_count,
             },
         },
+        "business_kpis": business_kpis,
         "stock": formatted_stock,
         "debtors": [
             {"name": c.name, "amount": abs(float(cb.balance))}

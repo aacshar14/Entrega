@@ -46,6 +46,11 @@ interface DashboardData {
     amount: number;
     created_at: string;
   }>;
+  business_kpis: {
+    sales_today: number;
+    stock_errors_today: number;
+    failed_attempts_today: number;
+  };
   welcome_message: string;
   business_name: string;
 }
@@ -154,6 +159,43 @@ export default function Dashboard() {
                 Semana: {data.stats.weekly_produced} In / {data.stats.weekly_delivered} Out
               </p>
             </div>
+        </div>
+      </section>
+
+      {/* 📊 KPIs de Operación del Día (V1.2 Final) */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center gap-5 transition-all hover:border-[#56CCF2]/30">
+          <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-600">
+            <Wallet size={28} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Ventas Hoy (Cobranza)</p>
+            <h4 className="text-2xl font-black text-[#1D3146] mt-0.5">${data.business_kpis.sales_today.toLocaleString()}</h4>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center gap-5 transition-all hover:border-rose-500/30">
+          <div className={`p-4 rounded-2xl ${data.business_kpis.stock_errors_today > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+            <AlertCircle size={28} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Errores de Stock</p>
+            <h4 className={`text-2xl font-black mt-0.5 ${data.business_kpis.stock_errors_today > 0 ? 'text-rose-600' : 'text-[#1D3146]'}`}>
+              {data.business_kpis.stock_errors_today}
+            </h4>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-lg shadow-slate-200/20 flex items-center gap-5 transition-all hover:border-orange-500/30">
+          <div className={`p-4 rounded-2xl ${data.business_kpis.failed_attempts_today > 0 ? 'bg-orange-500/10 text-orange-600' : 'bg-slate-100 text-slate-400'}`}>
+            <Loader2 className={data.business_kpis.failed_attempts_today > 0 ? 'animate-spin' : ''} size={28} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Intentos Fallidos</p>
+            <h4 className={`text-2xl font-black mt-0.5 ${data.business_kpis.failed_attempts_today > 0 ? 'text-orange-600' : 'text-[#1D3146]'}`}>
+              {data.business_kpis.failed_attempts_today}
+            </h4>
+          </div>
         </div>
       </section>
 
