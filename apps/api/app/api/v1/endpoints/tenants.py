@@ -21,7 +21,7 @@ class TenantUpdate(BaseModel):
     timezone: Optional[str] = None
     currency: Optional[str] = None
 
-@router.post("/", response_model=Tenant)
+@router.post("", response_model=Tenant)
 async def create_business(
     request: TenantCreate,
     db: Session = Depends(get_session),

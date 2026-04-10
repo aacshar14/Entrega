@@ -118,7 +118,7 @@ async def get_me(
         memberships=membership_infos
     )
 
-@router.get("/", response_model=List[dict], dependencies=[Depends(require_roles(["owner"]))])
+@router.get("", response_model=List[dict], dependencies=[Depends(require_roles(["owner"]))])
 async def list_users(
     db: Session = Depends(get_session),
     active_tenant_id: UUID = Depends(get_active_tenant_id)
@@ -158,7 +158,7 @@ class UserCreate(BaseModel):
     full_name: str
     role: str = "operator"
 
-@router.post("/", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
+@router.post("", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
 async def create_user(
     request: UserCreate,
     db: Session = Depends(get_session),
