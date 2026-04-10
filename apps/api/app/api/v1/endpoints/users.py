@@ -28,21 +28,28 @@ router = APIRouter()
 
 def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     """Helper to calculate onboarding progress for a tenant."""
-    # Check if has customers
-    has_customers = (
-        db.exec(
-            select(func.count(Customer.id)).where(Customer.tenant_id == tenant.id)
-        ).one()
-        > 0
-    )
-
-    # Check if has products
-    has_products = (
-        db.exec(
-            select(func.count(Product.id)).where(Product.tenant_id == tenant.id)
-        ).one()
-        > 0
-    )
+    # 🛡️ Hardening: Defensive counts to prevent crash if tables are missing/broken
+    has_customers = False
+    has_products = False
+    try:
+        has_customers = (
+            db.exec(
+                select(func.count(Customer.id)).where(Customer.tenant_id == tenant.id)
+            ).one()
+            > 0
+        )
+        has_products = (
+            db.exec(
+                select(func.count(Product.id)).where(Product.tenant_id == tenant.id)
+            ).one()
+            > 0
+        )
+    except Exception as e:
+        logger.warning(
+            "users.get_tenant_info.metrics_failed",
+            tenant_id=str(tenant.id),
+            error=str(e),
+        )
 
     # Check WhatsApp
 
@@ -78,7 +85,7 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         name=tenant.name,
         slug=tenant.slug,
         logo_url=tenant.logo_url,
-        status=tenant.status,
+        status=tenant.status or "active",
         onboarding_step=(
             1
             if not has_customers
@@ -91,11 +98,11 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         whatsapp_status=status,
         whatsapp_display_number=display_number,
         whatsapp_account_name=account_name,
-        timezone=tenant.timezone,
-        currency=tenant.currency,
+        timezone=tenant.timezone or "UTC",
+        currency=tenant.currency or "MXN",
         ready=has_customers
         and has_products,  # Business rule: customers + stock = ready
-        billing_status=tenant.billing_status,
+        billing_status=tenant.billing_status or "trial",
         trial_ends_at=tenant.trial_ends_at,
         grace_ends_at=tenant.grace_ends_at,
         subscription_ends_at=tenant.subscription_ends_at,
@@ -120,17 +127,20 @@ async def get_me(
         active_tenant_info = None
 
         for t in tenants_db:
-            t_info = get_tenant_info(db, t)
-            m_info = MembershipInfo(
-                tenant=t_info,
-                role="owner",  # Admin is effectively owner of all
-                is_default=t.slug == "entrega",
-            )
-            membership_infos.append(m_info)
+            try:
+                t_info = get_tenant_info(db, t)
+                m_info = MembershipInfo(
+                    tenant=t_info,
+                    role="owner",  # Admin is effectively owner of all
+                    is_default=t.slug == "entrega",
+                )
+                membership_infos.append(m_info)
 
-            # If the admin has selected a tenant via X-Tenant-Id, use it as active
-            if active_membership and t.id == active_membership.tenant_id:
-                active_tenant_info = t_info
+                # If the admin has selected a tenant via X-Tenant-Id, use it as active
+                if active_membership and t.id == active_membership.tenant_id:
+                    active_tenant_info = t_info
+            except Exception as e:
+                logger.error("users.get_me.admin_tenant_error", tenant_id=str(t.id), error=str(e))
 
         # fallback: if no active tenant, but we have memberships, pick default or first
         if not active_tenant_info and membership_infos:
@@ -156,14 +166,17 @@ async def get_me(
     active_tenant_info = None
 
     for tu, t in memberships_db:
-        t_info = get_tenant_info(db, t)
-        m_info = MembershipInfo(
-            tenant=t_info, role=tu.tenant_role, is_default=tu.is_default
-        )
-        membership_infos.append(m_info)
+        try:
+            t_info = get_tenant_info(db, t)
+            m_info = MembershipInfo(
+                tenant=t_info, role=tu.tenant_role, is_default=tu.is_default
+            )
+            membership_infos.append(m_info)
 
-        if active_membership and tu.tenant_id == active_membership.tenant_id:
-            active_tenant_info = t_info
+            if active_membership and tu.tenant_id == active_membership.tenant_id:
+                active_tenant_info = t_info
+        except Exception as e:
+            logger.error("users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e))
 
     return MeResponse(
         user=current_user,
