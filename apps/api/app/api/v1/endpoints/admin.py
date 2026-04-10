@@ -139,6 +139,46 @@ async def get_queue_stats(db: Session = Depends(get_session)):
 
 
 @router.get(
+    "/whatsapp/funnel", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+)
+async def get_whatsapp_funnel(db: Session = Depends(get_session)):
+    """
+    Returns WhatsApp onboarding funnel metrics for the current day.
+    """
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    started_today = db.exec(
+        select(func.count(TenantWhatsAppIntegration.id)).where(
+            TenantWhatsAppIntegration.updated_at >= today_start
+        )
+    ).one()
+
+    completed_today = db.exec(
+        select(func.count(TenantWhatsAppIntegration.id))
+        .where(TenantWhatsAppIntegration.status == "connected")
+        .where(TenantWhatsAppIntegration.connected_at >= today_start)
+    ).one()
+
+    failed_today = db.exec(
+        select(func.count(TenantWhatsAppIntegration.id))
+        .where(TenantWhatsAppIntegration.status.in_(["token_expired", "disconnected"]))
+        .where(TenantWhatsAppIntegration.updated_at >= today_start)
+    ).one()
+
+    conversion_rate = 0
+    if started_today > 0:
+        conversion_rate = round((completed_today / started_today) * 100, 1)
+
+    return {
+        "started_today": started_today,
+        "completed_today": completed_today,
+        "failed_today": failed_today,
+        "conversion_rate": conversion_rate,
+    }
+
+
+@router.get(
     "/tenants/pressure",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
 )
