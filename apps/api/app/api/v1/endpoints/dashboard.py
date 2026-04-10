@@ -211,8 +211,12 @@ async def get_dashboard_summary(
             "weekly_delivered": delivered_abs,
         },
         "billing": {
-            "trial_days_remaining": days_remaining,
+            "status": status,
+            "days_remaining": days_remaining,
             "is_expired": is_expired,
+            "trial_ends_at": active_tenant.trial_ends_at.isoformat() if active_tenant.trial_ends_at else None,
+            "grace_ends_at": active_tenant.grace_ends_at.isoformat() if active_tenant.grace_ends_at else None,
+            "subscription_ends_at": active_tenant.subscription_ends_at.isoformat() if active_tenant.subscription_ends_at else None,
             "total_orders": total_deliveries,
             "sales_today": float(sales_today),
         },

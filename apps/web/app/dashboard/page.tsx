@@ -49,8 +49,12 @@ interface DashboardData {
   welcome_message: string;
   business_name: string;
   billing: {
-    trial_days_remaining: number;
+    status: string;
+    days_remaining: number;
     is_expired: boolean;
+    trial_ends_at: string | null;
+    grace_ends_at: string | null;
+    subscription_ends_at: string | null;
     total_orders: number;
     sales_today: number;
   };
@@ -92,21 +96,34 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 max-w-[1400px] animate-in fade-in duration-500">
       {/* Trial / Expiry Banners */}
-      {data.billing.is_expired ? (
+      {data.billing.status === 'suspended' ? (
         <div className="p-10 rounded-[2.5rem] bg-rose-600 text-white shadow-2xl shadow-rose-500/30 flex flex-col md:flex-row items-center justify-between gap-8 border-4 border-rose-400/20 animate-in slide-in-from-top duration-700">
           <div className="space-y-2 text-center md:text-left">
-            <h3 className="text-3xl font-black tracking-tight">Ya estás vendiendo con Entrega</h3>
-            <p className="text-rose-100 font-medium">Activa tu plan para recuperar el control total de tu dashboard, stock y reportes.</p>
+            <h3 className="text-3xl font-black tracking-tight">Tu cuenta está suspendida</h3>
+            <p className="text-rose-100 font-medium">Activa tu plan para recuperar acceso completo al dashboard. Tu operación por WhatsApp sigue activa.</p>
           </div>
           <Link href="/onboarding" className="h-16 px-12 bg-white text-rose-600 rounded-2xl flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-xl">
-            Activar mi plan
+            Activar cuenta
           </Link>
         </div>
-      ) : data.billing.trial_days_remaining <= 2 && (
+      ) : data.billing.status === 'grace' ? (
+        <div className="p-8 rounded-[2rem] bg-purple-600 text-white shadow-xl shadow-purple-500/20 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-purple-400/30 animate-pulse">
+          <div className="flex items-center gap-4">
+             <AlertCircle size={32} />
+             <div>
+                <p className="text-xl font-black tracking-tight">Periodo de Gracia</p>
+                <p className="text-purple-100 text-sm font-medium">Te quedan {data.billing.days_remaining} {data.billing.days_remaining === 1 ? 'día' : 'días'} para activar tu plan antes de la suspensión.</p>
+             </div>
+          </div>
+          <Link href="/onboarding" className="h-12 px-8 bg-white text-purple-600 rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all">
+             Activar Plan Ahora
+          </Link>
+        </div>
+      ) : data.billing.status === 'trial' && data.billing.days_remaining <= 3 && (
         <div className="p-6 rounded-[2rem] bg-amber-500 text-white shadow-xl shadow-amber-500/20 flex items-center justify-between gap-6 border-2 border-amber-300/30">
           <p className="font-bold flex items-center gap-3">
              <AlertCircle size={20} className="animate-pulse" />
-             Tu periodo gratis termina en {data.billing.trial_days_remaining} {data.billing.trial_days_remaining === 1 ? 'día' : 'días'}
+             Estás en tu periodo gratis. Te quedan {data.billing.days_remaining} {data.billing.days_remaining === 1 ? 'día' : 'días'}.
           </p>
           <Link href="/onboarding" className="text-xs font-black uppercase tracking-widest bg-white/20 px-6 py-3 rounded-xl backdrop-blur-md hover:bg-white/30 transition-all">
              Asegurar mi cuenta

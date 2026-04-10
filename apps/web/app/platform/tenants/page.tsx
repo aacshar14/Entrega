@@ -13,38 +13,127 @@ import {
   History,
   ShieldAlert,
   Zap,
-  Clock
+  Clock,
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
+import ConfirmModal from '@/components/confirm-modal';
 
 export default function PlatformTenants() {
-  const { memberships, switchTenant, isLoading } = useTenant();
+  const { memberships, switchTenant } = useTenant();
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Modal State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    tenantId: string;
+    status: string;
+    days?: number;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: 'danger' | 'info';
+  } | null>(null);
+
   const filtered = memberships.filter(m => 
     m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const updateBilling = async (tenantId: string, status: string, days?: number) => {
+  const executeUpdate = async () => {
+    if (!modalConfig) return;
     try {
-      if (!confirm(`Confirmar cambio a estado: ${status.toUpperCase()}?`)) return;
-      await apiRequest(`admin/tenants/${tenantId}/billing`, 'PATCH', {
-        status,
-        trial_days: status === 'trial' ? days : undefined,
-        grace_days: status === 'grace' ? days : undefined,
-        notes: `Manual Registry Action: ${status}`
+      await apiRequest(`admin/tenants/${modalConfig.tenantId}/billing`, 'PATCH', {
+        status: modalConfig.status,
+        trial_days: modalConfig.status === 'trial' ? modalConfig.days : undefined,
+        grace_days: modalConfig.status === 'grace' ? modalConfig.days : undefined,
+        notes: `Manual Registry Action: ${modalConfig.status}`
       });
-      // Context will likely needs a refresh to show updated data if not real-time
-      // But for now, we tell the user or just window.reload for safety if refreshUser not enough
-      alert('Actualizado. Actualizando vista...');
+      setModalOpen(false);
       window.location.reload();
     } catch (err) {
       console.error('Billing update failed:', err);
-      alert('Error logic billing update');
+      alert('Error updating billing lifecycle state');
     }
+  };
+
+  const triggerUpdate = (tenantId: string, status: string, days?: number) => {
+    if (status === 'suspended') {
+      setModalConfig({
+        tenantId, status,
+        title: 'Suspender acceso',
+        message: 'Esto bloqueará el dashboard del cliente inmediatamente. Su operación puede continuar por WhatsApp, pero perderá visibilidad.',
+        confirmLabel: 'Confirmar suspensión',
+        variant: 'danger'
+      });
+      setModalOpen(true);
+    } else if (status === 'active_paid') {
+      setModalConfig({
+        tenantId, status,
+        title: 'Activar plan',
+        message: 'Este cliente tendrá acceso completo sin restricciones.',
+        confirmLabel: 'Activar',
+        variant: 'info'
+      });
+      setModalOpen(true);
+    } else {
+      // Direct updates for trial/grace or simple confirm
+      if (confirm(`Confirmar +${days} días de ${status.toUpperCase()}?`)) {
+        setModalConfig({
+          tenantId, status, days,
+          title: 'Actualizar Billing',
+          message: 'Se aplicará el nuevo periodo de tiempo.',
+          confirmLabel: 'Confirmar',
+          variant: 'info'
+        });
+        // We can just call it directly if we want or use the modal
+        setModalOpen(true);
+      }
+    }
+  };
+
+  const getBillingInfo = (tenant: any) => {
+    const status = tenant.billing_status;
+    const now = new Date();
+    let color = 'bg-slate-400';
+    let label = (status || 'Unknown').toUpperCase();
+    let subtext = '';
+    let pulse = false;
+    
+    const formatDate = (d: any) => {
+      if (!d) return '';
+      return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    };
+    
+    if (status === 'active_paid') {
+      color = 'bg-emerald-500';
+      label = '🟢 ACTIVO';
+      if (tenant.subscription_ends_at) subtext = `Renueva: ${formatDate(tenant.subscription_ends_at)}`;
+    } else if (status === 'trial') {
+      color = 'bg-amber-400';
+      label = '🟡 TRIAL';
+      const ends = new Date(tenant.trial_ends_at);
+      const diff = Math.ceil((ends.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      subtext = diff > 0 ? `${diff} días restantes` : `Venció hace ${Math.abs(diff)} días`;
+      if (diff <= 2) pulse = true;
+    } else if (status === 'grace') {
+      color = 'bg-purple-500';
+      label = '🟣 GRACIA';
+      const ends = new Date(tenant.grace_ends_at);
+      const diff = Math.ceil((ends.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      subtext = diff > 0 ? `${diff} días restantes` : `Venció hace ${Math.abs(diff)} días`;
+      pulse = true;
+    } else if (status === 'suspended') {
+      color = 'bg-rose-500';
+      label = '🔴 PAGO PENDIENTE';
+      subtext = 'Acceso bloqueado';
+      pulse = true;
+    }
+    
+    return { color, label, subtext, pulse };
   };
 
   return (
@@ -96,8 +185,15 @@ export default function PlatformTenants() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map((m) => (
-              <tr key={m.tenant.id} className="group hover:bg-slate-50/50 transition-colors">
+            {filtered.map((m) => {
+              const b = getBillingInfo(m.tenant);
+              return (
+                <tr key={m.tenant.id} className={`group hover:bg-slate-50/50 transition-colors border-l-[3px] ${
+                   (m.tenant as any).billing_status === 'suspended' ? 'border-l-rose-500' :
+                   (m.tenant as any).billing_status === 'grace' ? 'border-l-purple-500' :
+                   (m.tenant as any).billing_status === 'trial' ? 'border-l-amber-400' :
+                   'border-l-transparent'
+                }`}>
                 <td className="pl-10 py-6">
                   <div className="flex items-center gap-4">
                      <div className="w-12 h-12 bg-white rounded-2xl border-2 border-slate-100 flex items-center justify-center text-slate-400 font-black group-hover:border-amber-400 group-hover:scale-105 transition-all">
@@ -124,27 +220,20 @@ export default function PlatformTenants() {
                 <td className="px-6 py-6 font-medium border-l border-slate-50">
                    <div className="flex flex-col">
                       <div className="flex items-center gap-2 mb-1">
-                         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider text-white shadow-sm ${
-                            (m.tenant as any).billing_status === 'active_paid' ? 'bg-emerald-500 shadow-emerald-500/20' :
-                            (m.tenant as any).billing_status === 'trial' ? 'bg-blue-500' :
-                            (m.tenant as any).billing_status === 'grace' ? 'bg-amber-500' :
-                            'bg-rose-500'
-                         }`}>
-                            {(m.tenant as any).billing_status || 'Unknown'}
+                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider text-white shadow-sm flex items-center gap-1.5 ${b.color} ${b.pulse ? 'animate-pulse' : ''}`}>
+                            {b.label}
                          </span>
-                         <span className="text-[10px] font-black text-[#1D3146] opacity-40">
-                            {(m.tenant as any).billing_status === 'active_paid' ? 'LIFETIME' : (
-                               (m.tenant as any).billing_status === 'trial' ? `${Math.max(0, Math.ceil((new Date((m.tenant as any).trial_ends_at!).getTime() - Date.now()) / (1000*60*60*24)))}d left` :
-                               (m.tenant as any).billing_status === 'grace' ? `${Math.max(0, Math.ceil((new Date((m.tenant as any).grace_ends_at!).getTime() - Date.now()) / (1000*60*60*24)))}d left` :
-                               'EXPIRED'
-                            )}
-                         </span>
+                         <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-[#1D3146]">
+                               {b.subtext}
+                            </span>
+                         </div>
                       </div>
-                      <div className="flex gap-1.5 mt-1">
-                         <button onClick={() => updateBilling(m.tenant.id, 'trial', 7)} className="text-[8px] font-black bg-slate-50 hover:bg-blue-100 hover:text-blue-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">TRIAL</button>
-                         <button onClick={() => updateBilling(m.tenant.id, 'active_paid')} className="text-[8px] font-black bg-slate-50 hover:bg-emerald-100 hover:text-emerald-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">PAID</button>
-                         <button onClick={() => updateBilling(m.tenant.id, 'grace', 3)} className="text-[8px] font-black bg-slate-50 hover:bg-amber-100 hover:text-amber-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">G3</button>
-                         <button onClick={() => updateBilling(m.tenant.id, 'suspended')} className="text-[8px] font-black bg-slate-50 hover:bg-rose-100 hover:text-rose-600 px-1.5 py-0.5 rounded border border-slate-100 transition-all shadow-sm">OFF</button>
+                      <div className="flex gap-2 mt-1">
+                         <button onClick={() => triggerUpdate(m.tenant.id, 'trial', 7)} title="+7 días de prueba" className="text-[9px] font-black bg-slate-50 hover:bg-amber-100 hover:text-amber-700 px-2 py-1 rounded-lg border border-slate-100 transition-all">+7 días</button>
+                         <button onClick={() => triggerUpdate(m.tenant.id, 'active_paid')} title="Activar plan" className="text-[9px] font-black bg-slate-50 hover:bg-emerald-100 hover:text-emerald-700 px-2 py-1 rounded-lg border border-slate-100 transition-all">Activar</button>
+                         <button onClick={() => triggerUpdate(m.tenant.id, 'grace', 3)} title="+3 días de gracia" className="text-[9px] font-black bg-slate-50 hover:bg-purple-100 hover:text-purple-700 px-2 py-1 rounded-lg border border-slate-100 transition-all">+3 días</button>
+                         <button onClick={() => triggerUpdate(m.tenant.id, 'suspended')} title="Suspender acceso" className="text-[9px] font-black bg-slate-50 hover:bg-rose-100 hover:text-rose-700 px-2 py-1 rounded-lg border border-slate-100 transition-all text-rose-500">Suspender</button>
                       </div>
                    </div>
                 </td>
@@ -164,13 +253,24 @@ export default function PlatformTenants() {
                    </div>
                 </td>
                 <td className="pr-10 py-6 text-right relative">
-                  <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <button 
-                       title="System Health"
-                       className="p-3 hover:bg-white rounded-xl text-slate-400 hover:text-blue-600 hover:shadow-md transition-all"
-                     >
-                       <Activity size={20} />
-                     </button>
+                   <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {((m.tenant as any).billing_status === 'trial' || (m.tenant as any).billing_status === 'grace' || (m.tenant as any).billing_status === 'suspended') && (m.tenant as any).whatsapp_display_number && (
+                        <a 
+                          href={`https://wa.me/${(m.tenant as any).whatsapp_display_number.replace(/\D/g, '')}?text=Hola%2C%20te%20ayudo%20a%20activar%20tu%20plan%20de%20Entrega`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-3 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-2xl border border-emerald-100 hover:bg-emerald-100 transition-all"
+                        >
+                           <MessageSquare size={14} />
+                           Contactar cliente
+                        </a>
+                      )}
+                      <button 
+                        title="System Health"
+                        className="p-3 hover:bg-white rounded-xl text-slate-400 hover:text-blue-600 hover:shadow-md transition-all"
+                      >
+                        <Activity size={20} />
+                      </button>
                      <button 
                        onClick={() => switchTenant(m.tenant.id)}
                        className="flex items-center gap-2 pl-6 pr-4 py-3 bg-[#1D3146] text-white text-xs font-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#1D3146]/20"
@@ -181,10 +281,23 @@ export default function PlatformTenants() {
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
+
+      {/* Confirmation Modal */}
+      {modalConfig && (
+        <ConfirmModal 
+          isOpen={modalOpen}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          confirmLabel={modalConfig.confirmLabel}
+          variant={modalConfig.variant}
+          onConfirm={executeUpdate}
+          onCancel={() => setModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
