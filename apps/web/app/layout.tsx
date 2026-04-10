@@ -34,6 +34,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../utils/supabase/client';
 import { FEATURES } from '../config/feature-flags';
 import Logo from '@/components/logo';
+import NotificationCenter from '@/components/notification-center';
 
 interface MenuItem {
   icon: any;
@@ -159,6 +160,16 @@ function UI_Shell({ children }) {
           </button>
       </div>
 
+      <div className="px-6 mb-6">
+         <div className="flex items-center justify-between w-full px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
+            <NotificationCenter />
+            <div className="w-px h-6 bg-white/10"></div>
+            <button className="p-3 hover:bg-white/10 rounded-xl transition-all text-slate-300">
+               <Settings size={20} />
+            </button>
+         </div>
+      </div>
+
       <nav className="flex-grow px-4 space-y-1">
         {currentMenu
           .filter(item => (!item.ownerOnly || activeRole === 'owner') && (!item.sreOnly || FEATURES.ENABLE_SRE))
@@ -275,12 +286,11 @@ function UI_Shell({ children }) {
             </div>
             
             <div className="flex items-center gap-3 md:gap-6">
-               <div className="relative cursor-pointer">
-                  <Bell size={18} className="text-slate-400" />
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black flex items-center justify-center rounded-full border-2 border-white">2</span>
+               <div className="lg:hidden">
+                  <NotificationCenter />
                </div>
                
-               <div className="h-8 w-[1px] bg-slate-100"></div>
+               <div className="h-8 w-[1px] bg-slate-100 lg:hidden"></div>
 
                <div className="relative">
                   <div 
