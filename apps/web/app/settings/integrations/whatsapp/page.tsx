@@ -63,18 +63,51 @@ export default function WhatsAppConfigPage() {
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        window.FB.init({
-          appId: '', // Will be fetched from backend
-          cookie: true,
-          xfbml: true,
-          version: 'v21.0'
-        });
+        if (window.FB) {
+          window.FB.init({
+            appId: process.env.NEXT_PUBLIC_META_APP_ID,
+            cookie: true,
+            xfbml: true,
+            version: "v21.0",
+          });
+        }
       };
       document.body.appendChild(script);
     }
   }, []);
 
   const handleLaunchOnboarding = async () => {
+    // 🛡️ Domain & SDK Safety Guards
+    const origin = window.location.origin;
+    const allowedDomains = [
+      "https://entrega.space",
+      "https://www.entrega.space",
+      "http://localhost:3000", // Allow local dev
+    ];
+
+    if (!allowedDomains.includes(origin)) {
+      console.error("META DOMAIN NOT AUTHORIZED", { origin });
+      alert("Este dominio no está autorizado para conectar WhatsApp Business.");
+      return;
+    }
+
+    const appId = process.env.NEXT_PUBLIC_META_APP_ID;
+    if (!window.FB || !appId) {
+      console.error("META SDK NOT READY OR APP ID MISSING", {
+        fb: !!window.FB,
+        appId: !!appId,
+      });
+      alert(
+        "No se pudo inicializar la conexión con Meta. Por favor revisa tu configuración e intenta de nuevo."
+      );
+      return;
+    }
+
+    console.info("META ONBOARDING START", {
+      origin,
+      appId: appId,
+    });
+
     setProcessing(true);
     try {
       // 1. Get secure nonce and AppID from backend
