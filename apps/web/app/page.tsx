@@ -12,7 +12,9 @@ import {
   ChevronRight,
   PlayCircle,
   Users,
-  Package
+  Package,
+  AlertTriangle,
+  BarChart3
 } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/logo';
