@@ -4,8 +4,8 @@ from sqlmodel import Session, select
 from app.core.db import get_session
 from app.core.queue import QueueManager
 from app.core.parser import ParsingEngine
+from app.models.models import InboundEvent, Tenant
 from typing import Optional
-from app.models.models import InboundEvent, Tenant, BusinessMetricEvent
 
 logger = structlog.get_logger()
 
@@ -42,19 +42,6 @@ class EventWorker:
                     error=str(e),
                 )
                 self.qm.mark_failed(event.id, error=str(e))
-
-                # --- 📊 Emit Business Event: Processing Failed ---
-                try:
-                    self.db.add(
-                        BusinessMetricEvent(
-                            tenant_id=event.tenant_id,
-                            event_type="processing_failed",
-                            metadata_json=str(e)[:500],
-                        )
-                    )
-                    self.db.commit()
-                except Exception:
-                    self.db.rollback()
 
         return processed
 
