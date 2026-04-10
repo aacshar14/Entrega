@@ -133,7 +133,10 @@ async def list_users(
     # Return mapping
     response = []
     for u, role, active in users_db:
-        # Extend the user object for the response
+        # 🛡️ Privacy Filter: Hide Platform Admins from regular tenant team views
+        if u.platform_role == "admin":
+            continue
+            
         u_dict = u.model_dump()
         u_dict["role"] = role
         u_dict["is_active"] = active
@@ -239,3 +242,24 @@ async def update_user(
     db.commit()
     db.refresh(user)
     return user
+
+@router.delete("/{id}", dependencies=[Depends(require_roles(["owner"]))])
+async def remove_user(
+    id: UUID, 
+    db: Session = Depends(get_session),
+    active_tenant_id: UUID = Depends(get_active_tenant_id)
+):
+    """Remove a user's membership from the tenant (owner only)."""
+    membership = db.exec(
+        select(TenantUser).where(
+            TenantUser.user_id == id,
+            TenantUser.tenant_id == active_tenant_id
+        )
+    ).first()
+    
+    if not membership:
+        raise HTTPException(status_code=404, detail="Membership not found")
+        
+    db.delete(membership)
+    db.commit()
+    return {"status": "ok", "message": "User removed from team"}

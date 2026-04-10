@@ -12,14 +12,15 @@ import {
   Loader2,
   Globe,
   DollarSign,
-  ArrowLeft
+  ArrowLeft,
+  Trash2
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
 
 export default function SettingsPage() {
-  const { user, activeTenant, refreshUser } = useTenant();
+  const { user, activeTenant, activeRole, refreshUser } = useTenant();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +151,21 @@ export default function SettingsPage() {
         role: newUser.role
       }, activeTenant.id);
       setNewUser({ email: '', name: '', role: 'operator' });
+      await fetchTeam();
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (targetUserId: string) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar a este miembro del equipo?")) return;
+    setLoading(true);
+    try {
+      await apiRequest(`/users/${targetUserId}`, 'DELETE', null, activeTenant?.id);
       await fetchTeam();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -328,26 +344,37 @@ export default function SettingsPage() {
                {/* Current Team */}
                <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Miembros Activos</h4>
-                  <div className="space-y-2">
-                     {team.map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                           <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-[#1D3146] rounded-xl flex items-center justify-center text-[#56CCF2] font-black text-xs">
-                                 {user.full_name?.charAt(0) || 'U'}
-                              </div>
-                              <div>
-                                 <p className="text-sm font-black text-[#1D3146]">{user.full_name}</p>
-                                 <p className="text-[10px] text-slate-400 font-bold">{user.email}</p>
-                              </div>
-                           </div>
-                           <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                              user.role === 'owner' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'
-                           }`}>
-                              {user.role}
-                           </span>
-                        </div>
-                     ))}
-                  </div>
+                   <div className="space-y-2">
+                      {team.map((member) => (
+                         <div key={member.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex items-center gap-3">
+                               <div className="w-10 h-10 bg-[#1D3146] rounded-xl flex items-center justify-center text-[#56CCF2] font-black text-xs">
+                                  {member.full_name?.charAt(0) || 'U'}
+                               </div>
+                               <div>
+                                  <p className="text-sm font-black text-[#1D3146]">{member.full_name}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold">{member.email}</p>
+                               </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                               <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                                  member.role === 'owner' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'
+                               }`}>
+                                  {member.role}
+                               </span>
+                               {(activeRole === 'owner' || user?.platform_role === 'admin') && member.id !== user?.id && (
+                                 <button 
+                                   onClick={() => handleRemoveMember(member.id)}
+                                   className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                   title="Eliminar miembro"
+                                 >
+                                   <Trash2 size={16} />
+                                 </button>
+                               )}
+                            </div>
+                         </div>
+                      ))}
+                   </div>
                </div>
 
                {/* Add Member Form */}
