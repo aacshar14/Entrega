@@ -161,26 +161,35 @@ async def get_dashboard_summary(
     ).all()
 
     # 6. Billing & Conversion (V1.3 Hardening)
+    def ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
+        """Normalizes naive DB datetimes to UTC to prevent aware/naive crashes (V1.3.8)"""
+        if dt and dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
     now = datetime.now(timezone.utc)
     status = active_tenant.billing_status or "trial"
 
     is_expired = False
     days_remaining = 0
 
+    trial_end = ensure_aware(active_tenant.trial_ends_at)
+    grace_end = ensure_aware(active_tenant.grace_ends_at)
+
     if status == "suspended":
         is_expired = True
     elif status == "active_paid":
         is_expired = False
     elif status == "trial":
-        if not active_tenant.trial_ends_at or now > active_tenant.trial_ends_at:
+        if not trial_end or now > trial_end:
             is_expired = True
         else:
-            days_remaining = (active_tenant.trial_ends_at - now).days
+            days_remaining = (trial_end - now).days
     elif status == "grace":
-        if not active_tenant.grace_ends_at or now > active_tenant.grace_ends_at:
+        if not grace_end or now > grace_end:
             is_expired = True
         else:
-            days_remaining = (active_tenant.grace_ends_at - now).days
+            days_remaining = (grace_end - now).days
 
     # Operational triggers
     total_deliveries = db.exec(
@@ -214,18 +223,10 @@ async def get_dashboard_summary(
             "status": status,
             "days_remaining": days_remaining,
             "is_expired": is_expired,
-            "trial_ends_at": (
-                active_tenant.trial_ends_at.isoformat()
-                if active_tenant.trial_ends_at
-                else None
-            ),
-            "grace_ends_at": (
-                active_tenant.grace_ends_at.isoformat()
-                if active_tenant.grace_ends_at
-                else None
-            ),
+            "trial_ends_at": trial_end.isoformat() if trial_end else None,
+            "grace_ends_at": grace_end.isoformat() if grace_end else None,
             "subscription_ends_at": (
-                active_tenant.subscription_ends_at.isoformat()
+                ensure_aware(active_tenant.subscription_ends_at).isoformat()
                 if active_tenant.subscription_ends_at
                 else None
             ),
