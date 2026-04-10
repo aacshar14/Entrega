@@ -139,7 +139,8 @@ async def get_queue_stats(db: Session = Depends(get_session)):
 
 
 @router.get(
-    "/whatsapp/funnel", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+    "/whatsapp/funnel",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
 )
 async def get_whatsapp_funnel(db: Session = Depends(get_session)):
     """
