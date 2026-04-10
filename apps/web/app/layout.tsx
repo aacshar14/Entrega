@@ -25,7 +25,8 @@ import {
   Coins,
   Layers,
   Menu,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { Providers } from '../lib/context/providers';
 import { useTenant } from '../lib/context/tenant-context';
@@ -104,7 +105,7 @@ function UI_Shell({ children }) {
     // Redirect logic handled by TenantContext, but we must not return children (Landing) here
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#1D3146] gap-4">
-        <Loader className="animate-spin text-[#56CCF2]" size={40} />
+        <Loader2 className="animate-spin text-[#56CCF2]" size={40} />
         <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] animate-pulse">
            Iniciando EntréGA Intelligence...
         </p>
