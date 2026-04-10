@@ -160,7 +160,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTenantId, router, handleManualLogout, isTenantEntryExplicit]);
+  }, [activeTenantId, router, handleManualLogout, isTenantEntryExplicit, pathname]);
 
   // Ref guard to prevent double-bootstrap in concurrent re-renders
   const authIsReady = React.useRef(false);

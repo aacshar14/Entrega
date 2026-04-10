@@ -97,7 +97,22 @@ function UI_Shell({ children }) {
     return null; 
   }
   const isPublicPath = ['/landing', '/login', '/', '/privacy-policy'].includes(pathname);
-  if (isPublicPath) return children;
+  
+  // 🛡️ Auth Protection: If user is logged in, don't show the Landing Page at "/"
+  // Direct them to their operational context instead (Dashboard or Platform)
+  if (pathname === '/' && user && !isLoading) {
+    // Redirect logic handled by TenantContext, but we must not return children (Landing) here
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#1D3146] gap-4">
+        <Loader className="animate-spin text-[#56CCF2]" size={40} />
+        <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] animate-pulse">
+           Iniciando EntréGA Intelligence...
+        </p>
+      </div>
+    );
+  }
+
+  if (isPublicPath && !user) return children;
 
   if (isLoading) {
     return (
