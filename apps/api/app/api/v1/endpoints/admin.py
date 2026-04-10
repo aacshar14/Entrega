@@ -140,26 +140,21 @@ async def get_queue_stats(db: Session = Depends(get_session)):
 )
 async def get_tenant_pressure(db: Session = Depends(get_session)):
     """
-    Returns the Top 10 tenants with most pressure based on the latest snapshots.
+    Returns operational health and support KPIs for active tenants.
+    V1.2 Final: Shifted from snapshot-only to Tenant-primary for 100% support visibility.
     """
-    # 1. Identity tenants that have volume snapshots in last 24h
-    latest_volume_snapshots = db.exec(
-        select(MetricSnapshot)
-        .where(MetricSnapshot.metric_name == "tenant_volume_24h")
-        .order_by(MetricSnapshot.created_at.desc(), MetricSnapshot.metric_value.desc())
+    # 1. Get all active tenants (limited to 10 for dashboard preview)
+    tenants = db.exec(
+        select(Tenant)
+        .where(Tenant.status == "active")
+        .order_by(Tenant.created_at.desc())
         .limit(10)
     ).all()
 
     pressure_map = []
-    for snap in latest_volume_snapshots:
-        t_id = snap.tenant_id
-        if not t_id:
-            continue
+    for tenant in tenants:
+        t_id = tenant.id
 
-        tenant = db.get(Tenant, t_id)
-
-        # Get related metrics for this specific tenant in the same period
-        # We look for the most recent one for each type
         def get_val(name):
             val = db.exec(
                 select(MetricSnapshot.metric_value)
@@ -170,14 +165,17 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
             ).first()
             return val or 0
 
-        # Support Metrics (V1.2 Support Edition)
+        # Snapshot-based metrics (Historical)
+        volume_24h = int(get_val("tenant_volume_24h"))
+
+        # Support Metrics (Real-time Telemetry V1.2)
         support_kpis = get_tenant_metrics(db, t_id)
 
         pressure_map.append(
             {
                 "tenant_id": t_id,
-                "tenant_name": tenant.name if tenant else "Unknown",
-                "volume_24h": int(snap.metric_value),
+                "tenant_name": tenant.name,
+                "volume_24h": volume_24h,
                 "p95_processing_ms": round(get_val("tenant_p95_processing_ms_24h"), 2),
                 "failed_count": int(get_val("tenant_failures_24h")),
                 "retry_count": int(get_val("tenant_retries_24h")),
@@ -185,13 +183,12 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                 "support_kpis": support_kpis,
                 "status": (
                     "hot"
-                    if snap.metric_value > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
+                    if volume_24h > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
                     or get_val("tenant_failures_24h")
                     > PLATFORM_THRESHOLDS.HOT_TENANT_FAILURES_24H
                     else (
                         "warning"
-                        if snap.metric_value
-                        > PLATFORM_THRESHOLDS.WARNING_TENANT_VOLUME_24H
+                        if volume_24h > PLATFORM_THRESHOLDS.WARNING_TENANT_VOLUME_24H
                         or get_val("tenant_failures_24h") > 0
                         else "normal"
                     )
