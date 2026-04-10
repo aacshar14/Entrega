@@ -134,7 +134,9 @@ async def create_manual_movement(
         from app.models.models import StockBalance
 
         balance = db.exec(
-            select(StockBalance).where(StockBalance.product_id == product.id)
+            select(StockBalance)
+            .where(StockBalance.product_id == product.id)
+            .with_for_update()
         ).first()
         if balance:
             balance.quantity += quantity
@@ -159,7 +161,9 @@ async def create_manual_movement(
         from app.models.models import CustomerBalance
 
         cb = db.exec(
-            select(CustomerBalance).where(CustomerBalance.customer_id == customer_id)
+            select(CustomerBalance)
+            .where(CustomerBalance.customer_id == customer_id)
+            .with_for_update()
         ).first()
 
         # Delivery increases debt (subtract from balance), Return decreases debt (add to balance)

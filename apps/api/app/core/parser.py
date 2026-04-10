@@ -154,10 +154,12 @@ class ParsingEngine:
 
             # 1. Update Financial Debt for the Customer (Consignment/Credit)
             cust_balance = self.session.exec(
-                select(CustomerBalance).where(
+                select(CustomerBalance)
+                .where(
                     CustomerBalance.tenant_id == self.tenant.id,
                     CustomerBalance.customer_id == customer.id,
                 )
+                .with_for_update()
             ).first()
 
             if not cust_balance:
