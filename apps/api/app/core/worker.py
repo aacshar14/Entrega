@@ -175,7 +175,17 @@ class EventWorker:
 
             # Call Parsing Engine
             engine = ParsingEngine(self.db, tenant)
-            engine.process_and_log(sender=sender, raw_text=body)
+            log, receipt_data = engine.process_and_log(sender=sender, raw_text=body)
+
+            # 📩 Dispatch Order Receipt (V1.3 Transformation)
+            if receipt_data:
+                try:
+                    from app.services.whatsapp_service import WhatsAppService
+
+                    ws = WhatsAppService(self.db)
+                    ws.send_order_receipt(tenant, receipt_data)
+                except Exception as e:
+                    logger.error("worker.receipt_dispatch_failed", error=str(e))
 
             # --- ✅ PHASE 3: CONDITIONAL SUCCESS ---
             success_sql = text("""

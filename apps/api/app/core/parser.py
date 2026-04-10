@@ -136,9 +136,12 @@ class ParsingEngine:
 
         return results
 
-    def execute_order(self, customer: Customer, items: List[Dict]):
+    def execute_order(
+        self, customer: Customer, items: List[Dict]
+    ) -> Tuple[float, float, List[str]]:
         """Executes inventory delivery to customer and adds financial debt"""
         total_delivery_charge = 0.0
+        product_summary = []
 
         for item in items:
             sku = item["sku"]
@@ -227,6 +230,7 @@ class ParsingEngine:
                 total_amount=total_charge,
             )
             self.session.add(movement)
+            product_summary.append(f"• {qty}x {item['product_name']}")
 
         # Emit Business Event: Order Processed
         self.session.add(
@@ -236,6 +240,19 @@ class ParsingEngine:
                 amount=total_delivery_charge,
             )
         )
+
+        # Get final balance for receipt
+        final_balance = 0.0
+        cb = self.session.exec(
+            select(CustomerBalance).where(
+                CustomerBalance.tenant_id == self.tenant.id,
+                CustomerBalance.customer_id == customer.id,
+            )
+        ).first()
+        if cb:
+            final_balance = cb.balance
+
+        return total_delivery_charge, final_balance, product_summary
 
     def extract_customer(self, text: str, sender_phone: str) -> Customer:
         """Finds the target customer through Aliases, Names, or Fragments."""
@@ -292,7 +309,9 @@ class ParsingEngine:
         self.session.flush()
         return new_customer
 
-    def process_and_log(self, sender: str, raw_text: str) -> MessageLog:
+    def process_and_log(
+        self, sender: str, raw_text: str
+    ) -> Tuple[MessageLog, Optional[Dict[str, Any]]]:
         """Logs structured order extraction and executes inventory movements."""
         items = self.parse_order(raw_text)
 
@@ -308,12 +327,21 @@ class ParsingEngine:
         )
         self.session.add(log)
 
+        receipt_data = None
         if items:
             try:
                 normalized_text = self._normalize(raw_text)
                 customer = self.extract_customer(normalized_text, sender)
-                self.execute_order(customer, items)
+                total, balance, summary = self.execute_order(customer, items)
                 log.final_status = "processed"
+
+                receipt_data = {
+                    "customer_name": customer.name,
+                    "product_list": "\n".join(summary),
+                    "total_amount": total,
+                    "balance": balance,
+                    "to_number": sender,
+                }
             except ValueError as e:
                 self.session.rollback()
                 if "Stock insuficiente" in str(e):
@@ -328,4 +356,4 @@ class ParsingEngine:
                 raise e
 
         self.session.commit()
-        return log
+        return log, receipt_data
