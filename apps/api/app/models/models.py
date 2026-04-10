@@ -65,7 +65,10 @@ class Tenant(SQLModel, table=True):
 
 
 class WhatsAppConfig(SQLModel, table=True):
-    """Secure per-tenant WhatsApp Business Cloud API configuration"""
+    """
+    [DEPRECATED V1.4] - Use TenantWhatsAppIntegration instead.
+    Migrate existing data to tenant_whatsapp_integrations table.
+    """
 
     __tablename__ = "whatsapp_configs"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
@@ -103,6 +106,12 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     waba_id: Optional[str] = Field(default=None, index=True)
     phone_number_id: Optional[str] = Field(default=None, index=True, unique=True)
     access_token_encrypted: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
+    
+    # Metadata & Display
+    display_phone_number: Optional[str] = None
+    setup_completed: bool = Field(default=False)
+    
     status: str = Field(
         default="pending"
     )  # 'connected', 'disconnected', 'token_expired', 'reconnect_required', 'pending'

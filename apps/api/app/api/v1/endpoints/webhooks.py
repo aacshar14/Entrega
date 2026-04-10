@@ -133,30 +133,22 @@ async def receive_whatsapp_event(
         logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
         return {"status": "accepted_duplicate"}
 
-    # 2. 🏛️ Resolve Tenant based on meta phone_number_id
+    # 2. 🏛️ Resolve Tenant based on meta phone_number_id (Unified V1.4)
     try:
-        # We check both the new integration table (preferred) and the legacy config table
-        from app.models.models import TenantWhatsAppIntegration, WhatsAppConfig
+        from app.models.models import TenantWhatsAppIntegration
 
-        # Priority 1: New multi-tenant integration table
+        # Single Source of Truth: Integration table
         integration = db.exec(
             select(TenantWhatsAppIntegration).where(
                 TenantWhatsAppIntegration.phone_number_id == str(business_number_id)
             )
         ).first()
 
-        target_tenant_id = None
-        if integration:
-            target_tenant_id = integration.tenant_id
-        else:
-            # Priority 2: Legacy WhatsAppConfig table
-            config = db.exec(
-                select(WhatsAppConfig).where(
-                    WhatsAppConfig.meta_phone_number_id == str(business_number_id)
-                )
-            ).first()
-            if config:
-                target_tenant_id = config.tenant_id
+        if not integration:
+            logger.warning("webhooks.tenant_not_found", phone_number_id=business_number_id)
+            return {"status": "error", "message": "Tenant not integrated"}
+
+        target_tenant_id = integration.tenant_id
 
         if not target_tenant_id:
             logger.warning(

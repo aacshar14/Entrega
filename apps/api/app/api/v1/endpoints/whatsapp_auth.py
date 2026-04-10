@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_tenant_id
 from app.core.config import settings
-from app.models.models import User, WhatsAppConfig, TenantWhatsAppIntegration, Tenant
+from app.models.models import User, TenantWhatsAppIntegration, Tenant
 from app.core.security import encrypt_token
 from app.core.logging import logger
 from datetime import datetime, timedelta, timezone
@@ -75,39 +75,49 @@ async def exchange_meta_code(
             # Step 2: Handle expiration
             expires_in = data.get("expires_in", 60 * 24 * 60 * 60)  # Default 60 days
 
-            # Update or Create Config
-            config = db.exec(
-                select(WhatsAppConfig).where(
-                    WhatsAppConfig.tenant_id == active_tenant_id
+            # Update or Create Integration (Unified V1.4)
+            integration = db.exec(
+                select(TenantWhatsAppIntegration).where(
+                    TenantWhatsAppIntegration.tenant_id == active_tenant_id
                 )
             ).first()
 
-            if not config:
-                config = WhatsAppConfig(tenant_id=active_tenant_id)
+            if not integration:
+                integration = TenantWhatsAppIntegration(
+                    tenant_id=active_tenant_id,
+                    created_by_user_id=current_user.id
+                )
 
             # 🛡️ Hardening: Meta IDs from payload (provided by SDK)
             if payload.waba_id:
-                config.waba_id = payload.waba_id
+                integration.waba_id = payload.waba_id
             if payload.phone_number_id:
-                config.meta_phone_number_id = payload.phone_number_id
+                integration.phone_number_id = payload.phone_number_id
 
             # 🛡️ Hardening: Encrypt token before storage
-            config.encrypted_access_token = encrypt_token(short_token)
-            config.meta_token_expires_at = datetime.now(timezone.utc) + timedelta(
+            integration.access_token_encrypted = encrypt_token(short_token)
+            integration.token_expires_at = datetime.now(timezone.utc) + timedelta(
                 seconds=expires_in
             )
 
-            # 🛡️ Only mark as verified if both are present
-            if config.encrypted_access_token and config.meta_phone_number_id:
-                config.meta_onboarding_status = "verified"
-                config.setup_completed = True
+            # 🛡️ Only mark as connected if both are present
+            if integration.access_token_encrypted and integration.phone_number_id:
+                integration.status = "connected"
+                integration.setup_completed = True
             else:
-                config.meta_onboarding_status = (
-                    "authorized"  # Missing phone_number_id info
-                )
-                config.setup_completed = False
+                integration.status = "pending"
+                integration.setup_completed = False
 
-            db.add(config)
+            db.add(integration)
+            
+            # Sync Tenant status flags for legacy UI components
+            tenant_obj = db.get(Tenant, active_tenant_id)
+            if tenant_obj:
+                tenant_obj.business_whatsapp_connected = True
+                tenant_obj.whatsapp_status = "connected" if integration.status == "connected" else "pending"
+                tenant_obj.updated_at = datetime.now(timezone.utc)
+                db.add(tenant_obj)
+
             db.commit()
 
             logger.info(

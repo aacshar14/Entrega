@@ -1,6 +1,6 @@
 import httpx
 import structlog
-from app.models.models import WhatsAppConfig, Tenant
+from app.models.models import TenantWhatsAppIntegration, Tenant
 from app.core.security import decrypt_token
 from sqlmodel import Session, select
 from typing import Dict, Any
@@ -17,19 +17,19 @@ class WhatsAppService:
         Sends an automated order receipt via Meta Cloud API.
         Deterministic formatting aligned with Entrega branding.
         """
-        # 1. Resolve Credentials
+        # 1. Resolve Credentials (V1.4 Unified)
         config = self.db.exec(
-            select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == tenant.id)
+            select(TenantWhatsAppIntegration).where(TenantWhatsAppIntegration.tenant_id == tenant.id)
         ).first()
 
-        if not config or not config.encrypted_access_token:
+        if not config or not config.access_token_encrypted:
             logger.warning(
                 "whatsapp.receipt_skipped_no_config", tenant_id=str(tenant.id)
             )
             return
 
-        token = decrypt_token(config.encrypted_access_token)
-        phone_id = config.meta_phone_number_id
+        token = decrypt_token(config.access_token_encrypted)
+        phone_id = config.phone_number_id
 
         if not token or not phone_id:
             logger.error(
@@ -65,13 +65,7 @@ class WhatsAppService:
                 response = client.post(url, headers=headers, json=payload, timeout=10.0)
                 if response.status_code in [401, 403]:
                     logger.error("whatsapp.auth_failure", tenant_id=str(tenant.id))
-                    # Mark integration as expired
-                    config_rec = self.db.exec(
-                        select(WhatsAppConfig).where(
-                            WhatsAppConfig.tenant_id == tenant.id
-                        )
-                    ).first()
-                    # Also update new integration table
+                    # Mark integration as expired (V1.4 Unified logic)
                     integration = self.db.exec(
                         select(TenantWhatsAppIntegration).where(
                             TenantWhatsAppIntegration.tenant_id == tenant.id

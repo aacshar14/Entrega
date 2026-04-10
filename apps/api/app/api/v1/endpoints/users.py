@@ -18,7 +18,6 @@ from app.models.models import (
     MembershipInfo,
     TenantInfo,
     TenantWhatsAppIntegration,
-    WhatsAppConfig,
 )
 from typing import List, Optional
 from uuid import UUID
@@ -46,33 +45,21 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
 
     # Check WhatsApp
 
-    # 🆕 Modern Integration Lookup (V1.4 Source of Truth)
+    # 🆕 Unified Integration Lookup (V1.4 Source of Truth)
     wa_integ = db.exec(
         select(TenantWhatsAppIntegration).where(
             TenantWhatsAppIntegration.tenant_id == tenant.id
         )
     ).first()
 
-    # 🛡️ Legacy Check for backward compatibility during transition
-    wa_config = None
-    if not wa_integ:
-        wa_config = db.exec(
-            select(WhatsAppConfig).where(WhatsAppConfig.tenant_id == tenant.id)
-        ).first()
-
-    # Determine status from best available record
     status = "not_connected"
     display_number = None
     account_name = None
 
     if wa_integ:
         status = wa_integ.status
-        display_number = wa_integ.phone_number_id
+        display_number = wa_integ.display_phone_number or wa_integ.phone_number_id
         account_name = wa_integ.business_name
-    elif wa_config:
-        status = wa_config.meta_onboarding_status
-        display_number = wa_config.display_phone_number
-        account_name = wa_config.whatsapp_business_account_name
 
     has_wa = status == "connected" or status == "verified"
 
