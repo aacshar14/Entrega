@@ -335,6 +335,24 @@ async def get_active_tenant_id(
     return membership.tenant_id
 
 
+async def get_optional_active_tenant_id(
+    request: Request,
+) -> Optional[UUID]:
+    """
+    Non-blocking tenant resolution from Header.
+    Returns the UUID if a valid format is found, otherwise returns None.
+    Essential for notification scoping (Platform vs Tenant).
+    """
+    header_tenant_id = request.headers.get("X-Tenant-Id")
+    if not header_tenant_id:
+        return None
+
+    try:
+        return UUID(header_tenant_id)
+    except:
+        return None
+
+
 def require_tenant_role(roles: List[str]):
     async def role_dependency(
         membership: Any = Depends(get_active_membership),
