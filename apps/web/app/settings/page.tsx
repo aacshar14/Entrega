@@ -18,6 +18,7 @@ import {
 import { useTenant } from '@/lib/context/tenant-context';
 import { apiRequest } from '@/lib/api';
 import Link from 'next/link';
+import ConfirmModal from '@/components/confirm-modal';
 
 export default function SettingsPage() {
   const { user, activeTenant, activeRole, refreshUser } = useTenant();
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
   const [metaAppId, setMetaAppId] = useState<string | null>(null);
   const [showManualMeta, setShowManualMeta] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
 
   // Platform Level Settings (Admin Only)
   const [platformConfig, setPlatformConfig] = useState<Record<string, string>>({});
@@ -162,7 +164,7 @@ export default function SettingsPage() {
   };
 
   const handleRemoveMember = async (targetUserId: string) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar a este miembro del equipo?")) return;
+    setMemberToDelete(null); // Close modal
     setLoading(true);
     try {
       await apiRequest(`/users/${targetUserId}`, 'DELETE', null, activeTenant?.id);
@@ -364,7 +366,7 @@ export default function SettingsPage() {
                                </span>
                                {(activeRole === 'owner' || user?.platform_role === 'admin') && member.id !== user?.id && (
                                  <button 
-                                   onClick={() => handleRemoveMember(member.id)}
+                                   onClick={() => setMemberToDelete(member.id)}
                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
                                    title="Eliminar miembro"
                                  >
@@ -630,6 +632,15 @@ export default function SettingsPage() {
             </div>
          )}
       </div>
+
+      <ConfirmModal 
+        isOpen={!!memberToDelete}
+        title="Eliminar Miembro"
+        message="¿Estás seguro de que deseas eliminar a este miembro? Perderá el acceso a este tenant de forma inmediata."
+        confirmLabel="Eliminar Definitivamente"
+        onConfirm={() => memberToDelete && handleRemoveMember(memberToDelete)}
+        onCancel={() => setMemberToDelete(null)}
+      />
     </div>
   );
 }
