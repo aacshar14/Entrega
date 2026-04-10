@@ -25,7 +25,7 @@ export default function RootPage() {
       <header className="fixed top-0 left-0 right-0 z-[100] bg-[#1D3146] border-b border-[#1D3146]/20 backdrop-blur-md">
          <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 flex items-center justify-between transition-all duration-300">
             <Link href="/" className="flex items-center gap-3">
-               <Logo variant="master" className="h-12 md:h-32 w-auto drop-shadow-xl" />
+               <Logo variant="master" className="h-12 md:h-18 w-auto grow-0" />
             </Link>
             
             <nav className="hidden md:flex items-center gap-6 lg:gap-10">
@@ -80,10 +80,10 @@ export default function RootPage() {
                   <div className="flex items-center gap-3">
                      <div className="flex -space-x-3">
                         {[
-                          {bg: '#56CCF2', text: '#1D3146', initials: 'JD'},
-                          {bg: '#1D3146', text: '#56CCF2', initials: 'AM'},
-                          {bg: '#F1F5F9', text: '#64748B', initials: 'CB'}
-                        ].map((u, i) => (
+                           {bg: '#56CCF2', text: '#1D3146', initials: 'JD'},
+                           {bg: '#1D3146', text: '#56CCF2', initials: 'AM'},
+                           {bg: '#F1F5F9', text: '#64748B', initials: 'EG'}
+                         ].map((u, i) => (
                            <div key={i} className="w-10 h-10 rounded-full border-4 border-white flex items-center justify-center font-black text-[10px]" style={{backgroundColor: u.bg, color: u.text}}>
                               {u.initials}
                            </div>

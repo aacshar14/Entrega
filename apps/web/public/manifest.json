@@ -1,22 +1,22 @@
 {
-  "name": "Entrega ChocoBites",
+  "name": "Entrega App",
   "short_name": "Entrega",
-  "description": "Gestión operativa inteligente para ChocoBites.",
+  "description": "Gestión operativa inteligente para tu negocio.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#1D3146",
   "theme_color": "#1D3146",
   "icons": [
     {
-      "src": "/chocobites.jpg",
+      "src": "/logo_official.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/chocobites.jpg",
+      "src": "/logo_official.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

@@ -76,7 +76,7 @@ export default function DocsHub() {
 
       {/* FOOTER MINI */}
       <footer className="py-12 bg-[#1D3146] text-center">
-         <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em]">Entrega V1.1 - ChocoBites Operational Standard</p>
+         <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em]">Entrega V1.1 - Secure Multi-Tenant Framework</p>
       </footer>
     </div>
   );

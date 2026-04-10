@@ -93,7 +93,7 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="leo@chocobites.mx"
+              placeholder="admin@entrega.space"
               className="w-full h-16 px-6 bg-white border-none rounded-2xl outline-none focus:ring-4 focus:ring-[#56CCF2]/20 transition-all font-bold text-[#1D3146] placeholder:text-slate-300"
             />
           </div>

@@ -57,10 +57,10 @@ export default function LearningDashboard() {
         {
           id: 'l1',
           sender: '+52 55 1234 5678',
-          raw_message: 'Entregar 10 cajas de ChocoBites a Don Pedro mañana',
+          raw_message: 'Entregar 10 productos a Distribuidora Los Santos mañana',
           timestamp: new Date().toISOString(),
           detected_intent: 'delivery',
-          detected_entities: JSON.stringify({ customer: 'Don Pedro', qty: 10, product: 'ChocoBites' }),
+          detected_entities: JSON.stringify({ customer: 'Distribuidora Los Santos', qty: 10, product: 'Producto A' }),
           confidence: 0.92,
           needs_confirmation: false,
           final_status: 'pending'
@@ -151,7 +151,7 @@ export default function LearningDashboard() {
          {tab === 'logs' ? (
            <div className="lg:col-span-12 space-y-4">
               <div className="flex items-center justify-between px-2">
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mensajes del Cliente Piloto</h3>
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mensajes del Centro de Control</h3>
                  <button onClick={fetchLogs} title="Refrescar logs" className="p-2 text-slate-400 hover:text-[#1D3146]"><RefreshCcw size={16} /></button>
               </div>
               
@@ -239,7 +239,7 @@ export default function LearningDashboard() {
                        />
                        <input 
                          type="text" 
-                         placeholder="Alias (Ej: 'Juan', 'Choco')" 
+                         placeholder="Alias (Ej: 'Tienda', 'Alén')" 
                          className="h-14 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
                          value={newAlias.alias}
                          onChange={(e) => setNewAlias({...newAlias, alias: e.target.value})}

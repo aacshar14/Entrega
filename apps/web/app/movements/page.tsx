@@ -81,7 +81,7 @@ export default function MovementsPage() {
             <h1 className="text-xl md:text-3xl font-black text-[#1D3146] tracking-tight">Historial de Movimientos</h1>
             <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              En vivo • ChocoBites V1.1
+              En vivo • Entrega Enterprise
             </p>
           </div>
         </div>

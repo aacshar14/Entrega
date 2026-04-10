@@ -35,7 +35,7 @@ export default function WeeklyReportsPage() {
        <div className="flex justify-between items-center bg-gradient-to-br from-[#1D3146] to-[#2B4764] text-white p-12 rounded-3xl shadow-2xl relative overflow-hidden border border-white/10">
           <div className="relative z-10 space-y-2">
              <h2 className="text-5xl font-black tracking-tighter">Resumen Ejecutivo</h2>
-             <p className="text-blue-200 text-lg font-medium opacity-90">KPIs críticos para la operación de ChocoBites</p>
+             <p className="text-blue-200 text-lg font-medium opacity-90">KPIs operativos del periodo activo</p>
           </div>
           <div className="relative z-10 bg-white/10 backdrop-blur-3xl p-6 rounded-3xl border border-white/20 shadow-xl">
              <p className="text-blue-100 uppercase font-black tracking-wider text-[10px] leading-tight mb-2">Período Activo</p>
@@ -119,7 +119,7 @@ export default function WeeklyReportsPage() {
        <div className="bg-slate-50 p-6 rounded-3xl flex items-start gap-4 border border-slate-100">
           <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">ℹ️</div>
           <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-             Este reporte de <span className="font-bold text-[#1D3146]">ChocoBites</span> se genera dinámicamente. 
+             Este reporte se genera dinámicamente según tu histórico. 
              Muestra quién te debe más y qué producto está rotando más rápido en los últimos 7 días.
           </p>
        </div>

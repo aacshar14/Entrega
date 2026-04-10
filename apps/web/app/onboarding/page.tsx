@@ -261,7 +261,7 @@ export default function OnboardingPage() {
                         <input
                            id="biz_name"
                            type="text"
-                           placeholder="Ej: ChocoBites Pilot México"
+                           placeholder="Ej: Distribuidora Los Santos"
                            className="w-full h-16 px-6 bg-[#EBEEF2] border-none rounded-2xl text-sm font-bold text-[#1D3146] outline-none"
                            value={formData.business_name}
                            onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}

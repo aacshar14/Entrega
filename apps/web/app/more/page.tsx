@@ -43,7 +43,7 @@ export default function MorePage() {
          </Link>
          <div>
             <h1 className="text-2xl font-black text-[#1D3146] tracking-tight">Opciones</h1>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Administración ChocoBites</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Ajustes Operativos</p>
          </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function MorePage() {
             <LogOut size={20} />
             Cerrar Sesión
          </button>
-         <p className="text-center text-[10px] text-slate-300 font-bold mt-8 uppercase tracking-[0.2em]">Entrega Pilot v1.1.0 • ChocoBites Space</p>
+         <p className="text-center text-[10px] text-slate-300 font-bold mt-8 uppercase tracking-[0.2em]">Entrega App v1.1.0 • Producción Segura</p>
       </section>
 
     </div>

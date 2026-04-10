@@ -328,7 +328,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <meta name="theme-color" content="#1D3146" />
-        <link rel="apple-touch-icon" href="/chocobites.jpg" />
+        <link rel="apple-touch-icon" href="/logo_official.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body>
