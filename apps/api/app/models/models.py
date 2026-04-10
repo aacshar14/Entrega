@@ -373,3 +373,26 @@ class MessageCorrection(BaseModel):
     intent: str
     entities: dict
     status: str = "corrected"
+# --- 🔁 Idempotency & Message Control (V1.2) ---
+
+class ProcessedMessage(SQLModel, table=True):
+    """
+    Dedicated identity lock for multi-tenant idempotency.
+    Guarantees 'Exactly-Once' processing for WhatsApp messages.
+    """
+    __tablename__ = "processed_messages"
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
+    message_id: str = Field(index=True)
+    
+    # State Machine: 'processing', 'processed', 'failed'
+    status: str = Field(default="processing", index=True) 
+    
+    created_at: datetime = Field(default_factory=get_utc_now)
+    updated_at: datetime = Field(default_factory=get_utc_now)
+    
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "message_id", name="uq_tenant_message_id"),
+        # Operational index for cleanup and recovery tasks
+        Index("idx_processed_messages_status_updated", "status", "updated_at"),
+    )
