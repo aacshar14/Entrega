@@ -121,17 +121,7 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}" \
-            --set-env-vars "WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
-            --set-env-vars "WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
-            --set-env-vars "SECRET_KEY=${{ secrets.SECRET_KEY }}" \
-            --set-env-vars "ENVIRONMENT=production" \
-            --set-env-vars "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
-            --set-env-vars "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" \
-            --set-env-vars "SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}" \
-            --set-env-vars "WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }}" \
-            --set-env-vars "WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}"
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }},WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }},WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}"
 
       - name: API Health Check
         run: |-
