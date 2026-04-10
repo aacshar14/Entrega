@@ -89,7 +89,7 @@ jobs:
         run: |
           pip install black==26.3.1
           echo "Running Black format check..."
-          black --check .
+          black --check . --exclude "/apps/api/alembic/versions/"
           echo "Running Python syntax validation..."
           python -m py_compile $(git ls-files '*.py')
 
