@@ -44,7 +44,8 @@ export default function PlatformTenants() {
     try {
       await apiRequest(`admin/tenants/${modalConfig.tenantId}/billing`, 'PATCH', {
         status: modalConfig.status,
-        trial_days: modalConfig.days,
+        trial_days: modalConfig.status === 'trial' ? modalConfig.days : undefined,
+        grace_days: modalConfig.status === 'grace' ? modalConfig.days : undefined,
         notes: `Manual Update: ${modalConfig.status}`
       });
       setModalOpen(false);
@@ -52,6 +53,17 @@ export default function PlatformTenants() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const triggerUpdate = (tenantId: string, status: string, days?: number) => {
+    setModalConfig({
+        tenantId, status, days,
+        title: status === 'suspended' ? 'Suspender Acceso' : 'Actualizar Billing',
+        message: status === 'suspended' ? 'Cuidado: Esto bloqueará el acceso al dashboard.' : `Se aplicará el estado ${status.toUpperCase()} por ${days || ''} días.`,
+        confirmLabel: 'Confirmar',
+        variant: status === 'suspended' ? 'danger' : 'info'
+    });
+    setModalOpen(true);
   };
 
   const renderWhatsAppStatus = (tenant: any) => {
@@ -168,9 +180,15 @@ export default function PlatformTenants() {
                 
                 <div className="space-y-1.5 min-w-[120px]">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Billing Plan</p>
-                  <p className={`text-xs font-black uppercase ${m.tenant.billing_status === 'active_paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  <p className={`text-xs font-black uppercase mb-1 ${m.tenant.billing_status === 'active_paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
                     {m.tenant.billing_status || 'Trial'}
                   </p>
+                  <div className="flex flex-wrap gap-1">
+                    <button onClick={() => triggerUpdate(m.tenant.id, 'trial', 7)} className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-amber-50 hover:text-amber-600 transition-all">+7D</button>
+                    <button onClick={() => triggerUpdate(m.tenant.id, 'active_paid')} className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-emerald-50 hover:text-emerald-600 transition-all">Pagar</button>
+                    <button onClick={() => triggerUpdate(m.tenant.id, 'grace', 3)} className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-purple-50 hover:text-purple-600 transition-all">+3D Gracia</button>
+                    <button onClick={() => triggerUpdate(m.tenant.id, 'suspended')} className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-rose-50 hover:text-rose-600 transition-all text-rose-400">Suspender</button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 min-w-[140px]">
@@ -193,6 +211,19 @@ export default function PlatformTenants() {
           </div>
         ))}
       </div>
+
+      {/* Confirmation Modal */}
+      {modalConfig && (
+        <ConfirmModal 
+          isOpen={modalOpen}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          confirmLabel={modalConfig.confirmLabel}
+          variant={modalConfig.variant}
+          onConfirm={executeUpdate}
+          onCancel={() => setModalOpen(false)}
+        />
+      )}
 
     </div>
   );
