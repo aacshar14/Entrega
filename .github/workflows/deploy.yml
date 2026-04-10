@@ -116,17 +116,17 @@ jobs:
       - name: 🚀 Database Migration (Pre-Deploy Job)
         run: |-
           # Ensure Job exists and points to latest image
-          gcloud run jobs deploy migrate-api \
+          gcloud run jobs deploy entrega-migrate \
             --image $API_IMAGE:${{ github.sha }} \
-            --command "python" \
-            --args "-m,alembic,upgrade,head" \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
             --region $REGION \
+            --command=python \
+            --args=-m,alembic,upgrade,head \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
             --quiet
 
           # Execute Job and wait for completion
           echo "Executing migration job..."
-          gcloud run jobs execute migrate-api --region $REGION --wait
+          gcloud run jobs execute entrega-migrate --region $REGION --wait
 
 
       - name: Deploy API to Cloud Run
