@@ -130,7 +130,7 @@ class WhatsAppService:
         )
 
         # 3. Dispatch to Meta
-        url = f"https://graph.facebook.com/v21.0/{phone_id}/messages"
+        url = f"https://graph.facebook.com/v22.0/{phone_id}/messages"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
