@@ -26,7 +26,17 @@ async def get_dashboard_summary(
 ):
     tenant_id = active_tenant.id
 
-    # 1. Main Stats
+    # 1. Main Stats (Performance Hardening V2)
+    from app.services.dashboard_service import DashboardService
+
+    ds = DashboardService(db)
+    kpis = ds.get_dashboard_kpis(active_tenant)
+
+    total_debt_abs = kpis.get("total_debt", 0.0)
+    sales_today = kpis.get("sales_today", 0.0)
+    total_deliveries_kpi = kpis.get("deliveries_today", 0)
+
+    # 2. Basic Metadata counts
     customer_count = db.exec(
         select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
     ).one()
@@ -34,35 +44,7 @@ async def get_dashboard_summary(
         select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
     ).one()
 
-    # 2. Financials
-    total_payments = (
-        db.exec(
-            select(func.sum(Payment.amount)).where(Payment.tenant_id == tenant_id)
-        ).one()
-        or 0.0
-    )
-
-    # Debug Info: Check if balance tables are populated
-    stock_balance_count = db.exec(
-        select(func.count(StockBalance.id)).where(StockBalance.tenant_id == tenant_id)
-    ).one()
-    customer_balance_count = db.exec(
-        select(func.count(CustomerBalance.id)).where(
-            CustomerBalance.tenant_id == tenant_id
-        )
-    ).one()
-
-    total_debt = (
-        db.exec(
-            select(func.sum(CustomerBalance.balance))
-            .where(CustomerBalance.tenant_id == tenant_id)
-            .where(CustomerBalance.balance < 0)  # Negative balance means they owe us
-        ).one()
-        or 0.0
-    )
-
-    # Absolute value for UI
-    total_debt_abs = abs(float(total_debt))
+    total_payments = sales_today  # Approximate as payments today for dashboard card
 
     # 3. Stock Status (Low stock < 10)
     low_stock_count = db.exec(
@@ -191,23 +173,10 @@ async def get_dashboard_summary(
         else:
             days_remaining = (grace_end - now).days
 
-    # Operational triggers
-    total_deliveries = db.exec(
-        select(func.count(InventoryMovement.id))
-        .where(InventoryMovement.tenant_id == tenant_id)
-        .where(InventoryMovement.type == "delivery")
-    ).one()
+    # Operational triggers (V2 Scaled)
+    total_deliveries = int(total_deliveries_kpi)
 
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    sales_today = (
-        db.exec(
-            select(func.sum(InventoryMovement.total_amount))
-            .where(InventoryMovement.tenant_id == tenant_id)
-            .where(InventoryMovement.type == "delivery")
-            .where(InventoryMovement.created_at >= today_start)
-        ).one()
-        or 0.0
-    )
+    # sales_today already pulled from ds
 
     return {
         "stats": {

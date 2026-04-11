@@ -408,9 +408,15 @@ class MetricSnapshot(SQLModel, table=True):
     metric_value: float
 
     # Timing
-    period_start: datetime
-    period_end: datetime
+    period_start: datetime = Field(index=True)
+    period_end: datetime = Field(index=True)
     created_at: datetime = Field(default_factory=get_utc_now)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "metric_name", "period_start", name="uq_metric_snapshot"
+        ),
+    )
 
 
 class AuditLog(SQLModel, table=True):

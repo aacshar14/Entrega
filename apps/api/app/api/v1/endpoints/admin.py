@@ -666,3 +666,27 @@ async def get_whatsapp_failures(
         }
         for m, t in results
     ]
+
+
+@router.post(
+    "/dashboard/refresh-all",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+async def refresh_all_tenant_dashboards(db: Session = Depends(get_session)):
+    """
+    Triggers a full KPI snapshot refresh for all active tenants.
+    """
+    from app.services.dashboard_service import DashboardService
+
+    tenants = db.exec(select(Tenant)).all()
+    ds = DashboardService(db)
+
+    for t in tenants:
+        try:
+            ds.refresh_daily_kpis(t.id)
+        except Exception as e:
+            logger.error(
+                "admin.dashboard_refresh_failed", tenant_id=str(t.id), error=str(e)
+            )
+
+    return {"message": f"Refreshed {len(tenants)} tenant dashboards", "status": "done"}

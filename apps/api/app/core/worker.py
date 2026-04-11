@@ -228,6 +228,15 @@ class EventWorker:
                 except Exception as e:
                     logger.error("worker.receipt_dispatch_failed", error=str(e))
 
+            # 🚀 Immediate Dashboard Refresh (Performance Hardening V2)
+            try:
+                from app.services.dashboard_service import DashboardService
+
+                ds = DashboardService(self.db)
+                ds.refresh_daily_kpis(tenant.id)
+            except Exception as e:
+                logger.error("worker.dashboard_refresh_failed", error=str(e))
+
             # --- ✅ PHASE 3: IDEMPOTENCY FINALIZE ---
             success_sql = text("""
                 UPDATE processed_messages 
