@@ -58,6 +58,7 @@ interface TenantContextType {
   switchTenant: (tenantId: string) => void;
   clearTenant: () => void;
   refreshUser: () => Promise<void>;
+  refreshTenant: () => Promise<void>;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -307,6 +308,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         switchTenant,
         clearTenant,
         refreshUser: () => fetchContext(),
+        refreshTenant: () => fetchContext(),
       }}
     >
       {children}
