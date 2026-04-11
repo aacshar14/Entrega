@@ -22,7 +22,7 @@ def get_application() -> FastAPI:
         version=settings.VERSION,
         description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        redirect_slashes=True,
+        redirect_slashes=False,
     )
 
     # Setup Rate Limiting
@@ -42,12 +42,7 @@ def get_application() -> FastAPI:
     # Include CORSMiddleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "https://entrega.space",
-            "https://app.entrega.space",
-            "https://api.entrega.space",
-        ],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
