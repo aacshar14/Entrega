@@ -29,6 +29,7 @@ export default function OnboardingPage() {
    const [loading, setLoading] = useState(false);
    const [error, setError] = useState<string | null>(null);
    const [metaAppId, setMetaAppId] = useState<string | null>(null);
+   const [metaConfigId, setMetaConfigId] = useState<string | null>(null);
    const [formData, setFormData] = useState({
       business_name: activeTenant?.name || '',
       person_name: '',
@@ -50,9 +51,8 @@ export default function OnboardingPage() {
    useEffect(() => {
       apiRequest('/config/public', 'GET')
          .then(res => {
-            if (res.whatsapp_app_id) {
-               setMetaAppId(res.whatsapp_app_id);
-            }
+            if (res.whatsapp_app_id) setMetaAppId(res.whatsapp_app_id);
+            if (res.whatsapp_config_id) setMetaConfigId(res.whatsapp_config_id);
          })
          .catch(err => console.error("Could not fetch public config", err));
    }, []);
@@ -424,34 +424,37 @@ export default function OnboardingPage() {
                            </div>
                            <p className="text-[11px] text-slate-500 font-medium mb-6 px-4">
                               Conecta tu cuenta de <strong>WhatsApp Business</strong> para habilitar avisos automáticos.
-                           </p>
-
-                           <button
+                                            <button
                               onClick={async () => {
                                  if (!metaAppId) {
-                                    setError("Meta App ID no configurado en el servidor.");
+                                    setError("Meta App ID no configurado.");
                                     return;
                                  }
                                  setLoading(true);
                                  try {
+                                    // 1. Get secure nonce from unified integrations endpoint
+                                    const { nonce } = await apiRequest('/integrations/whatsapp/onboarding-url', 'GET', null, activeTenant?.id);
+
+                                    // 2. Launch Meta Embedded Signup using Config ID
                                     // @ts-ignore
                                     FB.login((response: any) => {
                                        if (response.authResponse) {
                                           const { code } = response.authResponse;
-                                          apiRequest('/whatsapp/auth/exchange', 'POST', { code }, activeTenant?.id)
+                                          // 3. Complete via unified flow (Nonce validation)
+                                          apiRequest('/integrations/whatsapp/complete', 'POST', { code, state: nonce }, activeTenant?.id)
                                              .then(() => refreshUser())
-                                             .catch((e: any) => setError("Error en intercambio: " + e.message))
+                                             .catch((e: any) => setError("Error en vinculación: " + e.message))
                                              .finally(() => setLoading(false));
                                        } else {
-                                          setError("El usuario canceló el registro o no se autorizó la aplicación.");
+                                          setError("El usuario canceló el registro.");
                                           setLoading(false);
                                        }
                                     }, {
-                                       scope: 'whatsapp_business_management,whatsapp_business_messaging',
+                                       config_id: metaConfigId || '1716962075608553',
+                                       response_type: 'code',
+                                       override_default_response_type: true,
                                        extras: {
-                                          feature: 'whatsapp_embedded_signup',
-                                          session_info: { version: 2 },
-                                          setup_mode: 'direct_enumeration'
+                                          setup_nonce: nonce
                                        }
                                     });
                                  } catch (err: any) {

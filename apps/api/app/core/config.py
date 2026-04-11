@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     WHATSAPP_VERIFY_TOKEN: str = "Entr3gA_WABA_Secure_2024_PROD_v1"  # Overwrite in .env
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None
+    WHATSAPP_CONFIG_ID: str = "1716962075608553"  # Default Meta Solution Template ID
 
     # Security
     ALLOW_INSECURE_WEBHOOKS: bool = False  # MUST REMAIN FALSE IN PRODUCTION

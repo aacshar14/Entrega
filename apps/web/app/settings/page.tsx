@@ -41,7 +41,6 @@ export default function SettingsPage() {
 
   const [team, setTeam] = useState<any[]>([]);
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
-  const [metaAppId, setMetaAppId] = useState<string | null>(null);
   const [showManualMeta, setShowManualMeta] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
 
@@ -97,50 +96,6 @@ export default function SettingsPage() {
     }
   }, [activeTenant]);
 
-  // 1. Fetch Public Config for Meta App ID
-  useEffect(() => {
-    apiRequest('/config/public', 'GET')
-      .then(res => {
-        if (res.whatsapp_app_id) setMetaAppId(res.whatsapp_app_id);
-      })
-      .catch(err => {
-        console.error("Could not fetch public config", err);
-        setMetaAppId('825875709540441'); // Last resort fallback
-      });
-  }, []);
-
-  // 2. Load FB SDK dynamically when appId is ready
-  useEffect(() => {
-    if (!metaAppId) return;
-
-    if (!(window as any).FB) {
-      const script = document.createElement('script');
-      script.src = "https://connect.facebook.net/en_US/sdk.js";
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        (window as any).fbAsyncInit = function() {
-          (window as any).FB.init({
-            appId            : metaAppId, 
-            cookie           : true,
-            xfbml            : true,
-            version          : 'v22.0'
-          });
-        };
-      };
-      document.body.appendChild(script);
-    } else {
-        // If already loaded, re-init with potentially new ID (unlikely but safe)
-        try {
-            (window as any).FB.init({
-                appId: metaAppId,
-                cookie: true,
-                xfbml: true,
-                version: 'v19.0'
-            });
-        } catch(e) {}
-    }
-  }, [metaAppId]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,42 +153,6 @@ export default function SettingsPage() {
     }
   };
 
-  const launchWhatsAppOnboarding = () => {
-    if (!(window as any).FB) {
-       setError("SDK de Meta no cargado. Reintenta en unos segundos.");
-       return;
-    }
-
-    (window as any).FB.login((response: any) => {
-      if (response.authResponse) {
-        const code = response.authResponse.code;
-        handleExchangeCode(code);
-      } else {
-        console.log('User cancelled login or did not fully authorize.');
-      }
-    }, {
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
-      extras: {
-        feature: 'whatsapp_embedded_signup',
-        session_info: { version: 2 },
-        setup_mode: 'direct_enumeration'
-      }
-    });
-  };
-
-  const handleExchangeCode = async (code: string) => {
-    setLoading(true);
-    try {
-      await apiRequest('/whatsapp/auth/exchange', 'POST', { code }, activeTenant?.id);
-      await refreshUser();
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError("Error en la conexión: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

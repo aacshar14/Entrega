@@ -30,12 +30,16 @@ async def exchange_meta_code(
 ):
     """
     Exchanges an OAuth code from Meta Embedded Signup for a Long-Lived Access Token.
-    Hardened for multi-tenant production.
+    [DEPRECATED] Use /api/v1/integrations/whatsapp/complete instead.
     """
-    logger.info(
-        "WhatsApp authorization exchange started",
+    logger.warning(
+        "Legacy WhatsApp exchange endpoint called - REJECTING",
         tenant_id=str(active_tenant_id),
         user_id=str(current_user.id),
+    )
+    raise HTTPException(
+        status_code=410,
+        detail="This endpoint is deprecated. Please refresh your browser and use the updated onboarding flow.",
     )
 
     # Meta Graph URL
