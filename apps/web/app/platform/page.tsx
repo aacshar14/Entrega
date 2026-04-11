@@ -236,11 +236,18 @@ export default function PlatformOverview() {
                         </span>
                       </td>
                       <td className="px-4 py-5 text-center">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${p.whatsapp_status === "connected" ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"}`}
-                        >
-                          {p.whatsapp_status}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${p.whatsapp_status === "connected" ? "bg-emerald-100 text-emerald-600" : p.whatsapp_status === "failed" ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"}`}
+                          >
+                            {p.whatsapp_status}
+                          </span>
+                          {p.whatsapp_error_code && (
+                            <span className="text-[7px] font-black text-rose-400 uppercase tracking-tighter">
+                              {p.whatsapp_error_code}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-5 text-center">
                         <span

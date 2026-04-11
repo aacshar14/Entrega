@@ -229,6 +229,12 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                 "whatsapp_status": (
                     integration.status if integration else "not_connected"
                 ),
+                "whatsapp_onboarding_status": (
+                    integration.onboarding_status if integration else "not_connected"
+                ),
+                "whatsapp_error_code": (
+                    integration.last_error_code if integration else None
+                ),
                 "volume_24h": volume_24h,
                 "p95_processing_ms": round(get_val("tenant_p95_processing_ms_24h"), 2),
                 "failed_count": int(get_val("tenant_failures_24h")),
@@ -240,6 +246,7 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
                     if volume_24h > PLATFORM_THRESHOLDS.HOT_TENANT_VOLUME_24H
                     or get_val("tenant_failures_24h")
                     > PLATFORM_THRESHOLDS.HOT_TENANT_FAILURES_24H
+                    or (integration and integration.status == "failed")
                     else (
                         "warning"
                         if volume_24h > PLATFORM_THRESHOLDS.WARNING_TENANT_VOLUME_24H
@@ -591,3 +598,71 @@ async def update_tenant_billing(
     db.refresh(tenant)
 
     return {"message": "Billing updated", "status": tenant.billing_status}
+
+
+@router.get(
+    "/whatsapp/status",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+async def get_all_whatsapp_status(db: Session = Depends(get_session)):
+    """
+    Returns the WhatsApp integration status for all tenants.
+    """
+    integrations = db.exec(
+        select(TenantWhatsAppIntegration, Tenant).join(
+            Tenant, TenantWhatsAppIntegration.tenant_id == Tenant.id
+        )
+    ).all()
+
+    return [
+        {
+            "tenant_id": t.id,
+            "tenant_name": t.name,
+            "status": i.status,
+            "onboarding_status": i.onboarding_status,
+            "connected_at": i.connected_at,
+            "last_attempt_at": i.last_attempt_at,
+            "last_error_code": i.last_error_code,
+            "last_error_message": i.last_error_message,
+            "phone_number": i.display_phone_number,
+        }
+        for i, t in integrations
+    ]
+
+
+@router.get(
+    "/whatsapp/failures",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+async def get_whatsapp_failures(
+    limit: int = 50, offset: int = 0, db: Session = Depends(get_session)
+):
+    """
+    Returns a list of failed WhatsApp message processings for operator review.
+    """
+    from app.models.models import WhatsAppMessage
+
+    query = (
+        select(WhatsAppMessage, Tenant)
+        .join(Tenant, WhatsAppMessage.tenant_id == Tenant.id)
+        .where(WhatsAppMessage.processing_status == "failed")
+        .order_by(WhatsAppMessage.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+
+    results = db.exec(query).all()
+
+    return [
+        {
+            "message_sid": m.message_sid,
+            "tenant_id": t.id,
+            "tenant_name": t.name,
+            "sender": m.sender_wa_id,
+            "body": m.body,
+            "error_code": m.last_error_code,
+            "error_message": m.last_error,
+            "created_at": m.created_at,
+        }
+        for m, t in results
+    ]

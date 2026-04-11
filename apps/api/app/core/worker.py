@@ -179,16 +179,28 @@ class EventWorker:
             engine = ParsingEngine(self.db, tenant)
             receipt_data = None
             error_msg = None
+            error_code = None
 
             try:
                 log, receipt_data = engine.process_and_log(sender=sender, raw_text=body)
                 msg_status = (
                     "processed" if log.final_status == "processed" else "failed"
                 )
+                if msg_status == "failed":
+                    error_code = "UNKNOWN_INTENT"
             except Exception as e:
                 error_msg = str(e)
                 msg_status = "failed"
-                logger.error("worker.business_logic_failed", error=error_msg)
+                # Determine normalized error code
+                if "Stock insuficiente" in error_msg:
+                    error_code = "STOCK_INSUFFICIENT"
+                elif "Customer not found" in error_msg:
+                    error_code = "CUSTOMER_NOT_FOUND"
+                else:
+                    error_code = "RUNTIME_ERROR"
+                logger.error(
+                    "worker.business_logic_failed", error=error_msg, code=error_code
+                )
 
             # 🗄️ Update Audit Model (WhatsAppMessage)
             inbound_msg = self.db.exec(
@@ -198,6 +210,7 @@ class EventWorker:
                 inbound_msg.processing_status = msg_status
                 inbound_msg.processed_at = datetime.now(timezone.utc)
                 inbound_msg.last_error = error_msg
+                inbound_msg.last_error_code = error_code
                 self.db.add(inbound_msg)
                 self.db.commit()
 

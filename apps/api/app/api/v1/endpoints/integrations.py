@@ -135,6 +135,10 @@ async def complete_whatsapp_integration(
             integration.onboarding_nonce_expires_at = None
             integration.updated_at = datetime.now(timezone.utc)
 
+            # Clear Failure State
+            integration.last_error_code = None
+            integration.last_error_message = None
+
             # Persist frontend metadata if provided
             if payload.metadata:
                 integration.metadata_json = json.dumps(payload.metadata)
@@ -155,26 +159,34 @@ async def complete_whatsapp_integration(
     except Exception as e:
         db.rollback()
         error_msg = str(e)
+
+        # Determine Normalized Error Code
+        code = "GENERIC_ERROR"
+        if "MULTIPLE_WABA_DETECTED" in error_msg:
+            code = "MULTIPLE_WABA_DETECTED"
+        elif "NO_WABA_FOUND" in error_msg:
+            code = "NO_WABA_FOUND"
+        elif "Meta Code Exchange failed" in error_msg:
+            code = "TOKEN_EXCHANGE_FAILED"
+        elif "otro comercio" in error_msg:
+            code = "COLLISION_DETECTED"
+
         logger.error(
             "whatsapp_onboarding.failed",
             error=error_msg,
+            code=code,
             tenant_id=str(active_tenant_id),
         )
 
-        # PERSIST FAILURE (For observability)
+        # PERSIST FAILURE (Phase 2 Observability)
         if integration:
             integration.status = "failed"
             integration.onboarding_status = "failed"
-            integration.metadata_json = json.dumps({"terminal_error": error_msg})
+            integration.last_error_code = code
+            integration.last_error_message = error_msg[:255]  # Ensure safe length
+            integration.last_attempt_at = datetime.now(timezone.utc)
             db.add(integration)
             db.commit()
-
-        # Specific user-facing messages
-        if "MULTIPLE_WABA_DETECTED" in error_msg:
-            raise HTTPException(
-                status_code=400,
-                detail="Múltiples cuentas detectadas. Por favor configure Meta para usar una sola WABA.",
-            )
 
         raise HTTPException(status_code=400, detail=error_msg)
 

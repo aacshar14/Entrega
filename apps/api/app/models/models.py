@@ -130,6 +130,11 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     disconnected_at: Optional[datetime] = None
     metadata_json: Optional[str] = Field(default=None)
 
+    # Phase 2 Observability: Onboarding Diagnostics
+    last_error_code: Optional[str] = Field(default=None, index=True)
+    last_error_message: Optional[str] = Field(default=None)
+    last_attempt_at: Optional[datetime] = Field(default=None)
+
     onboarding_nonce: Optional[str] = None
     onboarding_nonce_expires_at: Optional[datetime] = None
 
@@ -278,6 +283,9 @@ class WhatsAppMessage(SQLModel, table=True):
     processing_status: str = Field(
         default="pending", index=True
     )  # 'pending', 'processed', 'failed', 'ignored'
+    last_error_code: Optional[str] = Field(
+        default=None, index=True
+    )  # Normalized error code (e.g., 'PARSE_FAILED')
     last_error: Optional[str] = None
 
     processed_at: Optional[datetime] = None
