@@ -46,6 +46,6 @@ api_router.include_router(
     billing_webhooks.router, prefix="/billing/webhooks", tags=["billing"]
 )
 
-# 🛡️ Hardening: Using string reference "MeResponse" to avoid circular startup crashes
+# 🛡️ Identity Resolution (Root Level for Frontend Compatibility)
 api_router.get("/me", response_model=None, tags=["identity"])(users.get_me)
-api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.get("/me/", response_model=None, tags=["identity"])(users.get_me)
