@@ -22,4 +22,4 @@ jobs:
         run: pip install black==26.3.1
 
       - name: Check formatting
-        run: black --check apps/api/
+        run: black --check apps/api/ --exclude "apps/api/alembic/versions/"
