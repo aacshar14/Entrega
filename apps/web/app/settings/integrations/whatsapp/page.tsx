@@ -34,6 +34,8 @@ interface WhatsAppStatus {
   disconnected_at?: string;
 }
 
+const META_APP_ID_FALLBACK = '825875709540441';
+
 export default function WhatsAppConfigPage() {
   const { activeTenant, user, memberships } = useTenant();
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
@@ -66,7 +68,7 @@ export default function WhatsAppConfigPage() {
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        const appId = process.env.NEXT_PUBLIC_META_APP_ID || '825875709540441';
+        const appId = process.env.NEXT_PUBLIC_META_APP_ID || META_APP_ID_FALLBACK;
         if (window.FB) {
           window.FB.init({
             appId: appId,
@@ -95,7 +97,7 @@ export default function WhatsAppConfigPage() {
       return;
     }
 
-    const appId = process.env.NEXT_PUBLIC_META_APP_ID;
+    const appId = process.env.NEXT_PUBLIC_META_APP_ID || META_APP_ID_FALLBACK;
     if (!window.FB || !appId) {
       console.error("META SDK NOT READY OR APP ID MISSING", {
         fb: !!window.FB,
