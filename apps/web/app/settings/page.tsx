@@ -438,6 +438,35 @@ export default function SettingsPage() {
             </div>
          </div>
 
+         {/* Notification Preferences */}
+         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] mb-8 flex items-center gap-2">
+               <Bell size={16} /> Configuración de Notificaciones
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="p-6 bg-[#EBEEF2]/50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white transition-all cursor-pointer">
+                  <div className="space-y-1">
+                     <p className="text-sm font-black text-[#1D3146]">Señales de Operación</p>
+                     <p className="text-[10px] text-slate-400 font-medium italic underline decoration-[#56CCF2]/30">Alertas sobre stock, cierres y movimientos.</p>
+                  </div>
+                  <div className="w-12 h-6 bg-[#1D3146] rounded-full relative p-1">
+                     <div className="w-4 h-4 bg-[#56CCF2] rounded-full shadow-sm shadow-[#56CCF2]/40"></div>
+                  </div>
+               </div>
+               
+               <div className="p-6 bg-[#EBEEF2]/50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white transition-all cursor-pointer">
+                  <div className="space-y-1">
+                     <p className="text-sm font-black text-[#1D3146]">Alertas Críticas</p>
+                     <p className="text-[10px] text-slate-400 font-medium italic underline decoration-[#56CCF2]/30">Notificaciones de alta prioridad y errores.</p>
+                  </div>
+                  <div className="w-12 h-6 bg-[#1D3146] rounded-full relative p-1">
+                     <div className="w-4 h-4 bg-[#56CCF2] rounded-full shadow-sm shadow-[#56CCF2]/40 ml-auto"></div>
+                  </div>
+               </div>
+            </div>
+         </div>
+
          {/* Regions */}
          <div className="md:col-span-12 bg-[#1D3146] rounded-[2.5rem] p-8 md:p-10 shadow-2xl text-white grid md:grid-cols-2 gap-8">
             <h3 className="md:col-span-2 text-xs font-black uppercase tracking-[0.2em] text-[#56CCF2]">Preferencias Regionales</h3>

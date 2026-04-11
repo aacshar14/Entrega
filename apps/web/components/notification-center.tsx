@@ -88,7 +88,7 @@ export default function NotificationCenter() {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-3 hover:bg-white/10 rounded-xl transition-all group"
       >
-        <Bell size={22} className={notifications.length > 0 ? "text-[#56CCF2]" : "text-slate-300"} />
+        <Bell size={22} className={notifications.length > 0 ? "text-[#56CCF2]" : "text-slate-400"} />
         {notifications.length > 0 && (
           <span className="absolute top-2 right-2 w-3 h-3 bg-rose-500 border-2 border-[#1D3146] rounded-full animate-bounce"></span>
         )}

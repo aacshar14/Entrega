@@ -151,14 +151,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#56CCF2]/40 -mt-2">Branding Oficial v1.2</span>
            </Link>
            
-            {/* Desktop Quick Actions Hub */}
-            <div className="flex items-center justify-between w-full px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
-               <NotificationCenter />
-               <div className="w-px h-6 bg-white/10"></div>
-               <button className="p-3 hover:bg-white/10 rounded-xl transition-all text-slate-300">
-                  <Settings size={20} />
-               </button>
-            </div>
+
 
            {/* TENANT SWITCHER */}
            <div className="relative w-full">
@@ -288,8 +281,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       </nav>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-grow pt-0 md:pl-72 pb-[120px] md:pb-0 min-h-screen">
-         <div className="p-6 md:p-10 lg:p-12">
+      <main className="flex-grow pt-0 md:pl-72 pb-[120px] md:pb-0 min-h-screen relative">
+         
+         {/* Desktop Top Banner (Reverted) */}
+         <header className="hidden md:flex items-center justify-end px-12 h-20 bg-transparent sticky top-0 z-40 backdrop-blur-sm">
+            <NotificationCenter />
+         </header>
+
+         <div className="p-6 md:p-10 lg:p-12 pt-0 md:pt-4">
             {children}
          </div>
       </main>
