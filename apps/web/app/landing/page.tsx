@@ -165,7 +165,7 @@ export default function LandingRedirect() {
       {/* FOOTER */}
       <footer className="py-12 border-t border-white/5 opacity-50">
         <div className="max-w-7xl mx-auto px-6 flex justify-center">
-           <Logo variant="gray" className="h-10 w-auto opacity-40 hover:opacity-100 transition-all" />
+           <Logo variant="master" className="h-10 w-auto opacity-40 hover:opacity-100 transition-all" />
         </div>
       </footer>
     </div>
