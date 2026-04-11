@@ -348,15 +348,6 @@ function UI_Shell({ children }) {
           <div className="flex items-center gap-3 md:gap-6">
             <div className="flex items-center gap-3">
               <NotificationCenter />
-
-              <div className="h-8 w-[1px] bg-slate-100"></div>
-
-              <Link
-                href="/settings"
-                className="p-2 text-slate-400 hover:text-[#1D3146] transition-colors rounded-xl hover:bg-slate-50"
-              >
-                <Settings size={20} />
-              </Link>
             </div>
 
             <div className="relative">
