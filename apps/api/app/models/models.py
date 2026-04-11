@@ -49,8 +49,6 @@ class Tenant(SQLModel, table=True):
     whatsapp_app_id: Optional[str] = None
     whatsapp_connected_at: Optional[datetime] = None
 
-    # Billing & Lifecycle (V1.3/Phase 5)
-    billing_status: str = Field(
     # --- Billing & Plan Control ---
     billing_status: str = Field(default="inactive", index=True)  # active, grace, past_due, canceled, inactive
     plan_code: str = Field(default="basic_monthly", index=True)
