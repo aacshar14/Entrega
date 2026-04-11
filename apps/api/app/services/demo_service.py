@@ -65,7 +65,9 @@ class DemoService:
             ).first()
             if not existing:
                 customer = Customer(
-                    tenant_id=tenant_id, name=c["name"], phone_number=c["phone"]
+                    tenant_id=tenant_id,
+                    name=c["name"],
+                    phone_number=c["phone"],
                 )
                 self.db.add(customer)
 
