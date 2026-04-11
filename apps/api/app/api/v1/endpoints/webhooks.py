@@ -60,7 +60,7 @@ async def receive_whatsapp_event(
     """
     # --- 1. SIGNATURE VALIDATION (Security P0 / Stabilization V1.2) ---
     is_production = settings.ENVIRONMENT == "production"
-    
+
     if settings.ALLOW_INSECURE_WEBHOOKS and not is_production:
         logger.warning("INSECURE WEBHOOK MODE ENABLED (Development Only)")
         body_bytes = await request.body()
@@ -68,7 +68,9 @@ async def receive_whatsapp_event(
         # Strict enforcement in production
         if settings.ALLOW_INSECURE_WEBHOOKS and is_production:
             logger.critical("SECURITY BYPASS ATTEMPTED IN PRODUCTION - REJECTING")
-            raise HTTPException(status_code=403, detail="Insecure webhooks not allowed in production")
+            raise HTTPException(
+                status_code=403, detail="Insecure webhooks not allowed in production"
+            )
         signature = request.headers.get("X-Hub-Signature-256")
 
         if not signature:
