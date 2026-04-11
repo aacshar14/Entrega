@@ -1,36 +1,39 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import Logo from '@/components/logo';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import Logo from "@/components/logo";
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
   const [isRegister, setIsRegister] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleAuth = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     if (!email || !password) {
-      setError('Por favor completa todos los campos');
+      setError("Por favor completa todos los campos");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       // Use dynamic origin to avoid domain hardcoding while entrega.space is not ready
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
-      
+      const siteUrl =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_SITE_URL || "";
+
       if (isRegister) {
         const { error, data } = await supabase.auth.signUp({
           email: email.trim(),
@@ -41,21 +44,24 @@ export default function LoginPage() {
           },
         });
         if (error) throw error;
-        setError('¡Cuenta creada! Revisa tu email para confirmar.');
+        setError("¡Cuenta creada! Revisa tu email para confirmar.");
         setLoading(false);
       } else {
         const { error, data } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password: password,
         });
-        
+
         if (error) throw error;
-        window.location.assign('/'); 
+        window.location.assign("/");
       }
     } catch (err: any) {
-      let msg = err.message || 'Error en la autenticación';
-      if (msg.toLowerCase().includes('data breach') || msg.toLowerCase().includes('leaked')) {
-        msg = 'Tu contraseña no es segura. Usa una más fuerte y única.';
+      let msg = err.message || "Error en la autenticación";
+      if (
+        msg.toLowerCase().includes("data breach") ||
+        msg.toLowerCase().includes("leaked")
+      ) {
+        msg = "Tu contraseña no es segura. Usa una más fuerte y única.";
       }
       setError(msg);
       setLoading(false);
@@ -64,21 +70,25 @@ export default function LoginPage() {
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#EBEEF2]">
-      <form 
+      <form
         onSubmit={handleAuth}
         className="bg-[#1D3146] p-10 md:p-14 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/5 flex flex-col gap-10 animate-in fade-in zoom-in-95 duration-700"
       >
         <div className="flex flex-col items-center">
           <Logo variant="master" className="w-80 h-auto drop-shadow-2xl" />
           <p className="text-[#56CCF2] font-black uppercase tracking-[0.2em] text-[10px] text-center mt-2">
-            {isRegister ? 'Crea tu cuenta de propietario' : 'Gestión Inteligente de Logística'}
+            {isRegister
+              ? "Crea tu cuenta de propietario"
+              : "Gestión Inteligente de Logística"}
           </p>
         </div>
 
         <div className="space-y-6">
           {isRegister && (
             <div className="animate-in slide-in-from-top-2 duration-300">
-              <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Nombre Completo</label>
+              <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">
+                Nombre Completo
+              </label>
               <input
                 type="text"
                 autoComplete="name"
@@ -91,7 +101,9 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Email Corporativo</label>
+            <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">
+              Email Corporativo
+            </label>
             <input
               type="email"
               autoComplete="email"
@@ -103,7 +115,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Password</label>
+            <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">
+              Password
+            </label>
             <input
               type="password"
               autoComplete={isRegister ? "new-password" : "current-password"}
@@ -127,15 +141,21 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-white text-[#1D3146] h-16 md:h-20 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            {loading ? 'Procesando...' : (isRegister ? 'Registrar Negocio' : 'Iniciar Sesión')}
+            {loading
+              ? "Procesando..."
+              : isRegister
+                ? "Registrar Negocio"
+                : "Iniciar Sesión"}
           </button>
 
-          <button 
+          <button
             type="button"
             onClick={() => setIsRegister(!isRegister)}
             className="w-full text-[10px] font-black uppercase tracking-widest text-[#56CCF2]/50 hover:text-[#56CCF2] transition-colors py-2"
           >
-            {isRegister ? 'Ya tengo cuenta - Entrar' : '¿Nuevo aquí? - Crear Cuenta'}
+            {isRegister
+              ? "Ya tengo cuenta - Entrar"
+              : "¿Nuevo aquí? - Crear Cuenta"}
           </button>
         </div>
       </form>

@@ -1,22 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --navy-dark: #1D3146;
-  --navy-sidebar: #243B53;
-  --bg-app: #EBEEF2;
-  
-  --kpi-blue: #3E82CC;
-  --kpi-teal: #3B9193;
-  --kpi-red: #D24C41;
-  --kpi-orange: #EC8C34;
+  --navy-dark: #1d3146;
+  --navy-sidebar: #243b53;
+  --bg-app: #ebeef2;
+
+  --kpi-blue: #3e82cc;
+  --kpi-teal: #3b9193;
+  --kpi-red: #d24c41;
+  --kpi-orange: #ec8c34;
 }
 
 /* MOBILE RESCUE LAYER */
-html, body {
+html,
+body {
   overflow-x: hidden;
   max-width: 100vw;
   position: relative;
@@ -27,14 +28,16 @@ html, body {
 
 body {
   background-color: var(--bg-app);
-  color: #1D3146;
-  font-family: 'Inter', sans-serif;
+  color: #1d3146;
+  font-family: "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Fix mobile scaling bugs */
-input, select, textarea {
+input,
+select,
+textarea {
   font-size: 16px !important; /* Prevents auto-zoom on iOS */
 }
 
@@ -54,7 +57,7 @@ input, select, textarea {
   .sidebar-icon {
     @apply w-5 h-5 opacity-70;
   }
-  
+
   .sidebar-link {
     @apply flex items-center gap-4 px-6 py-4 text-slate-300 hover:text-white hover:bg-[#2C425A] transition-all text-[13px] font-semibold;
   }

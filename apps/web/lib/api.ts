@@ -1,7 +1,7 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from "@/utils/supabase/client";
 
 // Use relative path to leverage Next.js proxy/rewrites in production
-const API_BASE_URL = 'https://api.entrega.space/api/v1';
+const API_BASE_URL = "https://api.entrega.space/api/v1";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -9,7 +9,7 @@ function sleep(ms: number) {
 
 /**
  * Entrega API Client
- * 
+ *
  * Standardized request utility with:
  * - Automatic absolute URL resolution
  * - Intelligent session token injection
@@ -18,40 +18,42 @@ function sleep(ms: number) {
  */
 export async function apiRequest(
   endpoint: string,
-  method = 'GET',
+  method = "GET",
   body: any = null,
   activeTenantId?: string,
-  accessToken?: string
+  accessToken?: string,
 ) {
-  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  if (!cleanEndpoint.endsWith('/')) {
+  let cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (!cleanEndpoint.endsWith("/")) {
     cleanEndpoint = `${cleanEndpoint}/`;
   }
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   // 🔐 Token Resolution: Prioritize injected token to avoid redundant session fetches
   let token = accessToken;
-  
+
   // Only attempt auto-discovery if no token is provided and we are in a browser context
-  if (!token && typeof window !== 'undefined') {
-    const { data: { session } } = await createClient().auth.getSession();
+  if (!token && typeof window !== "undefined") {
+    const {
+      data: { session },
+    } = await createClient().auth.getSession();
     token = session?.access_token;
   }
 
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: "application/json",
   };
 
   if (!(body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   if (activeTenantId) {
-    headers['X-Tenant-Id'] = activeTenantId;
+    headers["X-Tenant-Id"] = activeTenantId;
   }
 
   const maxAttempts = 2;
@@ -63,38 +65,41 @@ export async function apiRequest(
       const response = await fetch(url, {
         method,
         headers,
-        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : null),
+        body:
+          body instanceof FormData ? body : body ? JSON.stringify(body) : null,
       });
 
       const durationMs = Math.round(performance.now() - startedAt);
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers.get("content-type") || "";
 
       if (!response.ok) {
         let errorPayload: any = null;
 
-        if (contentType.includes('application/json')) {
+        if (contentType.includes("application/json")) {
           errorPayload = await response.json().catch(() => null);
         } else {
           errorPayload = await response.text().catch(() => null);
         }
 
         // Operational logging for failures
-        console.error('[API FAILURE]', {
+        console.error("[API FAILURE]", {
           method,
           endpoint,
           status: response.status,
           durationMs,
           attempt,
-          detail: errorPayload?.detail || 'No detail provided'
+          detail: errorPayload?.detail || "No detail provided",
         });
 
-        // Non-retryable status codes 
-        const nonRetryable = [400, 401, 403, 404, 422].includes(response.status);
+        // Non-retryable status codes
+        const nonRetryable = [400, 401, 403, 404, 422].includes(
+          response.status,
+        );
 
         const error: any = new Error(
           (errorPayload && errorPayload.detail) ||
-          (typeof errorPayload === 'string' ? errorPayload : null) ||
-          `API request failed with status ${response.status}`
+            (typeof errorPayload === "string" ? errorPayload : null) ||
+            `API request failed with status ${response.status}`,
         );
         error.status = response.status;
         error.payload = errorPayload;
@@ -103,14 +108,14 @@ export async function apiRequest(
           throw error;
         }
 
-        await sleep(300 * attempt); 
+        await sleep(300 * attempt);
         continue;
       }
 
       // Success paths
       if (response.status === 204) return null;
 
-      if (contentType.includes('application/json')) {
+      if (contentType.includes("application/json")) {
         return await response.json();
       }
 
@@ -119,7 +124,8 @@ export async function apiRequest(
       const durationMs = Math.round(performance.now() - startedAt);
 
       // Don't log if we are going to retry
-      const retryableStatus = error?.status && ![400, 401, 403, 404, 422].includes(error.status);
+      const retryableStatus =
+        error?.status && ![400, 401, 403, 404, 422].includes(error.status);
       const retryableNetwork = !error?.status;
 
       if (attempt < maxAttempts && (retryableStatus || retryableNetwork)) {
@@ -128,13 +134,13 @@ export async function apiRequest(
       }
 
       // Log terminal failure
-      console.error('[API TERMINAL ERROR]', {
+      console.error("[API TERMINAL ERROR]", {
         method,
         endpoint,
         attempt,
         durationMs,
         message: error?.message,
-        status: error?.status || 'Network Error',
+        status: error?.status || "Network Error",
       });
 
       throw error;

@@ -1,21 +1,25 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from './utils/supabase/proxy'
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "./utils/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
-  const url = request.nextUrl.clone()
-  const host = request.headers.get('host')
+  const url = request.nextUrl.clone();
+  const host = request.headers.get("host");
 
   // List of domains to redirect to the apex (entrega.space)
-  const domainsToRedirect = ['www.entrega.space', 'web.entrega.space', 'app.entrega.space']
+  const domainsToRedirect = [
+    "www.entrega.space",
+    "web.entrega.space",
+    "app.entrega.space",
+  ];
 
   if (host && domainsToRedirect.includes(host)) {
     // Force redirect to apex domain with 308 (Permanent Redirect)
-    url.host = 'entrega.space'
-    url.protocol = 'https:'
-    return NextResponse.redirect(url, 308)
+    url.host = "entrega.space";
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
   }
 
-  return await updateSession(request)
+  return await updateSession(request);
 }
 
 export const config = {
@@ -27,6 +31,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * Feel free to modify this matcher to fit your needs.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
-}
+};

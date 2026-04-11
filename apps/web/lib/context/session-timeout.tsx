@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { AlertCircle, LogOut, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import { AlertCircle, LogOut, Clock } from "lucide-react";
 
 interface SessionTimeoutProps {
   user: { platform_role: string } | null;
   onLogout: () => void;
 }
 
-export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) {
+export default function SessionTimeout({
+  user,
+  onLogout,
+}: SessionTimeoutProps) {
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const router = useRouter();
@@ -19,7 +22,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
   const lastActivityRef = useRef<number>(Date.now());
 
   // Configuration based on role
-  const isPlatformAdmin = user?.platform_role === 'admin';
+  const isPlatformAdmin = user?.platform_role === "admin";
   const WARNING_TIME = isPlatformAdmin ? 55 * 60 * 1000 : 25 * 60 * 1000;
   const LOGOUT_TIME = isPlatformAdmin ? 60 * 60 * 1000 : 30 * 60 * 1000;
   const COUNTDOWN_DURATION = (LOGOUT_TIME - WARNING_TIME) / 1000;
@@ -29,7 +32,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
     await supabase.auth.signOut();
     setShowWarning(false);
     onLogout();
-    router.push('/landing');
+    router.push("/landing");
   }, [onLogout, router]);
 
   const resetTimer = useCallback(() => {
@@ -44,8 +47,8 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
   useEffect(() => {
     if (!user) return;
 
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetTimer));
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
 
     const checkInactivity = () => {
       const now = Date.now();
@@ -55,14 +58,16 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
         setShowWarning(true);
         const remaining = Math.max(0, Math.floor((LOGOUT_TIME - diff) / 1000));
         setCountdown(remaining);
-        
+
         // Play subtle focus chime
         try {
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          const audio = new Audio(
+            "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+          );
           audio.volume = 0.5;
           audio.play();
         } catch (e) {
-          console.warn('Audio alert blocked by browser policy');
+          console.warn("Audio alert blocked by browser policy");
         }
       }
 
@@ -74,7 +79,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
     timerRef.current = setInterval(checkInactivity, 10000); // Check every 10s
 
     return () => {
-      events.forEach(event => window.removeEventListener(event, resetTimer));
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
       if (timerRef.current) clearInterval(timerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
@@ -83,7 +88,7 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
   useEffect(() => {
     if (showWarning && countdown > 0) {
       countdownRef.current = setInterval(() => {
-        setCountdown(prev => {
+        setCountdown((prev) => {
           if (prev <= 1) {
             if (countdownRef.current) clearInterval(countdownRef.current);
             return 0;
@@ -107,16 +112,23 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
             <Clock className="w-8 h-8 text-amber-500" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">¿Sigues ahí?</h3>
-            <p className="text-slate-500 font-medium">Tu sesión expirará pronto por inactividad.</p>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight">
+              ¿Sigues ahí?
+            </h3>
+            <p className="text-slate-500 font-medium">
+              Tu sesión expirará pronto por inactividad.
+            </p>
           </div>
         </div>
 
         <div className="bg-slate-50 rounded-2xl p-6 text-center">
           <div className="text-4xl font-black text-slate-800 mb-1">
-            {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+            {Math.floor(countdown / 60)}:
+            {(countdown % 60).toString().padStart(2, "0")}
           </div>
-          <div className="text-xs font-black uppercase text-slate-400 tracking-widest">Segundos restantes</div>
+          <div className="text-xs font-black uppercase text-slate-400 tracking-widest">
+            Segundos restantes
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">
@@ -137,7 +149,8 @@ export default function SessionTimeout({ user, onLogout }: SessionTimeoutProps) 
         <div className="flex items-center gap-2 px-2">
           <AlertCircle className="w-4 h-4 text-slate-400" />
           <p className="text-[10px] text-slate-400 font-medium leading-tight">
-            Por seguridad, cerramos sesiones inactivas. Los administradores tienen un tiempo de espera extendido (60 min).
+            Por seguridad, cerramos sesiones inactivas. Los administradores
+            tienen un tiempo de espera extendido (60 min).
           </p>
         </div>
       </div>
