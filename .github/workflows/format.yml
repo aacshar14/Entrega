@@ -1,4 +1,4 @@
-name: 🧹 Auto-Format Python (Black)
+name: Auto-Format Python
 
 on:
   push:

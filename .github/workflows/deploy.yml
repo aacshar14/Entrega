@@ -2,7 +2,7 @@ name: Build and Deploy to Cloud Run
 
 on:
   workflow_run:
-    workflows: ["🧹 Auto-Format Python (Black)"]
+    workflows: ["Auto-Format Python"]
     types:
       - completed
   workflow_dispatch:
