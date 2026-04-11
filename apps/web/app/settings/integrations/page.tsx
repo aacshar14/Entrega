@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/lib/context/tenant-context';
 import Link from 'next/link';
+import { apiRequest } from '@/lib/api';
 
 export default function IntegrationsPage() {
   const { activeTenant } = useTenant();
@@ -20,12 +21,7 @@ export default function IntegrationsPage() {
   React.useEffect(() => {
     async function fetchStatus() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/status`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}` // Or however auth is handled
-          }
-        });
-        const data = await res.json();
+        const data = await apiRequest('integrations/whatsapp/status', 'GET');
         setWhatsappStatus(data.status || 'not_connected');
       } catch (err) {
         setWhatsappStatus('not_connected');

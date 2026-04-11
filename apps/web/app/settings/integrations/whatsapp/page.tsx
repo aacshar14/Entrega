@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTenant } from '@/lib/context/tenant-context';
+import { apiRequest } from '@/lib/api';
 import ConfirmModal from '@/components/confirm-modal';
 
 interface WhatsAppStatus {
@@ -47,12 +48,7 @@ export default function WhatsAppConfigPage() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/status`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await res.json();
+      const data = await apiRequest('integrations/whatsapp/status', 'GET');
       setStatus(data);
     } catch (err) {
       console.error('Failed to fetch status:', err);
@@ -70,9 +66,10 @@ export default function WhatsAppConfigPage() {
       script.async = true;
       script.defer = true;
       script.onload = () => {
+        const appId = process.env.NEXT_PUBLIC_META_APP_ID || '825875709540441';
         if (window.FB) {
           window.FB.init({
-            appId: process.env.NEXT_PUBLIC_META_APP_ID,
+            appId: appId,
             cookie: true,
             xfbml: true,
             version: "v21.0",
@@ -118,10 +115,7 @@ export default function WhatsAppConfigPage() {
     setProcessing(true);
     try {
       // 1. Get secure nonce and AppID from backend
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/onboarding-url`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const { nonce, app_id } = await res.json();
+      const { nonce } = await apiRequest('integrations/whatsapp/onboarding-url', 'GET');
 
       // 2. Launch Meta Embedded Signup
       window.FB.login((response: any) => {
@@ -132,7 +126,7 @@ export default function WhatsAppConfigPage() {
           setProcessing(false);
         }
       }, {
-        config_id: '', // Meta Configuration ID if any, or use default flow
+        config_id: '',
         response_type: 'code',
         override_default_response_type: true,
         extras: {
@@ -146,17 +140,8 @@ export default function WhatsAppConfigPage() {
 
   const completeOnboarding = async (code: string, state: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/complete`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({ code, state })
-      });
-      if (res.ok) {
-        await fetchStatus();
-      }
+      await apiRequest('integrations/whatsapp/complete', 'POST', { code, state });
+      await fetchStatus();
     } catch (err) {
       console.error(err);
     } finally {
@@ -168,10 +153,7 @@ export default function WhatsAppConfigPage() {
     setShowDisconnectModal(false);
     setProcessing(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/integrations/whatsapp/disconnect`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      await apiRequest('integrations/whatsapp/disconnect', 'POST');
       await fetchStatus();
     } catch (err) {
       console.error(err);
