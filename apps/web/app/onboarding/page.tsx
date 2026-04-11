@@ -275,7 +275,11 @@ export default function OnboardingPage() {
                      disabled={!formData.business_name || !formData.person_name || loading}
                      className="w-full mt-10 py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl shadow-[#1D3146]/20 flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30"
                   >
-                     {loading ? <Loader2 className="animate-spin text-white" /> : (isCreationMode ? "Crear Negocio" : "Continuar")}
+                     {loading ? (
+                        <Loader2 className="animate-spin text-white" />
+                     ) : (
+                        isCreationMode ? "Crear Negocio" : "Continuar"
+                     )}
                      <ArrowRight size={20} />
                   </button>
                </div>
@@ -301,7 +305,11 @@ export default function OnboardingPage() {
                         disabled={loading}
                         title="Selecciona archivo CSV de clientes"
                      />
-                     {loading ? <Loader2 className="animate-spin text-[#56CCF2] mx-auto" size={40} /> : <Upload className="text-slate-400 group-hover:text-[#56CCF2] mx-auto mb-4" size={40} />}
+                     {loading ? (
+                        <Loader2 className="animate-spin text-[#56CCF2] mx-auto" size={40} />
+                     ) : (
+                        <Upload className="text-slate-400 group-hover:text-[#56CCF2] mx-auto mb-4" size={40} />
+                     )}
                      <p className="font-black text-xs text-[#1D3146] uppercase tracking-widest">Subir Clientes CSV</p>
                      <p className="text-[10px] text-slate-400 font-bold mt-2">Formato: name, phone, email</p>
                   </div>
@@ -355,7 +363,11 @@ export default function OnboardingPage() {
                         disabled={loading}
                         title="Selecciona archivo CSV de stock"
                      />
-                     {loading ? <Loader2 className="animate-spin text-orange-400 mx-auto" size={40} /> : <Upload className="text-slate-400 group-hover:text-orange-400 mx-auto mb-4" size={40} />}
+                     {loading ? (
+                        <Loader2 className="animate-spin text-orange-400 mx-auto" size={40} />
+                     ) : (
+                        <Upload className="text-slate-400 group-hover:text-orange-400 mx-auto mb-4" size={40} />
+                     )}
                      <p className="font-black text-xs text-[#1D3146] uppercase tracking-widest">Subir Stock CSV</p>
                      <p className="text-[10px] text-slate-400 font-bold mt-2">Formato: sku, name, quantity, price</p>
                   </div>
@@ -424,7 +436,9 @@ export default function OnboardingPage() {
                            </div>
                            <p className="text-[11px] text-slate-500 font-medium mb-6 px-4">
                               Conecta tu cuenta de <strong>WhatsApp Business</strong> para habilitar avisos automáticos.
-                                            <button
+                           </p>
+
+                           <button
                               onClick={async () => {
                                  if (!metaAppId) {
                                     setError("Meta App ID no configurado.");
@@ -432,19 +446,15 @@ export default function OnboardingPage() {
                                  }
                                  setLoading(true);
                                  try {
-                                    // 1. Get secure nonce from unified integrations endpoint
                                     const { nonce } = await apiRequest('/integrations/whatsapp/onboarding-url', 'GET', null, activeTenant?.id);
-
-                                    // 2. Launch Meta Embedded Signup using Config ID
                                     // @ts-ignore
                                     FB.login((response: any) => {
                                        if (response.authResponse) {
                                           const { code } = response.authResponse;
-                                          // 3. Complete via unified flow (Nonce validation)
                                           apiRequest('/integrations/whatsapp/complete', 'POST', { code, state: nonce }, activeTenant?.id)
                                              .then(() => refreshUser())
-                                             .catch((e: any) => setError("Error en vinculación: " + e.message))
-                                             .finally(() => setLoading(false));
+                                              .catch((e: any) => setError("Error en vinculación: " + e.message))
+                                              .finally(() => setLoading(false));
                                        } else {
                                           setError("El usuario canceló el registro.");
                                           setLoading(false);
@@ -453,9 +463,7 @@ export default function OnboardingPage() {
                                        config_id: metaConfigId || '1716962075608553',
                                        response_type: 'code',
                                        override_default_response_type: true,
-                                       extras: {
-                                          setup_nonce: nonce
-                                       }
+                                       extras: { setup_nonce: nonce }
                                     });
                                  } catch (err: any) {
                                     setError("Error al conectar con Meta: " + err.message);
@@ -465,7 +473,9 @@ export default function OnboardingPage() {
                               disabled={loading || !metaAppId}
                               className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                            >
-                              {loading ? <Loader2 className="animate-spin" /> : (
+                              {loading ? (
+                                 <Loader2 className="animate-spin" />
+                              ) : (
                                  <>
                                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg">
                                        <path d="M12.001 2.002c-5.522 0-9.999 4.477-9.999 9.999 0 4.909 3.541 8.987 8.188 9.854V14.89h-2.54v-2.889h2.54V9.798c0-2.507 1.493-3.891 3.776-3.891 1.094 0 2.238.195 2.238.195v2.459h-1.26c-1.242 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.966c4.647-.867 8.188-4.945 8.188-9.854 0-5.522-4.477-9.999-9.999-9.999z" />
@@ -474,7 +484,7 @@ export default function OnboardingPage() {
                                  </>
                               )}
                            </button>
-                           <p className="text-[9px] text-slate-400 font-bold mt-4 tracking-tighter uppercase">Integración Oficial de WhatsApp Business Cloud API {metaAppId ? `(${metaAppId})` : ''}</p>
+                           <p className="text-[9px] text-slate-400 font-bold mt-4 tracking-tighter uppercase">Integración Oficial de WhatsApp Business Cloud API {metaAppId && "("+metaAppId+")"}</p>
                         </div>
                      )}
                   </div>
