@@ -35,13 +35,20 @@ class DemoService:
                     tenant_id=tenant_id,
                     sku=p["sku"],
                     name=p["name"],
-                    base_price=p["price"],
+                    price=p["price"],
+                    price_menudeo=p["price"],
+                    price_mayoreo=p["price"] * 0.9,
                     status="active",
                 )
                 self.db.add(product)
                 self.db.flush()
                 sku_map[p["sku"]] = product
             else:
+                # Force update prices
+                existing.price = p["price"]
+                existing.price_menudeo = p["price"]
+                existing.price_mayoreo = p["price"] * 0.9
+                self.db.add(existing)
                 sku_map[p["sku"]] = existing
 
         # 2. Customers
@@ -52,13 +59,13 @@ class DemoService:
 
         for c in customers_data:
             existing = self.db.exec(
-                select(Customer).where(
-                    Customer.tenant_id == tenant_id, Customer.phone == c["phone"]
-                )
+                select(Customer).where(Customer.tenant_id == tenant_id, Customer.phone_number == c["phone"])
             ).first()
             if not existing:
                 customer = Customer(
-                    tenant_id=tenant_id, name=c["name"], phone=c["phone"]
+                    tenant_id=tenant_id,
+                    name=c["name"],
+                    phone_number=c["phone"]
                 )
                 self.db.add(customer)
 
@@ -76,34 +83,30 @@ class DemoService:
 
             # Check if stock already initialized
             existing_stock = self.db.exec(
-                select(StockBalance).where(
-                    StockBalance.tenant_id == tenant_id,
-                    StockBalance.product_id == product.id,
-                )
+                select(StockBalance).where(StockBalance.tenant_id == tenant_id, StockBalance.product_id == product.id)
             ).first()
 
-            if not existing_stock or existing_stock.current_stock == 0:
+            if not existing_stock or existing_stock.quantity == 0:
                 # Create initial restock movement
                 movement = InventoryMovement(
                     tenant_id=tenant_id,
                     product_id=product.id,
                     type="restock",
                     quantity=qty,
-                    reference_type="manual",
-                    notes="Carga inicial Demo",
+                    description="Carga inicial Demo"
                 )
                 self.db.add(movement)
 
                 # Update or Create StockBalance
                 if existing_stock:
-                    existing_stock.current_stock = qty
-                    existing_stock.last_movement_at = datetime.now(timezone.utc)
+                    existing_stock.quantity = qty
+                    existing_stock.last_updated = datetime.now(timezone.utc)
                 else:
                     new_stock = StockBalance(
                         tenant_id=tenant_id,
                         product_id=product.id,
-                        current_stock=qty,
-                        last_movement_at=datetime.now(timezone.utc),
+                        quantity=qty,
+                        last_updated=datetime.now(timezone.utc)
                     )
                     self.db.add(new_stock)
 
