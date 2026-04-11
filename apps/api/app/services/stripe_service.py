@@ -172,6 +172,15 @@ class StripeService:
         self.db.add(tenant)
         self.db.commit()
 
+        # 4. Trigger Demo Seeding (Phase 6 Demo Flow)
+        if session.get("metadata", {}).get("demo") == "true":
+            try:
+                from app.services.demo_service import DemoService
+                demo = DemoService(self.db)
+                demo.seed_aguachiles_demo(tenant.id)
+            except Exception as e:
+                logger.error("demo.seeding_failed", tenant_id=str(tenant.id), error=str(e))
+
         logger.info(
             "stripe.tenant_activated",
             tenant_id=str(tenant.id),

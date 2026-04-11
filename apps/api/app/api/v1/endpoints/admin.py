@@ -25,8 +25,15 @@ import json
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from app.core.dependencies import get_current_user
+from app.core.queue import QueueManager
+import time
 
 router = APIRouter()
+
+class DemoMessageRequest(BaseModel):
+    tenant_id: UUID
+    message: str
+    from_number: str = "5218781234567"
 
 
 @router.get(
@@ -750,3 +757,81 @@ async def get_recent_drift(limit: int = 50, db: Session = Depends(get_session)):
         }
         for m, t in results
     ]
+@router.post("/demo/seed/{tenant_id}", dependencies=[Depends(require_platform_role(["admin"]))])
+async def manual_demo_seed(
+    tenant_id: UUID,
+    db: Session = Depends(get_session)
+):
+    """
+    Manually triggers the 'Aguachiles Demo' seed for a tenant.
+    """
+    from app.services.demo_service import DemoService
+    demo = DemoService(db)
+    success = demo.seed_aguachiles_demo(tenant_id)
+    return {"status": "success" if success else "failed"}
+
+
+@router.post("/demo/simulate-message", dependencies=[Depends(require_platform_role(["admin"]))])
+async def simulate_demo_message(
+    request: DemoMessageRequest,
+    db: Session = Depends(get_session)
+):
+    """
+    Internal Demo Simulator: Feeds a message into the real processing pipeline.
+    """
+    from app.models.models import WhatsAppMessage
+    
+    tenant = db.get(Tenant, request.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+        
+    msg_id = f"demo_sim_{uuid.uuid4().hex[:12]}"
+    
+    # 1. Persist the fake message
+    new_msg = WhatsAppMessage(
+        tenant_id=request.tenant_id,
+        phone_number_id="demo_simulator",
+        sender_wa_id=request.from_number,
+        message_sid=msg_id,
+        body=request.message,
+        raw_payload=json.dumps({"simulator": True, "message": request.message}),
+        processing_status="pending"
+    )
+    db.add(new_msg)
+    
+    # 2. Enqueue in the real pipeline
+    qm = QueueManager(db)
+    qm.enqueue(
+        tenant_id=request.tenant_id,
+        source="whatsapp",
+        event_type="message",
+        message_sid=msg_id,
+        payload={"from": request.from_number, "body": request.message},
+        duration_ms=0
+    )
+    
+    db.commit()
+    return {"status": "enqueued", "message_id": msg_id}
+
+
+@router.delete("/tenants/{tenant_id}", dependencies=[Depends(require_platform_role(["admin"]))])
+async def delete_tenant_teardown(
+    tenant_id: UUID,
+    db: Session = Depends(get_session)
+):
+    """
+    Surgically removes a tenant and its demo data.
+    """
+    tenant = db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Cascade delete is handled by DB preferably, but let's be safe for Demo
+    # In Entrega, we usually archive. For DEMO, we can DELETE if safety verified.
+    # To be safe: Mark as inactive first.
+    tenant.status = "archived"
+    tenant.updated_at = datetime.now(timezone.utc)
+    db.add(tenant)
+    db.commit()
+    
+    return {"status": "archived", "tenant_id": tenant_id}
