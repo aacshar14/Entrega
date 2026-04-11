@@ -22,9 +22,9 @@ export default function DataDeletionPage() {
       subtitle: 'Instrucciones claras para solicitar la eliminación de tu información personal y operativa.',
       back: 'Volver al Inicio',
       lastUpdated: 'Última actualización: Abril 2026',
-      instructions: 'Para solicitar la eliminación de tus datos asociados con EntréGA y nuestras integraciones (WhatsApp/Meta), sigue estos pasos:',
+      instructions: 'Para solicitar la eliminación de tus datos asociados con Entrega y nuestras integraciones (WhatsApp/Meta), sigue estos pasos:',
       steps: [
-        'Inicia sesión en tu panel de EntréGA.',
+        'Inicia sesión en tu panel de Entrega.',
         'Dirígete a Configuración > Integraciones.',
         'Selecciona "Desconectar" en la integración de WhatsApp.',
         'Para una eliminación completa de la cuenta y todos los registros históricos, envía un correo a admin@entrega.space con el asunto "Eliminación Definitiva".'
@@ -35,9 +35,9 @@ export default function DataDeletionPage() {
       subtitle: 'Clear instructions to request the deletion of your personal and operational information.',
       back: 'Back to Home',
       lastUpdated: 'Last updated: April 2026',
-      instructions: 'To request the deletion of your data associated with EntréGA and our integrations (WhatsApp/Meta), please follow these steps:',
+      instructions: 'To request the deletion of your data associated with Entrega and our integrations (WhatsApp/Meta), please follow these steps:',
       steps: [
-        'Log in to your EntréGA dashboard.',
+        'Log in to your Entrega dashboard.',
         'Go to Settings > Integrations.',
         'Select "Disconnect" on the WhatsApp integration.',
         'For a complete account deletion including all historical records, email admin@entrega.space with the subject "Permanent Deletion".'

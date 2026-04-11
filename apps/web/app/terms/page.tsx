@@ -21,7 +21,7 @@ export default function TermsOfServicePage() {
   const content = {
     es: {
       title: 'Términos de Servicio',
-      subtitle: 'El contrato de uso para operar tu negocio con la inteligencia de EntréGA.',
+      subtitle: 'El contrato de uso para operar tu negocio con la inteligencia de Entrega.',
       back: 'Volver al Inicio',
       lastUpdated: 'Última actualización: Abril 2026',
       sections: [
@@ -29,7 +29,7 @@ export default function TermsOfServicePage() {
           id: 'acceptance',
           icon: Zap,
           title: 'Aceptación de los Términos',
-          content: 'Al acceder o utilizar EntréGA Intelligence, aceptas quedar vinculado por estos términos. Nuestra plataforma es una solución SaaS para logística y control de inventario.'
+          content: 'Al acceder o utilizar Entrega Intelligence, aceptas quedar vinculado por estos términos. Nuestra plataforma es una solución SaaS para logística y control de inventario.'
         },
         {
           id: 'license',
@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
           id: 'obligations',
           icon: Scale,
           title: 'Obligaciones del Usuario',
-          content: 'Como usuario de EntréGA, te comprometes a:',
+          content: 'Como usuario de Entrega, te comprometes a:',
           list: [
             'Proporcionar información veraz y mantenerla actualizada.',
             'No utilizar la plataforma para fines ilícitos o spam.',
@@ -59,7 +59,7 @@ export default function TermsOfServicePage() {
     },
     en: {
       title: 'Terms of Service',
-      subtitle: 'The usage contract for operating your business with EntréGA Intelligence.',
+      subtitle: 'The usage contract for operating your business with Entrega Intelligence.',
       back: 'Back to Home',
       lastUpdated: 'Last updated: April 2026',
       sections: [
@@ -67,7 +67,7 @@ export default function TermsOfServicePage() {
           id: 'acceptance',
           icon: Zap,
           title: 'Acceptance of Terms',
-          content: 'By accessing or using EntréGA Intelligence, you agree to be bound by these terms. Our platform is a SaaS solution for logistics and inventory control.'
+          content: 'By accessing or using Entrega Intelligence, you agree to be bound by these terms. Our platform is a SaaS solution for logistics and inventory control.'
         },
         {
           id: 'license',
@@ -79,7 +79,7 @@ export default function TermsOfServicePage() {
           id: 'obligations',
           icon: Scale,
           title: 'User Obligations',
-          content: 'As an EntréGA user, you agree to:',
+          content: 'As an Entrega user, you agree to:',
           list: [
             'Provide truthful information and keep it updated.',
             'Not use the platform for illegal purposes or spam.',

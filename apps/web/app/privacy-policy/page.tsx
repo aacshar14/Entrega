@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           id: 'collection',
           icon: Database,
           title: 'Qué datos recolectamos',
-          content: 'EntréGA recolecta información esencial para la operación logística:',
+          content: 'Entrega recolecta información esencial para la operación logística:',
           list: [
             'Información de cuenta comercial (nombre, email, empresa).',
             'Datos de clientes (nombres y números de teléfono).',
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           id: 'whatsapp',
           icon: EyeOff,
           title: 'Integración con WhatsApp',
-          content: 'Como proveedor de soluciones, EntréGA procesa datos de Meta/WhatsApp bajo los siguientes principios:',
+          content: 'Como proveedor de soluciones, Entrega procesa datos de Meta/WhatsApp bajo los siguientes principios:',
           list: [
             'Solo procesamos mensajes relacionados con flujos operativos de negocio.',
             'NO vendemos ni compartimos historiales de conversación con terceros.',
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
           id: 'third-party',
           icon: Globe,
           title: 'Servicios de Terceros',
-          content: 'Para operar EntréGA, utilizamos proveedores que procesan datos cumpliendo estándares de seguridad:',
+          content: 'Para operar Entrega, utilizamos proveedores que procesan datos cumpliendo estándares de seguridad:',
           list: [
             'Meta (WhatsApp Business API) para el canal de comunicación.',
             'Infraestructura en la nube (Google Cloud, Supabase) para hosting y bases de datos.',
@@ -100,7 +100,7 @@ export default function PrivacyPage() {
           id: 'collection',
           icon: Database,
           title: 'Data Collection',
-          content: 'EntréGA collects essential information required for logistics operations:',
+          content: 'Entrega collects essential information required for logistics operations:',
           list: [
             'Business account information (name, email, company).',
             'Customer data (names and phone numbers).',
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           id: 'whatsapp',
           icon: EyeOff,
           title: 'WhatsApp Integration',
-          content: 'As a solution provider, EntréGA processes Meta/WhatsApp data under these principles:',
+          content: 'As a solution provider, Entrega processes Meta/WhatsApp data under these principles:',
           list: [
             'We only process messages related to business operational workflows.',
             'We DO NOT sell or share conversation history with third parties.',
@@ -138,7 +138,7 @@ export default function PrivacyPage() {
           id: 'third-party',
           icon: Globe,
           title: 'Third-Party Services',
-          content: 'To operate the service, EntréGA uses providers that process data following high security standards:',
+          content: 'To operate the service, Entrega uses providers that process data following high security standards:',
           list: [
             'Meta (WhatsApp Business API) for the communication channel.',
             'Cloud infrastructure (Google Cloud, Supabase) for hosting and databases.',
@@ -273,7 +273,7 @@ export default function PrivacyPage() {
           <footer className="pt-12 border-t border-slate-100 flex flex-col items-center gap-4">
             <Logo variant="master" className="h-12 w-auto opacity-20" />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-              {t.lastUpdated} // EntréGA V1.1 Compliance Mode
+              {t.lastUpdated} // Entrega V1.1 Compliance Mode
             </p>
             <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter mt-1 opacity-60">
               Entrega is a SaaS platform for business inventory and delivery operations.
