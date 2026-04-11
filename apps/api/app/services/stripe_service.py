@@ -54,7 +54,9 @@ class StripeService:
             )
             return "basic_monthly"
 
-    def create_checkout_session(self, tenant_id: str, plan_code: str, success_url: str, cancel_url: str):
+    def create_checkout_session(
+        self, tenant_id: str, plan_code: str, success_url: str, cancel_url: str
+    ):
         """
         Generates a deterministic Stripe Checkout Session for a specific tenant.
         """
@@ -71,24 +73,19 @@ class StripeService:
         customer_id = tenant.stripe_customer_id
 
         session = stripe.checkout.Session.create(
-            customer=customer_id, # Optional, if None Stripe creates one
+            customer=customer_id,  # Optional, if None Stripe creates one
             client_reference_id=str(tenant.id),
-            metadata={
-                "tenant_id": str(tenant.id),
-                "plan_code": plan_code
-            },
-            line_items=[{
-                "price": price_id,
-                "quantity": 1,
-            }],
+            metadata={"tenant_id": str(tenant.id), "plan_code": plan_code},
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                }
+            ],
             mode="subscription",
             success_url=success_url,
             cancel_url=cancel_url,
-            subscription_data={
-                "metadata": {
-                    "tenant_id": str(tenant.id)
-                }
-            }
+            subscription_data={"metadata": {"tenant_id": str(tenant.id)}},
         )
         return session
 
@@ -150,9 +147,17 @@ class StripeService:
                 # Cleanup: If they had an active sub, cancel it to prevent doubles
                 # This handles 'Upgrade/Downgrade via new Checkout' gracefully
                 stripe.Subscription.delete(old_sub_id)
-                logger.info("stripe.upgrade_cleanup_success", tenant_id=str(tenant.id), old_sub=old_sub_id)
+                logger.info(
+                    "stripe.upgrade_cleanup_success",
+                    tenant_id=str(tenant.id),
+                    old_sub=old_sub_id,
+                )
             except Exception as e:
-                logger.warning("stripe.upgrade_cleanup_failed", tenant_id=str(tenant.id), error=str(e))
+                logger.warning(
+                    "stripe.upgrade_cleanup_failed",
+                    tenant_id=str(tenant.id),
+                    error=str(e),
+                )
 
         tenant.stripe_customer_id = stripe_customer_id
         tenant.stripe_subscription_id = stripe_subscription_id

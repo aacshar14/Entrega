@@ -403,7 +403,7 @@ async def require_premium(
     if not (is_premium and is_active):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Se requiere un plan Premium activo para esta función."
+            detail="Se requiere un plan Premium activo para esta función.",
         )
 
     return tenant

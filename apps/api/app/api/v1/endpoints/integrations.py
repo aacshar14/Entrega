@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_tenant_id, require_premium
+from app.core.dependencies import (
+    get_current_user,
+    get_active_tenant_id,
+    require_premium,
+)
 from app.core.config import settings
 from app.models.models import User, TenantWhatsAppIntegration, Tenant
 from app.core.security import encrypt_token

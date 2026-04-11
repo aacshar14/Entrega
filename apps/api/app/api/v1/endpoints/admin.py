@@ -574,7 +574,7 @@ async def update_tenant_billing(
     if update.plan_code:
         tenant.plan_code = update.plan_code
 
-    if update.status == "trial": # Legacy support for manual activation as trial
+    if update.status == "trial":  # Legacy support for manual activation as trial
         days = update.trial_days or 7
         tenant.trial_ends_at = now + timedelta(days=days)
     elif update.status == "active":

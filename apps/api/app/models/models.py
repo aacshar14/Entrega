@@ -50,7 +50,9 @@ class Tenant(SQLModel, table=True):
     whatsapp_connected_at: Optional[datetime] = None
 
     # --- Billing & Plan Control ---
-    billing_status: str = Field(default="inactive", index=True)  # active, grace, past_due, canceled, inactive
+    billing_status: str = Field(
+        default="inactive", index=True
+    )  # active, grace, past_due, canceled, inactive
     plan_code: str = Field(default="basic_monthly", index=True)
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
