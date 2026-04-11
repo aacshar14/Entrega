@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from sqlmodel import Session, select, func
 from app.core.db import get_session
+from app.core.logging import logger
 from app.core.dependencies import (
     get_current_user,
     get_active_membership,
@@ -45,11 +46,13 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
             > 0
         )
     except Exception as e:
-        logger.warning(
-            "users.get_tenant_info.metrics_failed",
-            tenant_id=str(tenant.id),
-            error=str(e),
-        )
+        # 🛡️ Hardening: Metrics failure must NEVER crash the /me response
+        if "logger" in globals():
+            logger.warning(
+                "users.get_tenant_info.metrics_failed",
+                tenant_id=str(tenant.id),
+                error=str(e),
+            )
 
     # Check WhatsApp
 
@@ -71,11 +74,12 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
             display_number = wa_integ.display_phone_number or wa_integ.phone_number_id
             account_name = wa_integ.business_name
     except Exception as e:
-        logger.warning(
-            "users.get_tenant_info.wa_lookup_failed",
-            tenant_id=str(tenant.id),
-            error=str(e),
-        )
+        if "logger" in globals():
+            logger.warning(
+                "users.get_tenant_info.wa_lookup_failed",
+                tenant_id=str(tenant.id),
+                error=str(e),
+            )
         # Fallback to defaults already set above
 
     has_wa = status == "connected" or status == "verified"

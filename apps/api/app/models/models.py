@@ -126,7 +126,7 @@ class User(SQLModel, table=True):
     platform_role: str = Field(
         default="user"
     )  # 'admin' (global), 'user' (limited to memberships)
-    is_active: bool = Field(default=True)
+    is_active: Optional[bool] = Field(default=True)
     auth_provider_id: Optional[str] = Field(unique=True, index=True)  # Supabase UUID
     created_at: datetime = Field(default_factory=get_utc_now)
 
@@ -140,7 +140,7 @@ class TenantUser(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.id", index=True)
     tenant_role: str = Field(default="operator")  # 'owner', 'operator'
     is_default: bool = Field(default=False)
-    is_active: bool = Field(default=True)
+    is_active: Optional[bool] = Field(default=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
 
