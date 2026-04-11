@@ -329,7 +329,7 @@ export default function WhatsAppConfigPage() {
 
       <ConfirmModal 
         isOpen={showDisconnectModal}
-        onClose={() => setShowDisconnectModal(false)}
+        onCancel={() => setShowDisconnectModal(false)}
         onConfirm={handleDisconnect}
         title="¿Desconectar WhatsApp?"
         message="Esta acción suspenderá el procesamiento automático de pedidos y eliminará el acceso de EntréGA a tu número oficial de Meta. ¿Deseas continuar?"
