@@ -4,6 +4,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from app.core.logging import logger
 
+
 class DemoService:
     def __init__(self, db: Session):
         self.db = db
@@ -21,11 +22,13 @@ class DemoService:
             {"sku": "AG-PUL", "name": "Aguachile Pulpo", "price": 250},
             {"sku": "AG-MIX", "name": "Aguachile Mixto", "price": 300},
         ]
-        
+
         sku_map = {}
         for p in products_data:
             existing = self.db.exec(
-                select(Product).where(Product.tenant_id == tenant_id, Product.sku == p["sku"])
+                select(Product).where(
+                    Product.tenant_id == tenant_id, Product.sku == p["sku"]
+                )
             ).first()
             if not existing:
                 product = Product(
@@ -33,7 +36,7 @@ class DemoService:
                     sku=p["sku"],
                     name=p["name"],
                     base_price=p["price"],
-                    status="active"
+                    status="active",
                 )
                 self.db.add(product)
                 self.db.flush()
@@ -46,16 +49,16 @@ class DemoService:
             {"name": "Hugo Gonzalez", "phone": "8787021203"},
             {"name": "Renata Pina", "phone": "8781533325"},
         ]
-        
+
         for c in customers_data:
             existing = self.db.exec(
-                select(Customer).where(Customer.tenant_id == tenant_id, Customer.phone == c["phone"])
+                select(Customer).where(
+                    Customer.tenant_id == tenant_id, Customer.phone == c["phone"]
+                )
             ).first()
             if not existing:
                 customer = Customer(
-                    tenant_id=tenant_id,
-                    name=c["name"],
-                    phone=c["phone"]
+                    tenant_id=tenant_id, name=c["name"], phone=c["phone"]
                 )
                 self.db.add(customer)
 
@@ -73,7 +76,10 @@ class DemoService:
 
             # Check if stock already initialized
             existing_stock = self.db.exec(
-                select(StockBalance).where(StockBalance.tenant_id == tenant_id, StockBalance.product_id == product.id)
+                select(StockBalance).where(
+                    StockBalance.tenant_id == tenant_id,
+                    StockBalance.product_id == product.id,
+                )
             ).first()
 
             if not existing_stock or existing_stock.current_stock == 0:
@@ -84,10 +90,10 @@ class DemoService:
                     type="restock",
                     quantity=qty,
                     reference_type="manual",
-                    notes="Carga inicial Demo"
+                    notes="Carga inicial Demo",
                 )
                 self.db.add(movement)
-                
+
                 # Update or Create StockBalance
                 if existing_stock:
                     existing_stock.current_stock = qty
@@ -97,7 +103,7 @@ class DemoService:
                         tenant_id=tenant_id,
                         product_id=product.id,
                         current_stock=qty,
-                        last_movement_at=datetime.now(timezone.utc)
+                        last_movement_at=datetime.now(timezone.utc),
                     )
                     self.db.add(new_stock)
 
