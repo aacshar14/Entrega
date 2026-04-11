@@ -829,12 +829,19 @@ async def delete_tenant_teardown(tenant_id: UUID, db: Session = Depends(get_sess
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # Cascade delete is handled by DB preferably, but let's be safe for Demo
-    # In Entrega, we usually archive. For DEMO, we can DELETE if safety verified.
-    # To be safe: Mark as inactive first.
+    # 1. Mark Tenant as Archived
     tenant.status = "archived"
     tenant.updated_at = datetime.now(timezone.utc)
     db.add(tenant)
+
+    # 2. Hardening: Deactivate all memberships for this tenant
+    # This forces UI refresh and stops access for all users immediately.
+    db.execute(
+        text("UPDATE tenant_users SET is_active = FALSE WHERE tenant_id = :tid"),
+        {"tid": tenant_id},
+    )
+
     db.commit()
+    logger.info("demo.tenant_teardown_completed", tenant_id=str(tenant_id))
 
     return {"status": "archived", "tenant_id": tenant_id}
