@@ -139,7 +139,7 @@ class TenantUser(SQLModel, table=True):
     tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
     user_id: UUID = Field(foreign_key="users.id", index=True)
     tenant_role: str = Field(default="operator")  # 'owner', 'operator'
-    is_default: bool = Field(default=False)
+    is_default: Optional[bool] = Field(default=False)
     is_active: Optional[bool] = Field(default=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
@@ -515,7 +515,7 @@ class TenantInfo(BaseModel):
 class MembershipInfo(BaseModel):
     tenant: TenantInfo
     role: str
-    is_default: bool
+    is_default: Optional[bool] = False
 
 
 class MeResponse(BaseModel):

@@ -29,7 +29,8 @@ router = APIRouter()
 
 def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     """Helper to calculate onboarding progress for a tenant."""
-    # 🛡️ Hardening: Defensive counts to prevent crash if tables are missing/broken
+    # Tracing: Onboarding metrics start
+    logger.debug("users.get_tenant_info.metrics_start", tenant_id=str(tenant.id))
     has_customers = False
     has_products = False
     try:
@@ -63,11 +64,13 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     account_name = None
 
     try:
+        logger.debug("users.get_tenant_info.wa_lookup_start", tenant_id=str(tenant.id))
         wa_integ = db.exec(
             select(TenantWhatsAppIntegration).where(
                 TenantWhatsAppIntegration.tenant_id == tenant.id
             )
         ).first()
+        logger.debug("users.get_tenant_info.wa_lookup_done", found=wa_integ is not None)
 
         if wa_integ:
             status = wa_integ.status or "connected"
@@ -123,6 +126,7 @@ async def get_me(
     Returns current user profile, active tenant context, and all memberships.
     Calculates real-time onboarding progress for the pilot activation flow.
     """
+    logger.info("users.get_me.start", user_id=str(current_user.id))
     # 1. Resolve memberships based on platform role
     if current_user.platform_role == "admin":
         # Platform Admins see ALL tenants
@@ -155,6 +159,9 @@ async def get_me(
             )
             active_tenant_info = default_m.tenant
 
+        logger.info(
+            "users.get_me.response_assembled_admin", user_id=str(current_user.id)
+        )
         return MeResponse(
             user=current_user,
             active_tenant=active_tenant_info,
@@ -186,6 +193,11 @@ async def get_me(
                 "users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e)
             )
 
+    logger.info(
+        "users.get_me.response_assembled_user",
+        user_id=str(current_user.id),
+        membership_count=len(membership_infos),
+    )
     return MeResponse(
         user=current_user,
         active_tenant=active_tenant_info,
