@@ -64,37 +64,6 @@ class Tenant(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now)
 
 
-class WhatsAppConfig(SQLModel, table=True):
-    """
-    [DEPRECATED V1.4] - Use TenantWhatsAppIntegration instead.
-    Migrate existing data to tenant_whatsapp_integrations table.
-    """
-
-    __tablename__ = "whatsapp_configs"
-    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(foreign_key="tenants.id", unique=True, index=True)
-
-    # Meta Identifiers
-    waba_id: Optional[str] = Field(default=None, index=True)
-    meta_phone_number_id: Optional[str] = Field(default=None, index=True)
-    display_phone_number: Optional[str] = None
-    whatsapp_business_account_name: Optional[str] = None
-
-    # Security & Lifecycle
-    encrypted_access_token: Optional[str] = Field(
-        default=None, description="AES-256 encrypted Meta Access Token"
-    )
-    meta_token_expires_at: Optional[datetime] = None
-    meta_onboarding_status: str = Field(
-        default="pending", index=True
-    )  # 'pending', 'authorized', 'verified', 'failed'
-    setup_completed: bool = Field(default=False)
-
-    # Audit
-    connected_at: datetime = Field(default_factory=get_utc_now)
-    updated_at: datetime = Field(default_factory=get_utc_now)
-
-
 class TenantWhatsAppIntegration(SQLModel, table=True):
     """Refined multi-tenant WhatsApp integration tracking for Embedded Signup"""
 

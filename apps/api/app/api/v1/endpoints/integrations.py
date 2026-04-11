@@ -26,6 +26,12 @@ class WhatsAppCompleteRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+class WhatsAppManualSetupRequest(BaseModel):
+    waba_id: str
+    phone_number_id: str
+    access_token: str
+
+
 @router.post("/whatsapp/complete")
 async def complete_whatsapp_integration(
     payload: WhatsAppCompleteRequest,
@@ -270,3 +276,93 @@ async def get_whatsapp_status(
         "last_validated": integration.last_validated_at,
         "disconnected_at": integration.disconnected_at,
     }
+
+
+@router.get("/whatsapp/config")
+async def get_whatsapp_public_config(db: Session = Depends(get_session)):
+    """Returns the public Meta App configuration (Dynamic lookup)."""
+    from sqlalchemy import text
+
+    app_id = settings.WHATSAPP_APP_ID
+    config_id = settings.WHATSAPP_CONFIG_ID
+
+    try:
+        res_app = db.execute(
+            text("SELECT value FROM system_settings WHERE key = 'whatsapp_app_id'")
+        ).first()
+        if res_app and res_app[0]:
+            app_id = str(res_app[0])
+
+        res_cfg = db.execute(
+            text("SELECT value FROM system_settings WHERE key = 'whatsapp_config_id'")
+        ).first()
+        if res_cfg and res_cfg[0]:
+            config_id = str(res_cfg[0])
+    except Exception:
+        pass
+
+    return {
+        "whatsapp_app_id": app_id,
+        "whatsapp_config_id": config_id,
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+    }
+
+
+@router.post("/whatsapp/manual-setup")
+async def setup_whatsapp_manual(
+    payload: WhatsAppManualSetupRequest,
+    current_user: User = Depends(get_current_user),
+    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    db: Session = Depends(get_session),
+):
+    """Bypass route for manual Meta configuration."""
+    logger.info(
+        "whatsapp_integration.manual_setup_start",
+        tenant_id=str(active_tenant_id),
+        user_id=str(current_user.id),
+    )
+
+    # 1. Collision Check
+    collision = db.exec(
+        select(TenantWhatsAppIntegration)
+        .where(TenantWhatsAppIntegration.phone_number_id == payload.phone_number_id)
+        .where(TenantWhatsAppIntegration.tenant_id != active_tenant_id)
+    ).first()
+
+    if collision:
+        raise HTTPException(
+            status_code=400, detail="Este número ya está vinculado a otro comercio."
+        )
+
+    # 2. Upsert
+    integration = db.exec(
+        select(TenantWhatsAppIntegration).where(
+            TenantWhatsAppIntegration.tenant_id == active_tenant_id
+        )
+    ).first()
+
+    if not integration:
+        integration = TenantWhatsAppIntegration(
+            tenant_id=active_tenant_id, created_by_user_id=current_user.id
+        )
+
+    integration.waba_id = payload.waba_id
+    integration.phone_number_id = payload.phone_number_id
+    integration.access_token_encrypted = encrypt_token(payload.access_token)
+    integration.status = "connected"
+    integration.onboarding_status = "connected"
+    integration.setup_completed = True
+    integration.updated_at = datetime.now(timezone.utc)
+
+    db.add(integration)
+
+    # 3. Sync Tenant
+    tenant = db.get(Tenant, active_tenant_id)
+    if tenant:
+        tenant.business_whatsapp_connected = True
+        tenant.whatsapp_status = "connected"
+        db.add(tenant)
+
+    db.commit()
+    return {"status": "success", "phone_number_id": integration.phone_number_id}

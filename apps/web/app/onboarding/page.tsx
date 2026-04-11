@@ -49,7 +49,7 @@ export default function OnboardingPage() {
 
   // Load Public Config from Backend
   useEffect(() => {
-    apiRequest("/config/public", "GET")
+    apiRequest("/integrations/whatsapp/config", "GET")
       .then((res) => {
         if (res.whatsapp_app_id) setMetaAppId(res.whatsapp_app_id);
         if (res.whatsapp_config_id) setMetaConfigId(res.whatsapp_config_id);
@@ -579,8 +579,8 @@ export default function OnboardingPage() {
                       setFormData({ ...formData, whatsapp: "" });
                       if (activeTenant)
                         apiRequest(
-                          "/whatsapp/auth/disconnect",
-                          "DELETE",
+                          "/integrations/whatsapp/disconnect",
+                          "POST",
                           {},
                           activeTenant.id,
                         ).then(() => refreshUser());
