@@ -2,14 +2,15 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, text
 from app.core.config import settings
 from app.core.db import get_session
+from typing import Optional
 from pydantic import BaseModel
 
 router = APIRouter()
 
 
 class PublicConfigResponse(BaseModel):
-    whatsapp_app_id: str | None
-    whatsapp_config_id: str | None
+    whatsapp_app_id: Optional[str] = None
+    whatsapp_config_id: Optional[str] = None
     version: str
     environment: str
 
