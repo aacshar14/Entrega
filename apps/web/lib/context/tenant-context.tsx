@@ -105,7 +105,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       }
 
       // --- ROUTING ENGINE ---
-      const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(pathname);
+      const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy', '/terms', '/data-deletion'].includes(pathname);
       const isPlatformArea = pathname.startsWith('/platform');
       
       if (!data.user) return; // Wait for session
@@ -152,7 +152,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (error.status === 401 || error.status === 403) {
         handleManualLogout();
         const currentPath = window.location.pathname;
-        const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy'].includes(currentPath);
+        const isPublic = ['/landing', '/login', '/', '/select-tenant', '/privacy-policy', '/terms', '/data-deletion'].includes(currentPath);
         if (!isPublic) router.replace('/login');
       } else {
         console.error('[TENANT CONTEXT ERROR]', error);
@@ -174,7 +174,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           handleManualLogout();
           // We check the DOM directly to avoid re-running this effect on every pathname change
           const currentPath = window.location.pathname;
-          const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(currentPath);
+          const isPublic = ['/landing', '/login', '/', '/privacy-policy', '/terms', '/data-deletion'].includes(currentPath);
           if (!isPublic) router.replace('/login');
         } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           if (session && !authIsReady.current) {
@@ -194,7 +194,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         } else {
           setIsLoading(false);
           const currentPath = window.location.pathname;
-          const isPublic = ['/landing', '/login', '/', '/privacy-policy'].includes(currentPath);
+          const isPublic = ['/landing', '/login', '/', '/privacy-policy', '/terms', '/data-deletion'].includes(currentPath);
           if (!isPublic) {
             router.replace('/login');
           }
