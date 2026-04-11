@@ -35,6 +35,7 @@ interface WhatsAppStatus {
 }
 
 const META_APP_ID_FALLBACK = '1018948523791138';
+const META_CONFIG_ID_FALLBACK = '1716962075608553';
 
 export default function WhatsAppConfigPage() {
   const { activeTenant, user, memberships } = useTenant();
@@ -128,7 +129,7 @@ export default function WhatsAppConfigPage() {
           setProcessing(false);
         }
       }, {
-        config_id: '',
+        config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID || META_CONFIG_ID_FALLBACK,
         response_type: 'code',
         override_default_response_type: true,
         extras: {
