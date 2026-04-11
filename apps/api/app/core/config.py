@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     WHATSAPP_CONFIG_ID: str = "1716962075608553"
     WHATSAPP_VERIFY_TOKEN: str = "Entr3gA_WABA_Secure_2024_PROD_v1"
 
+    # --- 💳 Stripe Billing ---
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    STRIPE_PUBLIC_KEY: Optional[str] = None
+
     # --- 📊 Feature Flags & Dashboard ---
     ENABLE_PLATFORM_UI: bool = True
     METRIC_SNAPSHOT_WINDOW_MINUTES: int = 15

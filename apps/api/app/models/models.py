@@ -49,13 +49,28 @@ class Tenant(SQLModel, table=True):
     whatsapp_app_id: Optional[str] = None
     whatsapp_connected_at: Optional[datetime] = None
 
-    # Billing & Lifecycle (V1.3)
+    # Billing & Lifecycle (V1.3/Phase 5)
     billing_status: str = Field(
         default="trial"
     )  # 'trial', 'grace', 'active_paid', 'suspended'
+
+    # Internal plan management
+    plan_code: Optional[str] = Field(
+        default="trial", index=True
+    )  # basic_monthly, premium_monthly, etc.
+
+    # Stripe Identity (Phase 5)
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
+    stripe_subscription_id: Optional[str] = Field(default=None, index=True)
+    stripe_price_id: Optional[str] = None
+
     trial_ends_at: Optional[datetime] = None
     grace_ends_at: Optional[datetime] = None
     subscription_ends_at: Optional[datetime] = None
+
+    last_payment_status: Optional[str] = None
+    last_stripe_event_id: Optional[str] = None
+
     billing_notes: Optional[str] = None
     billing_updated_by: Optional[UUID] = None
     billing_updated_at: Optional[datetime] = None
@@ -435,6 +450,23 @@ class AuditLog(SQLModel, table=True):
     ip_address: Optional[str] = None
 
 
+class StripeEvent(SQLModel, table=True):
+    """
+    Idempotency store for Stripe webhooks.
+    Ensures 'Exactly-Once' processing for critical billing transitions.
+    """
+
+    __tablename__ = "stripe_events"
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    stripe_event_id: str = Field(unique=True, index=True)
+    tenant_id: Optional[UUID] = Field(
+        default=None, foreign_key="tenants.id", index=True
+    )
+    event_type: str = Field(index=True)
+    processed_at: datetime = Field(default_factory=get_utc_now)
+    payload: Optional[str] = None  # Snippet or raw event
+
+
 class PlatformAlert(SQLModel, table=True):
     """
     Autonomous operational alerts triggered by metric thresholds.
@@ -480,8 +512,9 @@ class TenantInfo(BaseModel):
     timezone: str = "UTC"
     currency: str = "MXN"
 
-    # Billing (V1.3)
+    # Billing (V1.3/Phase 5)
     billing_status: str = "trial"
+    plan_code: Optional[str] = "trial"
     trial_ends_at: Optional[datetime] = None
     grace_ends_at: Optional[datetime] = None
     subscription_ends_at: Optional[datetime] = None

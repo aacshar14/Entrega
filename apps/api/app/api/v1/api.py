@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     integrations,
     admin,
     notifications,
+    billing_webhooks,
 )
 
 api_router = APIRouter()
@@ -38,6 +39,9 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
+)
+api_router.include_router(
+    billing_webhooks.router, prefix="/billing/webhooks", tags=["billing"]
 )
 
 # 🛡️ Hardening: Using string reference "MeResponse" to avoid circular startup crashes
