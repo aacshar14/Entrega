@@ -115,6 +115,16 @@ class TenantWhatsAppIntegration(SQLModel, table=True):
     status: str = Field(
         default="pending"
     )  # 'connected', 'disconnected', 'token_expired', 'reconnect_required', 'pending'
+    onboarding_status: str = Field(
+        default="pending"
+    )  # 'pending', 'connected', 'failed'
+
+    # Meta Infrastructure Resolution
+    meta_app_id: Optional[str] = Field(default=None)
+    configuration_id: Optional[str] = Field(default=None)
+    business_account_id: Optional[str] = Field(default=None)
+
+    # Metadata and Lifecycle
     connected_at: Optional[datetime] = Field(default=None)
     last_validated_at: Optional[datetime] = None
     disconnected_at: Optional[datetime] = None

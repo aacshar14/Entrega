@@ -1,16 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_tenant_id
-from app.core.config import settings
-from app.models.models import User, TenantWhatsAppIntegration, Tenant
-from app.core.security import encrypt_token
-from app.core.logging import logger
-from datetime import datetime, timezone
-from uuid import UUID
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from app.services.whatsapp_service import WhatsAppService
 import httpx
+import json
 
 router = APIRouter()
 
@@ -33,7 +23,7 @@ async def complete_whatsapp_integration(
 ):
     """
     Handles Meta Embedded Signup completion.
-    Exchanges code for long-lived token and persists to tenant_whatsapp_integrations.
+    Exchanges code for long-lived token (v22.0) and performs asset discovery.
     """
     logger.info(
         "whatsapp_integration.complete_start",
@@ -41,37 +31,36 @@ async def complete_whatsapp_integration(
         user_id=str(current_user.id),
     )
 
-    # 1. Nonce Validation (Security Hook)
+    # 1. Fetch Integration Row (Support for existing or new first-time tenants)
     integration = db.exec(
         select(TenantWhatsAppIntegration).where(
             TenantWhatsAppIntegration.tenant_id == active_tenant_id
         )
     ).first()
 
+    # 2. Strict Security Check: Nonce must match current session intent
     if not integration or integration.onboarding_nonce != payload.state:
         logger.error(
             "whatsapp_integration.nonce_validation_failed",
             tenant_id=str(active_tenant_id),
         )
         raise HTTPException(
-            status_code=403, detail="Sesión de vinculación inválida o expirada"
+            status_code=403, detail="Sesión de vinculación inválida o expirada."
         )
 
+    # Expiry Check (15m window)
     if integration.onboarding_nonce_expires_at and datetime.now(
         timezone.utc
     ) > integration.onboarding_nonce_expires_at.replace(tzinfo=timezone.utc):
-        logger.error(
-            "whatsapp_integration.nonce_expired", tenant_id=str(active_tenant_id)
-        )
         raise HTTPException(
-            status_code=403, detail="La sesión ha expirado. Por favor intenta de nuevo."
+            status_code=403, detail="La sesión ha expirado. Por favor intente de nuevo."
         )
-    meta_url = "https://graph.facebook.com/v19.0/oauth/access_token"
 
     try:
+        # 3. Meta Code Exchange (v22.0) - No longer using hardcoded v19.0
         async with httpx.AsyncClient() as client:
             fb_response = await client.get(
-                meta_url,
+                "https://graph.facebook.com/v22.0/oauth/access_token",
                 params={
                     "client_id": settings.WHATSAPP_APP_ID,
                     "client_secret": settings.WHATSAPP_APP_SECRET,
@@ -81,51 +70,97 @@ async def complete_whatsapp_integration(
 
             if fb_response.status_code != 200:
                 logger.error(
-                    "whatsapp_integration.token_exchange_failed",
-                    status_code=fb_response.status_code,
+                    "token_exchange.failed",
+                    status=fb_response.status_code,
                     body=fb_response.text,
                 )
-                raise HTTPException(
-                    status_code=400, detail="Could not validate Meta authorization code"
-                )
+                raise ValueError("Meta Code Exchange failed: Authorization invalid.")
 
             data = fb_response.json()
             access_token = data.get("access_token")
 
-            # Update fields and clear security nonce
-            if payload.waba_id:
-                integration.waba_id = payload.waba_id
-            if payload.phone_number_id:
-                integration.phone_number_id = payload.phone_number_id
-            if payload.business_name:
-                integration.business_name = payload.business_name
-            if payload.metadata:
-                import json
+            # 4. Assets Discovery (Level 2 Enforcement: Do NOT trust frontend payload)
+            ws = WhatsAppService(db)
+            assets = await ws.discover_onboarding_assets(access_token)
 
-                integration.metadata_json = json.dumps(payload.metadata)
+            # 5. Collision Check (Unique phone_number_id across tenants)
+            collision = db.exec(
+                select(TenantWhatsAppIntegration)
+                .where(
+                    TenantWhatsAppIntegration.phone_number_id
+                    == assets["phone_number_id"]
+                )
+                .where(TenantWhatsAppIntegration.tenant_id != active_tenant_id)
+            ).first()
 
+            if collision:
+                logger.error(
+                    "whatsapp_onboarding.collision_detected",
+                    phone_number_id=assets["phone_number_id"],
+                    tenant_id=str(active_tenant_id),
+                )
+                raise ValueError(
+                    "Este número de WhatsApp ya se encuentra vinculado a otro comercio."
+                )
+
+            # 6. Atomic Persistence (Unified status sync)
+            integration.waba_id = assets["waba_id"]
+            integration.phone_number_id = assets["phone_number_id"]
+            integration.business_account_id = assets["business_account_id"]
+            integration.business_name = assets["business_name"]
+            integration.display_phone_number = assets["display_phone_number"]
+
+            integration.meta_app_id = settings.WHATSAPP_APP_ID
+            integration.configuration_id = settings.WHATSAPP_CONFIG_ID
             integration.access_token_encrypted = encrypt_token(access_token)
+
             integration.status = "connected"
+            integration.onboarding_status = "connected"
+            integration.setup_completed = True
             integration.connected_at = datetime.now(timezone.utc)
             integration.last_validated_at = datetime.now(timezone.utc)
             integration.onboarding_nonce = None
             integration.onboarding_nonce_expires_at = None
             integration.updated_at = datetime.now(timezone.utc)
 
+            # 7. Global Tenant Update (Sync for UI/SaaS consistency)
+            tenant = db.get(Tenant, active_tenant_id)
+            if tenant:
+                tenant.business_whatsapp_connected = True
+                tenant.whatsapp_status = "connected"
+                db.add(tenant)
+
             db.add(integration)
             db.commit()
 
-            return {
-                "status": "success",
-                "integration_id": str(integration.id),
-                "setup_completed": True,
-            }
+            logger.info("whatsapp_onboarding.success", tenant_id=str(active_tenant_id))
+            return {"status": "success", "setup_completed": True}
 
     except Exception as e:
-        logger.exception("whatsapp_integration.complete_error", error=str(e))
-        raise HTTPException(
-            status_code=500, detail="Internal error during integration setup"
+        db.rollback()
+        error_msg = str(e)
+        logger.error(
+            "whatsapp_onboarding.failed",
+            error=error_msg,
+            tenant_id=str(active_tenant_id),
         )
+
+        # PERSIST FAILURE (For observability)
+        if integration:
+            integration.status = "failed"
+            integration.onboarding_status = "failed"
+            integration.metadata_json = json.dumps({"terminal_error": error_msg})
+            db.add(integration)
+            db.commit()
+
+        # Specific user-facing messages
+        if "MULTIPLE_WABA_DETECTED" in error_msg:
+            raise HTTPException(
+                status_code=400,
+                detail="Múltiples cuentas detectadas. Por favor configure Meta para usar una sola WABA.",
+            )
+
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @router.get("/whatsapp/onboarding-url")
