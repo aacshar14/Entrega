@@ -138,7 +138,8 @@ async def receive_whatsapp_event(
         logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
         return {"status": "accepted_duplicate"}
 
-        # 2. 🏛️ Resolve Tenant based on meta phone_number_id (Unified V1.4)
+    # 2. 🏛️ Resolve Tenant based on meta phone_number_id (Unified V1.4)
+    try:
         from app.models.models import TenantWhatsAppIntegration, WhatsAppMessage
 
         # Single Source of Truth: Integration table
@@ -176,7 +177,7 @@ async def receive_whatsapp_event(
             message_sid=msg_id,
             body=body,
             raw_payload=json.dumps(payload),
-            processing_status="pending"
+            processing_status="pending",
         )
         db.add(new_msg)
 
@@ -200,7 +201,9 @@ async def receive_whatsapp_event(
         background_tasks.add_task(worker.process_pending_events, limit=5)
 
         logger.info(
-            "webhooks.whatsapp_enqueued", message_id=msg_id, tenant_id=str(target_tenant_id)
+            "webhooks.whatsapp_enqueued",
+            message_id=msg_id,
+            tenant_id=str(target_tenant_id),
         )
         return {"status": "accepted"}
 
