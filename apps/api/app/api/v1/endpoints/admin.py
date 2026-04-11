@@ -833,28 +833,14 @@ async def delete_tenant_teardown(tenant_id: UUID, db: Session = Depends(get_sess
     tenant.status = "archived"
     tenant.updated_at = datetime.now(timezone.utc)
     db.add(tenant)
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> 097c7426157a1f10be477ea1e49ee8392e2e50d2
     # 2. Hardening: Deactivate all memberships for this tenant
     # This forces UI refresh and stops access for all users immediately.
     db.execute(
         text("UPDATE tenant_users SET is_active = FALSE WHERE tenant_id = :tid"),
-<<<<<<< HEAD
         {"tid": tenant_id},
     )
 
     db.commit()
     logger.info("demo.tenant_teardown_completed", tenant_id=str(tenant_id))
 
-=======
-        {"tid": tenant_id}
-    )
-    
-    db.commit()
-    logger.info("demo.tenant_teardown_completed", tenant_id=str(tenant_id))
-    
->>>>>>> 097c7426157a1f10be477ea1e49ee8392e2e50d2
     return {"status": "archived", "tenant_id": tenant_id}
