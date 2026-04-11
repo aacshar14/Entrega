@@ -163,6 +163,8 @@ class EventWorker:
                 logger.warning("idempotency.reclaimed_event", message_id=msg_id)
 
             # --- ⚙️ PHASE 2: BUSINESS LOGIC ---
+            from app.models.models import WhatsAppMessage
+
             payload = event.payload_json
             if isinstance(payload, str):
                 payload = json.loads(payload)
@@ -175,27 +177,54 @@ class EventWorker:
 
             # Call Parsing Engine
             engine = ParsingEngine(self.db, tenant)
-            log, receipt_data = engine.process_and_log(sender=sender, raw_text=body)
+            receipt_data = None
+            error_msg = None
 
-            # 📩 Dispatch Order Receipt (V1.3 Transformation)
+            try:
+                log, receipt_data = engine.process_and_log(sender=sender, raw_text=body)
+                msg_status = (
+                    "processed" if log.final_status == "processed" else "failed"
+                )
+            except Exception as e:
+                error_msg = str(e)
+                msg_status = "failed"
+                logger.error("worker.business_logic_failed", error=error_msg)
+
+            # 🗄️ Update Audit Model (WhatsAppMessage)
+            inbound_msg = self.db.exec(
+                select(WhatsAppMessage).where(WhatsAppMessage.message_sid == msg_id)
+            ).first()
+            if inbound_msg:
+                inbound_msg.processing_status = msg_status
+                inbound_msg.processed_at = datetime.now(timezone.utc)
+                inbound_msg.last_error = error_msg
+                self.db.add(inbound_msg)
+                self.db.commit()
+
+            # 📩 Dispatch Adaptive Receipt (Delivery or Payment)
             if receipt_data:
                 try:
                     from app.services.whatsapp_service import WhatsAppService
 
                     ws = WhatsAppService(self.db)
-                    ws.send_order_receipt(tenant, receipt_data)
+
+                    if receipt_data.get("type") == "payment":
+                        ws.send_payment_receipt(tenant, receipt_data)
+                    else:
+                        ws.send_order_receipt(tenant, receipt_data)
                 except Exception as e:
                     logger.error("worker.receipt_dispatch_failed", error=str(e))
 
-            # --- ✅ PHASE 3: CONDITIONAL SUCCESS ---
+            # --- ✅ PHASE 3: IDEMPOTENCY FINALIZE ---
             success_sql = text("""
                 UPDATE processed_messages 
-                SET status = 'processed', updated_at = :now
+                SET status = :status, updated_at = :now
                 WHERE tenant_id = :tenant_id AND message_id = :message_id AND status = 'processing'
             """)
             result = self.db.execute(
                 success_sql,
                 {
+                    "status": "processed" if msg_status == "processed" else "failed",
                     "now": datetime.now(timezone.utc),
                     "tenant_id": tenant.id,
                     "message_id": msg_id,

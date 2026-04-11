@@ -176,3 +176,46 @@ class WhatsAppService:
                 logger.error(
                     "whatsapp.dispatch_failed", error=str(e), tenant_id=str(tenant.id)
                 )
+
+    def send_payment_receipt(self, tenant: Tenant, data: Dict[str, Any]):
+        """
+        Sends an automated payment confirmation via Meta Cloud API.
+        """
+        config = self.db.exec(
+            select(TenantWhatsAppIntegration).where(
+                TenantWhatsAppIntegration.tenant_id == tenant.id
+            )
+        ).first()
+
+        if not config or not config.access_token_encrypted:
+            return
+
+        token = decrypt_token(config.access_token_encrypted)
+        phone_id = config.phone_number_id
+
+        message = (
+            f"✅ *Pago registrado*\n\n"
+            f"Cliente: {data['customer_name']}\n"
+            f"Monto: ${data['amount_received']}\n"
+            f"Nuevo Saldo: ${data['balance']}\n\n"
+            f"—\n"
+            f"Entrega 🚀"
+        )
+
+        url = f"https://graph.facebook.com/v22.0/{phone_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": data["to_number"],
+            "type": "text",
+            "text": {"body": message},
+        }
+
+        with httpx.Client() as client:
+            try:
+                client.post(url, headers=headers, json=payload, timeout=10.0)
+            except Exception:
+                pass

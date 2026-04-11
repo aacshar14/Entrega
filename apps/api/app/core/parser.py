@@ -309,51 +309,135 @@ class ParsingEngine:
         self.session.flush()
         return new_customer
 
+    def parse_payment(self, raw_text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parses payment intents like 'Juan me pagó 200' or 'Abono 500 de Maria'
+        """
+        text = self._normalize(raw_text)
+
+        # Pattern: [verb] [amount]
+        # Verbs: pago, abono, recibi, liquide
+        payment_pattern = r"(pago|abono|recibi|liquide|pague)\s+(\d+(?:\.\d+)?)"
+        match = re.search(payment_pattern, text)
+
+        if match:
+            amount = float(match.group(2))
+            return {"type": "payment", "amount": amount}
+
+        return None
+
+    def execute_payment(self, customer: Customer, amount: float) -> float:
+        """Registers a customer payment and updates balance (Credit)"""
+        from app.models.models import Payment
+
+        # 1. Register the Payment
+        payment = Payment(
+            tenant_id=self.tenant.id,
+            customer_id=customer.id,
+            amount=amount,
+            method="cash",  # Default for WhatsApp reported payments
+        )
+        self.session.add(payment)
+
+        # 2. Update Balance (Abono = Balance increases/becomes less negative)
+        cust_balance = self.session.exec(
+            select(CustomerBalance)
+            .where(
+                CustomerBalance.tenant_id == self.tenant.id,
+                CustomerBalance.customer_id == customer.id,
+            )
+            .with_for_update()
+        ).first()
+
+        if not cust_balance:
+            cust_balance = CustomerBalance(
+                tenant_id=self.tenant.id, customer_id=customer.id, balance=0.0
+            )
+            self.session.add(cust_balance)
+
+        cust_balance.balance += amount
+        cust_balance.last_updated = datetime.now(timezone.utc)
+
+        # 3. Log Metric
+        self.session.add(
+            BusinessMetricEvent(
+                tenant_id=self.tenant.id,
+                event_type="payment_received",
+                amount=amount,
+            )
+        )
+
+        return cust_balance.balance
+
     def process_and_log(
         self, sender: str, raw_text: str
     ) -> Tuple[MessageLog, Optional[Dict[str, Any]]]:
-        """Logs structured order extraction and executes inventory movements."""
-        items = self.parse_order(raw_text)
+        """Logs structured intent extraction and executes multi-tenant domain actions."""
+
+        # 1. Intent Prioritization: Payment vs Order
+        payment_data = self.parse_payment(raw_text)
+        items = [] if payment_data else self.parse_order(raw_text)
+
+        intent = "unknown"
+        if payment_data:
+            intent = "payment"
+        elif items:
+            intent = "delivery"
 
         log = MessageLog(
             tenant_id=self.tenant.id,
             sender=sender,
             raw_message=raw_text,
-            detected_intent="order" if items else "unknown",
-            detected_entities=json.dumps(items),
-            confidence=0.9 if items else 0.1,
-            needs_confirmation=not bool(items),
+            detected_intent=intent,
+            detected_entities=json.dumps(payment_data if payment_data else items),
+            confidence=0.9 if intent != "unknown" else 0.1,
+            needs_confirmation=intent == "unknown",
             final_status="pending",
         )
         self.session.add(log)
 
         receipt_data = None
-        if items:
-            try:
-                normalized_text = self._normalize(raw_text)
-                customer = self.extract_customer(normalized_text, sender)
+
+        try:
+            normalized_text = self._normalize(raw_text)
+            customer = self.extract_customer(normalized_text, sender)
+
+            if intent == "payment":
+                amount = payment_data["amount"]
+                new_balance = self.execute_payment(customer, amount)
+                log.final_status = "processed"
+
+                receipt_data = {
+                    "customer_name": customer.name,
+                    "type": "payment",
+                    "amount_received": amount,
+                    "balance": new_balance,
+                    "to_number": sender,
+                }
+
+            elif intent == "delivery":
                 total, balance, summary = self.execute_order(customer, items)
                 log.final_status = "processed"
 
                 receipt_data = {
                     "customer_name": customer.name,
+                    "type": "delivery",
                     "product_list": "\n".join(summary),
                     "total_amount": total,
                     "balance": balance,
                     "to_number": sender,
                 }
-            except ValueError as e:
-                self.session.rollback()
-                if "Stock insuficiente" in str(e):
-                    self.session.add(
-                        BusinessMetricEvent(
-                            tenant_id=self.tenant.id,
-                            event_type="stock_insufficient",
-                            metadata_json=json.dumps({"error": str(e)}),
-                        )
-                    )
-                log.final_status = "failed"
-                raise e
+
+            else:
+                log.final_status = "failed"  # Unknown intent
+
+        except Exception as e:
+            self.session.rollback()
+            logger.error(
+                "parser.execution_failed", error=str(e), tenant_id=str(self.tenant.id)
+            )
+            log.final_status = "failed"
+            raise e
 
         self.session.commit()
         return log, receipt_data

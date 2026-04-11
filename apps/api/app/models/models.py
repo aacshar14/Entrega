@@ -257,13 +257,30 @@ class CustomerBalance(SQLModel, table=True):
 class WhatsAppMessage(SQLModel, table=True):
     __tablename__ = "whatsapp_messages"
     id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenants.id")
-    from_number: str = Field(index=True)
+    tenant_id: Optional[UUID] = Field(
+        default=None, foreign_key="tenants.id", index=True
+    )
+
+    # Meta Resolution (Routing)
+    phone_number_id: Optional[str] = Field(default=None, index=True)
+    sender_wa_id: Optional[str] = Field(default=None, index=True)  # The from_number
+
+    # Provider Identifiers
     message_sid: str = Field(unique=True, index=True)
     external_message_id: Optional[str] = Field(unique=True, index=True)
+
+    # Content
     body: Optional[str] = None
     raw_payload: Optional[str] = None
     message_type: str = Field(default="text")
+
+    # State Machine (V2 Audit)
+    processing_status: str = Field(
+        default="pending", index=True
+    )  # 'pending', 'processed', 'failed', 'ignored'
+    last_error: Optional[str] = None
+
+    processed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=get_utc_now)
 
 

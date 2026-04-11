@@ -138,9 +138,8 @@ async def receive_whatsapp_event(
         logger.info("webhooks.duplicate_detected_precheck", message_id=msg_id)
         return {"status": "accepted_duplicate"}
 
-    # 2. 🏛️ Resolve Tenant based on meta phone_number_id (Unified V1.4)
-    try:
-        from app.models.models import TenantWhatsAppIntegration
+        # 2. 🏛️ Resolve Tenant based on meta phone_number_id (Unified V1.4)
+        from app.models.models import TenantWhatsAppIntegration, WhatsAppMessage
 
         # Single Source of Truth: Integration table
         integration = db.exec(
@@ -151,44 +150,42 @@ async def receive_whatsapp_event(
 
         if not integration:
             logger.warning(
-                "webhooks.tenant_not_found", phone_number_id=business_number_id
+                "webhooks.unauthorized_sender", phone_number_id=business_number_id
             )
-            return {"status": "error", "message": "Tenant not integrated"}
+            return {"status": "error", "message": "Canal de WhatsApp no vinculado."}
 
         target_tenant_id = integration.tenant_id
 
-        if not target_tenant_id:
-            logger.warning(
-                "No tenant mapping found for meta phone number id",
-                phone_number_id=business_number_id,
-            )
-            return {"status": "error", "detail": "Tenant not recognized"}
-
-        # Bind tenant context for ALL subsequent logs in this request
+        # Bind tenant context for ALL subsequent logs
         structlog.contextvars.bind_contextvars(tenant_id=str(target_tenant_id))
 
-        tenant = db.exec(select(Tenant).where(Tenant.id == target_tenant_id)).first()
-        if not tenant:
-            return {"status": "error", "detail": "Tenant not found"}
+        # 3. 🗄️ Persist Inbound WhatsAppMessage before processing (Level 2 Audit)
+        # Check if already exists (Idempotency L1)
+        existing_msg = db.exec(
+            select(WhatsAppMessage).where(WhatsAppMessage.message_sid == msg_id)
+        ).first()
 
-        # 3. 🗄️ Persist raw WhatsAppMessage model for history
+        if existing_msg:
+            logger.info("webhooks.duplicate_ignored", message_id=msg_id)
+            return {"status": "accepted"}
+
         new_msg = WhatsAppMessage(
-            tenant_id=tenant.id,
-            from_number=from_number,
+            tenant_id=target_tenant_id,
+            phone_number_id=str(business_number_id),
+            sender_wa_id=from_number,
             message_sid=msg_id,
             body=body,
             raw_payload=json.dumps(payload),
+            processing_status="pending"
         )
         db.add(new_msg)
 
         # 4. 📭 Enqueue Event for Async Processing
         qm = QueueManager(db)
-
-        # Calculate intake duration
         duration_ms = (time.perf_counter() - start_time) * 1000
 
         qm.enqueue(
-            tenant_id=tenant.id,
+            tenant_id=target_tenant_id,
             source="whatsapp",
             event_type="message",
             message_sid=msg_id,
@@ -203,7 +200,7 @@ async def receive_whatsapp_event(
         background_tasks.add_task(worker.process_pending_events, limit=5)
 
         logger.info(
-            "webhooks.whatsapp_enqueued", message_id=msg_id, intake_ms=duration_ms
+            "webhooks.whatsapp_enqueued", message_id=msg_id, tenant_id=str(target_tenant_id)
         )
         return {"status": "accepted"}
 
