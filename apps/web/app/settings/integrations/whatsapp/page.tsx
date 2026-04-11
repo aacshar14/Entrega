@@ -34,7 +34,7 @@ interface WhatsAppStatus {
   disconnected_at?: string;
 }
 
-const META_APP_ID_FALLBACK = '825875709540441';
+const META_APP_ID_FALLBACK = '1018948523791138';
 
 export default function WhatsAppConfigPage() {
   const { activeTenant, user, memberships } = useTenant();
