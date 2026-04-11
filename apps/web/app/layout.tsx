@@ -98,7 +98,7 @@ function UI_Shell({ children }) {
   if (isOwnerOnlyRoute && activeRole !== 'owner' && !isLoading) {
     return null; 
   }
-  const isPublicPath = ['/landing', '/login', '/', '/privacy-policy', '/terms'].includes(pathname);
+  const isPublicPath = ['/landing', '/login', '/', '/privacy-policy', '/terms', '/data-deletion'].includes(pathname);
   
   // 🛡️ Auth Protection: If user is logged in, don't show the Landing Page at "/"
   // Direct them to their operational context instead (Dashboard or Platform)
