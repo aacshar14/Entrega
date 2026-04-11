@@ -114,7 +114,7 @@ function UI_Shell({ children }) {
     );
   }
 
-  if (isPublicPath && !user) return children;
+  if (isPublicPath) return children;
 
   if (isLoading) {
     return (
