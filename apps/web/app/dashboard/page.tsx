@@ -63,16 +63,19 @@ interface DashboardData {
 export default function Dashboard() {
   const { activeTenant } = useTenant();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     if (!activeTenant) return;
     try {
       setLoading(true);
+      setError(null);
       const res = await apiRequest("dashboard", "GET", null, activeTenant.id);
       setData(res);
     } catch (err) {
       console.error("Dashboard fetch failed:", err);
+      setError("No se pudieron cargar los datos del dashboard. Verifica tu conexión.");
     } finally {
       setLoading(false);
     }
@@ -84,13 +87,35 @@ export default function Dashboard() {
     }
   }, [activeTenant, fetchDashboard]);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] gap-4">
         <Loader2 className="animate-spin text-[#56CCF2]" size={48} />
         <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">
           Actualizando datos reales...
         </p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[600px] gap-6 text-center">
+        <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center">
+          <AlertCircle size={40} />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-[#1D3146]">Error de Conexión</h3>
+          <p className="text-slate-500 font-medium max-w-xs">
+            {error || "El dashboard no está disponible en este momento."}
+          </p>
+        </div>
+        <button 
+          onClick={() => fetchDashboard()}
+          className="h-12 px-8 bg-[#1D3146] text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg"
+        >
+          Reintentar actualización
+        </button>
       </div>
     );
   }
