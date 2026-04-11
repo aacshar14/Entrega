@@ -109,7 +109,7 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
     )
 
 
-@router.get("/me", response_model=MeResponse)
+@router.get("/me/", response_model=MeResponse)
 async def get_me(
     current_user: User = Depends(get_current_user),
     active_membership: Optional[TenantUser] = Depends(get_active_membership),
