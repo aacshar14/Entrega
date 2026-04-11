@@ -13,7 +13,7 @@ export default function PaymentSuccessPage() {
     // Poll for status update since webhook might take a second
     const interval = setInterval(async () => {
       await refreshTenant();
-      if (activeTenant?.billing_status === "active_paid") {
+      if (activeTenant?.billing_status === "active") {
         setIsActivating(false);
         clearInterval(interval);
       }

@@ -544,9 +544,10 @@ async def refresh_metrics(db: Session = Depends(get_session)):
 
 
 class BillingUpdate(BaseModel):
-    status: str  # 'trial', 'grace', 'active_paid', 'suspended'
+    status: str  # 'active', 'grace', 'past_due', 'canceled', 'inactive'
     trial_days: Optional[int] = None
     grace_days: Optional[int] = None
+    plan_code: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -570,19 +571,14 @@ async def update_tenant_billing(
     tenant.billing_updated_by = current_user.id
     tenant.billing_updated_at = now
 
-    if update.status == "trial":
+    if update.plan_code:
+        tenant.plan_code = update.plan_code
+
+    if update.status == "trial": # Legacy support for manual activation as trial
         days = update.trial_days or 7
         tenant.trial_ends_at = now + timedelta(days=days)
-        tenant.grace_ends_at = None
-    elif update.status == "grace":
-        days = update.grace_days or 3
-        tenant.grace_ends_at = now + timedelta(days=days)
-    elif update.status == "active_paid":
+    elif update.status == "active":
         tenant.trial_ends_at = None
-        tenant.grace_ends_at = None
-        # subscription_ends_at logic would go here if recurring
-
-    tenant.updated_at = now
     db.add(tenant)
 
     # Compliance: Add to AuditLog

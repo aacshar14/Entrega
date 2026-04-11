@@ -382,6 +382,33 @@ def require_platform_role(authorized_roles: List[str]):
     return role_dependency
 
 
+async def require_premium(
+    db: Session = Depends(get_db),
+    membership: Any = Depends(get_active_membership),
+):
+    """
+    Entitlement Guard: Ensures the tenant has an active premium subscription.
+    """
+    from app.models.models import Tenant
+
+    tenant = db.get(Tenant, membership.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    is_premium = tenant.plan_code.startswith("premium")
+    is_active = tenant.billing_status == "active"
+
+    # Owners of premium tenants or those in grace can continue briefly
+    # (Future-proof for grace window)
+    if not (is_premium and is_active):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Se requiere un plan Premium activo para esta función."
+        )
+
+    return tenant
+
+
 # Backward Compatibility & Logic Aliases
 require_roles = require_tenant_role
 

@@ -27,24 +27,70 @@ class StripeService:
         Uses lookup_key as primary identifier if available.
         """
         try:
+            # 1. Check if price_id is already a plan_code (internal safe path)
+            if price_id in PLAN_MAPPING.values():
+                return price_id
+
             price = stripe.Price.retrieve(price_id)
             lookup_key = price.get("lookup_key")
 
             if lookup_key and lookup_key in PLAN_MAPPING:
                 return PLAN_MAPPING[lookup_key]
 
-            # Fallback or strict error
+            # Final attempt: Check metadata on the price object if lookup_key missing
+            plan_code_meta = price.get("metadata", {}).get("plan_code")
+            if plan_code_meta and plan_code_meta in PLAN_MAPPING:
+                return plan_code_meta
+
             logger.warning(
                 "stripe.plan_resolution_failed",
                 stripe_price_id=price_id,
                 lookup_key=lookup_key,
             )
-            return "unknown"
+            return "basic_monthly"  # Fail safe to basic
         except Exception as e:
             logger.error(
                 "stripe.price_retrieval_failed", error=str(e), price_id=price_id
             )
-            return "unknown"
+            return "basic_monthly"
+
+    def create_checkout_session(self, tenant_id: str, plan_code: str, success_url: str, cancel_url: str):
+        """
+        Generates a deterministic Stripe Checkout Session for a specific tenant.
+        """
+        # 1. Find price by lookup key
+        prices = stripe.Price.list(lookup_keys=[plan_code], active=True, limit=1)
+        if not prices.data:
+            logger.error("stripe.checkout_failed_price_not_found", plan_code=plan_code)
+            raise ValueError(f"Plan {plan_code} not found in Stripe")
+
+        price_id = prices.data[0].id
+
+        # 2. Find or Create Customer
+        tenant = self.db.get(Tenant, tenant_id)
+        customer_id = tenant.stripe_customer_id
+
+        session = stripe.checkout.Session.create(
+            customer=customer_id, # Optional, if None Stripe creates one
+            client_reference_id=str(tenant.id),
+            metadata={
+                "tenant_id": str(tenant.id),
+                "plan_code": plan_code
+            },
+            line_items=[{
+                "price": price_id,
+                "quantity": 1,
+            }],
+            mode="subscription",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            subscription_data={
+                "metadata": {
+                    "tenant_id": str(tenant.id)
+                }
+            }
+        )
+        return session
 
     def handle_checkout_completed(self, session: stripe.checkout.Session):
         """
@@ -97,12 +143,22 @@ class StripeService:
         price_id = subscription["items"]["data"][0]["price"]["id"]
         plan_code = self.resolve_plan_code(price_id)
 
-        # 3. Update Tenant Billing State
+        # 3. Update Tenant Billing State & Cleanup Upgrades
+        old_sub_id = tenant.stripe_subscription_id
+        if old_sub_id and old_sub_id != stripe_subscription_id:
+            try:
+                # Cleanup: If they had an active sub, cancel it to prevent doubles
+                # This handles 'Upgrade/Downgrade via new Checkout' gracefully
+                stripe.Subscription.delete(old_sub_id)
+                logger.info("stripe.upgrade_cleanup_success", tenant_id=str(tenant.id), old_sub=old_sub_id)
+            except Exception as e:
+                logger.warning("stripe.upgrade_cleanup_failed", tenant_id=str(tenant.id), error=str(e))
+
         tenant.stripe_customer_id = stripe_customer_id
         tenant.stripe_subscription_id = stripe_subscription_id
         tenant.stripe_price_id = price_id
         tenant.plan_code = plan_code
-        tenant.billing_status = "active_paid"
+        tenant.billing_status = "active"
         tenant.subscription_ends_at = datetime.fromtimestamp(
             subscription.current_period_end, tz=timezone.utc
         )
@@ -134,16 +190,16 @@ class StripeService:
             return
 
         status_map = {
-            "active": "active_paid",
-            "past_due": "suspended",  # Or custom status
-            "unpaid": "suspended",
-            "canceled": "suspended",
-            "incomplete": "trial",
-            "incomplete_expired": "suspended",
-            "trialing": "trial",
+            "active": "active",
+            "past_due": "past_due",
+            "unpaid": "canceled",
+            "canceled": "canceled",
+            "incomplete": "inactive",
+            "incomplete_expired": "canceled",
+            "trialing": "active",
         }
 
-        tenant.billing_status = status_map.get(subscription.status, "suspended")
+        tenant.billing_status = status_map.get(subscription.status, "canceled")
         tenant.subscription_ends_at = datetime.fromtimestamp(
             subscription.current_period_end, tz=timezone.utc
         )
@@ -166,7 +222,7 @@ class StripeService:
         ).first()
 
         if tenant:
-            tenant.billing_status = "suspended"
+            tenant.billing_status = "canceled"
             tenant.billing_notes = f"Subscription {subscription.id} deleted."
             self.db.add(tenant)
             self.db.commit()

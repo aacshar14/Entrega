@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, get_active_tenant_id
+from app.core.dependencies import get_current_user, get_active_tenant_id, require_premium
 from app.core.config import settings
 from app.models.models import User, TenantWhatsAppIntegration, Tenant
 from app.core.security import encrypt_token
@@ -198,11 +198,14 @@ async def complete_whatsapp_integration(
 
 
 @router.get("/whatsapp/onboarding-url")
-def get_onboarding_url(
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+async def get_whatsapp_onboarding_url(
+    tenant: Tenant = Depends(require_premium),
     db: Session = Depends(get_session),
 ):
-    """Generates a secure state nonce for Meta Embedded Signup (V1.4)"""
+    """
+    Returns the onboarding state/nonce for Meta Embedded Signup.
+    REQUIRES PREMIUM PLAN.
+    """
     import secrets
     from datetime import timedelta
 

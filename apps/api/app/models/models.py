@@ -51,22 +51,14 @@ class Tenant(SQLModel, table=True):
 
     # Billing & Lifecycle (V1.3/Phase 5)
     billing_status: str = Field(
-        default="trial"
-    )  # 'trial', 'grace', 'active_paid', 'suspended'
-
-    # Internal plan management
-    plan_code: Optional[str] = Field(
-        default="trial", index=True
-    )  # basic_monthly, premium_monthly, etc.
-
-    # Stripe Identity (Phase 5)
+    # --- Billing & Plan Control ---
+    billing_status: str = Field(default="inactive", index=True)  # active, grace, past_due, canceled, inactive
+    plan_code: str = Field(default="basic_monthly", index=True)
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     stripe_price_id: Optional[str] = None
-
-    trial_ends_at: Optional[datetime] = None
-    grace_ends_at: Optional[datetime] = None
     subscription_ends_at: Optional[datetime] = None
+    trial_ends_at: Optional[datetime] = None
 
     last_payment_status: Optional[str] = None
     last_stripe_event_id: Optional[str] = None
