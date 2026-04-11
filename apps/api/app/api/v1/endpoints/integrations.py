@@ -135,6 +135,10 @@ async def complete_whatsapp_integration(
             integration.onboarding_nonce_expires_at = None
             integration.updated_at = datetime.now(timezone.utc)
 
+            # Persist frontend metadata if provided
+            if payload.metadata:
+                integration.metadata_json = json.dumps(payload.metadata)
+
             # 7. Global Tenant Update (Sync for UI/SaaS consistency)
             tenant = db.get(Tenant, active_tenant_id)
             if tenant:
