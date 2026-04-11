@@ -381,11 +381,39 @@ class MetricSnapshot(SQLModel, table=True):
     period_end: datetime = Field(index=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
+    # Phase 5 Resilience: Drift Control
+    last_reconciled_at: Optional[datetime] = None
+    update_counter: int = Field(default=0)  # Track number of mutations
+    last_error_code: Optional[str] = None  # Persistent failure tracking
+
     __table_args__ = (
         UniqueConstraint(
             "tenant_id", "metric_name", "period_start", name="uq_metric_snapshot"
         ),
     )
+
+
+class MetricReconciliation(SQLModel, table=True):
+    """
+    Audit log for metric consistency.
+    Tracks drift between snapshots and operational source-of-truth.
+    """
+
+    __tablename__ = "metric_reconciliations"
+
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(foreign_key="tenants.id", index=True)
+    metric_date: datetime = Field(index=True)
+
+    # Results (Structured JSON strings)
+    snapshot_values: str  # e.g. {"deliveries": 10}
+    truth_values: str  # e.g. {"deliveries": 12}
+
+    drift_detected: bool = Field(default=False, index=True)
+    drift_summary: Optional[str] = None  # e.g. 'COUNT_MISMATCH'
+
+    reconciled_at: datetime = Field(default_factory=get_utc_now)
+    created_at: datetime = Field(default_factory=get_utc_now)
 
 
 class AuditLog(SQLModel, table=True):

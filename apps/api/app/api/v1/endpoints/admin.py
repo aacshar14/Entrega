@@ -690,3 +690,67 @@ async def refresh_all_tenant_dashboards(db: Session = Depends(get_session)):
             )
 
     return {"message": f"Refreshed {len(tenants)} tenant dashboards", "status": "done"}
+
+
+@router.post(
+    "/metrics/reconcile-all",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+async def reconcile_all_metrics(db: Session = Depends(get_session)):
+    """
+    Triggers a Phase 5 reconciliation audit for all active tenants.
+    Detected drift will be automatically repaired.
+    """
+    from app.services.dashboard_service import DashboardService
+
+    tenants = db.exec(select(Tenant).where(Tenant.status == "active")).all()
+    ds = DashboardService(db)
+    results = []
+
+    for t in tenants:
+        try:
+            recon = ds.reconcile_tenant_metrics(t.id)
+            results.append(
+                {
+                    "tenant_id": t.id,
+                    "tenant_name": t.name,
+                    "drift_detected": recon.drift_detected,
+                    "summary": recon.drift_summary,
+                }
+            )
+        except Exception as e:
+            logger.error("admin.reconcile_failed", tenant_id=str(t.id), error=str(e))
+
+    return {"status": "success", "audit_count": len(results), "results": results}
+
+
+@router.get(
+    "/metrics/drift", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+)
+async def get_recent_drift(limit: int = 50, db: Session = Depends(get_session)):
+    """
+    Lists recent metric reconciliations where drift was detected.
+    """
+    from app.models.models import MetricReconciliation
+
+    query = (
+        select(MetricReconciliation, Tenant)
+        .join(Tenant, MetricReconciliation.tenant_id == Tenant.id)
+        .where(MetricReconciliation.drift_detected == True)
+        .order_by(MetricReconciliation.reconciled_at.desc())
+        .limit(limit)
+    )
+
+    results = db.exec(query).all()
+
+    return [
+        {
+            "tenant_name": t.name,
+            "metric_date": m.metric_date,
+            "drift_summary": m.drift_summary,
+            "snapshot_values": json.loads(m.snapshot_values),
+            "truth_values": json.loads(m.truth_values),
+            "reconciled_at": m.reconciled_at,
+        }
+        for m, t in results
+    ]

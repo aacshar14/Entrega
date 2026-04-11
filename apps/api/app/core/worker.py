@@ -228,14 +228,21 @@ class EventWorker:
                 except Exception as e:
                     logger.error("worker.receipt_dispatch_failed", error=str(e))
 
-            # 🚀 Immediate Dashboard Refresh (Performance Hardening V2)
+            # 🚀 Immediate Dashboard Refresh (Phase 5: Resilient Dispatch)
             try:
                 from app.services.dashboard_service import DashboardService
 
                 ds = DashboardService(self.db)
-                ds.refresh_daily_kpis(tenant.id)
+                # We specifically refresh today's window with the new counter-incrementing upsert
+                ds.refresh_daily_kpis(tenant.id, date=datetime.now(timezone.utc))
+                logger.info("worker.dashboard_refreshed", tenant_id=str(tenant.id))
             except Exception as e:
-                logger.error("worker.dashboard_refresh_failed", error=str(e))
+                # Log but do not fail the event processing if metrics refresh fails
+                logger.error(
+                    "worker.dashboard_refresh_failed",
+                    error=str(e),
+                    tenant_id=str(tenant.id),
+                )
 
             # --- ✅ PHASE 3: IDEMPOTENCY FINALIZE ---
             success_sql = text("""
