@@ -31,8 +31,10 @@ jobs:
           filters: |
             api:
               - 'apps/api/**'
+              - '.github/workflows/deploy.yml'
             web:
               - 'apps/web/**'
+              - '.github/workflows/deploy.yml'
             db:
               - 'apps/api/alembic/versions/**'
 
