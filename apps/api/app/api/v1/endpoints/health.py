@@ -5,6 +5,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=Dict[str, str])
+@router.get("/", include_in_schema=False)
 async def health_check():
     """Basic health check for infrastructure monitoring."""
     return {"status": "ok", "timestamp": "now"}
