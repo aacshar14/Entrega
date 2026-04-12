@@ -204,32 +204,57 @@ class DashboardService:
         """
         Returns KPIs, preferring snapshots for performance.
         Falls back to bounded refresh if snapshots are missing or stale.
+        🛡️ Hardening V2: Wrapped in global resilience layer to prevent 500s.
         """
         now = datetime.now(timezone.utc)
 
-        # Try Snapshots first
-        sales = self.get_metric(tenant.id, "sales_today", now)
-        debt = self.get_metric(tenant.id, "total_debt", now)
-        deliveries = self.get_metric(tenant.id, "deliveries_today", now)
-
-        # FALLBACK SAFETY: If critical metrics are missing, refresh immediately (Bounded)
-        if sales is None or debt is None or deliveries is None:
-            logger.warning(
-                "dashboard.snapshot_miss_triggering_refresh", tenant_id=str(tenant.id)
-            )
-            self.refresh_daily_kpis(tenant.id, now)
-
-            # Re-read after refresh
+        try:
+            # Try Snapshots first
             sales = self.get_metric(tenant.id, "sales_today", now)
             debt = self.get_metric(tenant.id, "total_debt", now)
             deliveries = self.get_metric(tenant.id, "deliveries_today", now)
 
-        return {
-            "sales_today": sales or 0.0,
-            "total_debt": debt or 0.0,
-            "deliveries_today": deliveries or 0.0,
-            "status": "reconciled" if sales is not None else "degraded",
-        }
+            # FALLBACK SAFETY: If critical metrics are missing, refresh immediately (Bounded)
+            if sales is None or debt is None or deliveries is None:
+                logger.warning(
+                    "dashboard.snapshot_miss_triggering_refresh",
+                    tenant_id=str(tenant.id),
+                )
+                try:
+                    self.refresh_daily_kpis(tenant.id, now)
+                    # Re-read after refresh
+                    sales = self.get_metric(tenant.id, "sales_today", now)
+                    debt = self.get_metric(tenant.id, "total_debt", now)
+                    deliveries = self.get_metric(tenant.id, "deliveries_today", now)
+                except Exception as e:
+                    logger.error(
+                        "dashboard.refresh_failed_using_authoritative", error=str(e)
+                    )
+                    return self._compute_authoritative_kpis(tenant.id, now)
+
+            return {
+                "sales_today": sales or 0.0,
+                "total_debt": debt or 0.0,
+                "deliveries_today": deliveries or 0.0,
+                "status": "reconciled" if sales is not None else "degraded",
+            }
+        except Exception as e:
+            # 🛡️ Absolute Fail-Safe: If anything crashes (SQL, UUIDs, etc.), go to Truth
+            logger.error(
+                "dashboard.critical_service_failure_falling_back", error=str(e)
+            )
+            try:
+                authoritative = self._compute_authoritative_kpis(tenant.id, now)
+                authoritative["status"] = "authoritative_fallback"
+                return authoritative
+            except Exception as e2:
+                logger.critical("dashboard.total_collapse", error=str(e2))
+                return {
+                    "sales_today": 0.0,
+                    "total_debt": 0.0,
+                    "deliveries_today": 0.0,
+                    "status": "total_failure_clean_return",
+                }
 
     def _compute_authoritative_kpis(
         self, tenant_id: UUID, day_start: datetime
