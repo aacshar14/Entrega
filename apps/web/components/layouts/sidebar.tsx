@@ -79,7 +79,7 @@ export function Sidebar({ isOpen, onClose }) {
     >
       <div className="p-8 pb-12 flex justify-between items-center">
         <Link
-          href="/dashboard"
+          href={isPlatformPath ? "/platform" : "/dashboard"}
           className="flex flex-col items-center justify-center w-full"
         >
           <Logo variant="master" className="w-56 h-auto drop-shadow-2xl" />
