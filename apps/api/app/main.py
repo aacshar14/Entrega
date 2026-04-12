@@ -120,118 +120,133 @@ async def root():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{settings.PROJECT_NAME} API v{settings.VERSION}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <title>EntréGA Intelligence API</title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
         <style>
             :root {{
-                --primary: #0f172a;
-                --accent: #3b82f6;
-                --success: #22c55e;
+                --bg: #1D3146;
+                --accent: #56CCF2;
+                --text: #F8FAFC;
             }}
             body {{
                 margin: 0;
                 padding: 0;
-                font-family: 'Inter', sans-serif;
-                background: radial-gradient(circle at top right, #1e293b, #0f172a);
-                color: white;
+                font-family: 'Outfit', sans-serif;
+                background: var(--bg);
+                color: var(--text);
                 height: 100vh;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
             }}
-            .glass {{
-                background: rgba(255, 255, 255, 0.03);
-                backdrop-filter: blur(12px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 24px;
-                padding: 48px;
+            .container {{
                 text-align: center;
-                max-width: 450px;
-                width: 90%;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-                animation: fadeIn 0.8s ease-out;
+                animation: fadeIn 1s ease-out;
+                max-width: 500px;
+                padding: 40px;
             }}
             @keyframes fadeIn {{
-                from {{ opacity: 0; transform: translateY(20px); }}
+                from {{ opacity: 0; transform: translateY(10px); }}
                 to {{ opacity: 1; transform: translateY(0); }}
             }}
-            .logo {{
-                font-size: 32px;
-                font-weight: 700;
-                letter-spacing: -1px;
-                margin-bottom: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-            }}
-            .logo svg {{ width: 40px; height: 40px; fill: var(--accent); }}
-            .status-container {{
+            .status-badge {{
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
-                background: rgba(34, 197, 94, 0.1);
-                padding: 6px 16px;
+                background: rgba(86, 204, 242, 0.1);
+                border: 1px solid rgba(86, 204, 242, 0.2);
+                padding: 8px 16px;
                 border-radius: 100px;
-                color: var(--success);
-                font-size: 14px;
-                font-weight: 600;
-                margin-bottom: 24px;
+                color: var(--accent);
+                font-size: 10px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.2em;
+                margin-bottom: 32px;
             }}
             .pulse {{
-                width: 8px;
-                height: 8px;
-                background: var(--success);
+                width: 6px;
+                height: 6px;
+                background: var(--accent);
                 border-radius: 50%;
-                box-shadow: 0 0 0 rgba(34, 197, 94, 0.4);
                 animation: pulse 2s infinite;
             }}
             @keyframes pulse {{
-                0% {{ box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }}
-                70% {{ box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }}
-                100% {{ box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }}
+                0% {{ box-shadow: 0 0 0 0 rgba(86, 204, 242, 0.7); opacity: 1; }}
+                70% {{ box-shadow: 0 0 0 10px rgba(86, 204, 242, 0); opacity: 0.5; }}
+                100% {{ box-shadow: 0 0 0 0 rgba(86, 204, 242, 0); opacity: 1; }}
             }}
-            h1 {{ margin: 0; font-size: 24px; color: #f8fafc; }}
-            p {{ color: #94a3b8; line-height: 1.6; margin: 16px 0 32px 0; }}
+            .logo {{
+                font-size: 48px;
+                font-weight: 900;
+                letter-spacing: -2px;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+            }}
+            .logo span {{ color: var(--accent); font-style: italic; }}
+            h1 {{ 
+                margin: 0; 
+                font-size: 14px; 
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.4em;
+                color: var(--accent);
+                opacity: 0.8;
+                margin-bottom: 24px;
+            }}
+            p {{ 
+                color: #94a3b8; 
+                line-height: 1.6; 
+                margin-bottom: 40px; 
+                font-weight: 500;
+                font-size: 15px;
+            }}
             .btn {{
-                display: block;
+                display: inline-block;
                 background: var(--accent);
-                color: white;
+                color: var(--bg);
                 text-decoration: none;
-                padding: 14px;
-                border-radius: 12px;
-                font-weight: 600;
-                transition: all 0.2s;
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 16px 32px;
+                border-radius: 16px;
+                font-weight: 900;
+                text-transform: uppercase;
+                font-size: 12px;
+                letter-spacing: 0.1em;
+                transition: all 0.3s;
+                box-shadow: 0 20px 40px -10px rgba(86, 204, 242, 0.3);
             }}
             .btn:hover {{
-                background: #2563eb;
-                transform: translateY(-2px);
-                box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+                transform: translateY(-2px) scale(1.02);
+                box-shadow: 0 25px 50px -12px rgba(86, 204, 242, 0.4);
             }}
             .footer {{
-                margin-top: 32px;
-                font-size: 12px;
+                margin-top: 60px;
+                font-size: 10px;
                 color: #475569;
-                font-weight: 500;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.2em;
             }}
         </style>
     </head>
     <body>
-        <div class="glass">
-            <div class="status-container">
+        <div class="container">
+            <div class="status-badge">
                 <div class="pulse"></div>
-                SISTEMA OPERATIVO
+                Sincronizado
             </div>
             <div class="logo">
-                <span style="color: var(--accent);">Entré</span>GA
+                Entré<span>GA</span>
             </div>
-            <h1>Version {settings.VERSION}</h1>
-            <p>Infraestructura escalable de logística y gestión de inventario. El motor de tu negocio en tiempo real.</p>
-            <a href="/docs" class="btn">Explorar Documentación API</a>
+            <h1>Intelligence API v{settings.VERSION}</h1>
+            <p>Infraestructura logística avanzada para la gestión de inventario y entregas en tiempo real.</p>
+            <a href="/docs" class="btn">Explorar Contrato API</a>
             <div class="footer">
-                &copy; {time.strftime('%Y')} {settings.PROJECT_NAME} • {settings.ENVIRONMENT.upper()}
+                &copy; {time.strftime('%Y')} EntréGA Technology • {settings.ENVIRONMENT.upper()}
             </div>
         </div>
     </body>
