@@ -120,13 +120,14 @@ async def get_dashboard_summary(
 
     formatted_stock = []
     for p_id, name, qty in top_stock_results:
-        qty_outside = outside_data.get(p_id, 0.0)
+        qty_safe = float(qty or 0.0)
+        qty_outside = float(outside_data.get(p_id, 0.0))
         formatted_stock.append(
             {
                 "name": name,
-                "quantity": qty,
+                "quantity": qty_safe,
                 "quantity_outside": qty_outside,
-                "total": qty + qty_outside,
+                "total": qty_safe + qty_outside,
             }
         )
 
@@ -189,8 +190,17 @@ async def get_dashboard_summary(
             }
         )
 
-    # Final Sort by created_at desc
-    unified_activity.sort(key=lambda x: x["created_at"], reverse=True)
+    # Final Sort by created_at desc (Resilient to NULL dates V1.6.2)
+    def sort_key(x):
+        dt = x.get("created_at")
+        if dt:
+            # Ensure it's a datetime object
+            if isinstance(dt, datetime):
+                return dt
+            return datetime.now(timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+    unified_activity.sort(key=sort_key, reverse=True)
     unified_activity = unified_activity[:10]
 
     # 6. Billing & Conversion (V1.3 Hardening)
@@ -276,6 +286,6 @@ async def get_dashboard_summary(
             }
             for item in unified_activity
         ],
-        "welcome_message": f"¡Hola de nuevo, {current_user.full_name}!",
-        "business_name": active_tenant.name,
+        "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
+        "business_name": str(active_tenant.name or "Mi Negocio"),
     }
