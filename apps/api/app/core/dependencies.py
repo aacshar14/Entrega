@@ -187,8 +187,11 @@ async def get_current_user(
                 db.commit()
                 db.refresh(user)
 
-        # 🛡️ Hardening: Bind user_id to session context immediately
-        structlog.contextvars.bind_contextvars(user_id=str(user.id))
+        # 🛡️ Hardening: Bind user_id to session context (Safe mode V1.9.9)
+        try:
+            structlog.contextvars.bind_contextvars(user_id=str(user.id))
+        except:
+            pass
 
         if user.is_active is False:
             raise HTTPException(
@@ -317,8 +320,11 @@ async def get_active_membership(
             status_code=400, detail="No active tenant context found for user."
         )
 
-    # 🛡️ Hardening: Bind tenant_id to session context immediately
-    structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+    # 🛡️ Hardening: Bind tenant_id to session context (Safe mode V1.9.9)
+    try:
+        structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+    except:
+        pass
     logger.info(
         "tenant_resolution.success",
         user_id=str(current_user.id),
