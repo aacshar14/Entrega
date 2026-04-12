@@ -10,10 +10,10 @@ from app.models.models import (
     Payment,
     CustomerBalance,
     StockBalance,
+    InventoryMovement,
 )
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
-from app.services.metrics_service import get_tenant_metrics
 
 router = APIRouter()
 
@@ -25,284 +25,229 @@ async def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
     active_tenant: Tenant = Depends(get_active_tenant),
 ):
-    tenant_id = active_tenant.id
+    try:
+        tenant_id = active_tenant.id
 
-    # 1. Main Stats (Performance Hardening V2)
-    from app.services.dashboard_service import DashboardService
+        # 1. Main Stats (Performance Hardening V2)
+        from app.services.dashboard_service import DashboardService
 
-    ds = DashboardService(db)
-    kpis = ds.get_dashboard_kpis(active_tenant)
+        ds = DashboardService(db)
+        kpis = ds.get_dashboard_kpis(active_tenant)
 
-    total_debt_abs = kpis.get("total_debt", 0.0)
-    sales_today = kpis.get("sales_today", 0.0)
-    total_deliveries_kpi = kpis.get("deliveries_today", 0)
+        total_debt_abs = kpis.get("total_debt", 0.0)
+        sales_today = kpis.get("sales_today", 0.0)
+        total_deliveries_kpi = kpis.get("deliveries_today", 0)
 
-    # 2. Basic Metadata counts
-    customer_count = db.exec(
-        select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
-    ).first()
-    product_count = db.exec(
-        select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
-    ).first()
+        # 2. Basic Metadata counts
+        customer_count = db.exec(
+            select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
+        ).one()
+        product_count = db.exec(
+            select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
+        ).one()
+        total_payments = db.exec(
+            select(func.count(Payment.id)).where(Payment.tenant_id == tenant_id)
+        ).one()
 
-    total_payments = sales_today  # Approximate as payments today for dashboard card
+        # 3. Aggregated Flow (Hardened V1.7)
+        now = datetime.now(timezone.utc)
+        last_monday = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        # Force naive for DB comparison to prevent aware/naive crash
+        last_monday_naive = last_monday.replace(tzinfo=None)
 
-    # 3. Stock Status (Low stock < 10)
-    low_stock_count = db.exec(
-        select(func.count(StockBalance.id))
-        .where(StockBalance.tenant_id == tenant_id)
-        .where(StockBalance.quantity <= 10)
-    ).first()
+        produced_this_week = (
+            db.exec(
+                select(func.sum(InventoryMovement.quantity)).where(
+                    InventoryMovement.tenant_id == tenant_id,
+                    InventoryMovement.type == "production",
+                    InventoryMovement.created_at >= last_monday_naive,
+                )
+            ).one()
+            or 0.0
+        )
 
-    # 5. Weekly Stats (Production vs Deliveries)
-    from datetime import timedelta
+        delivered_this_week = (
+            db.exec(
+                select(func.sum(InventoryMovement.quantity)).where(
+                    InventoryMovement.tenant_id == tenant_id,
+                    InventoryMovement.type == "delivery",
+                    InventoryMovement.created_at >= last_monday_naive,
+                )
+            ).one()
+            or 0.0
+        )
+        delivered_abs = abs(float(delivered_this_week))
 
-    # 🛡️ Hardening: Force naive comparison to match DB records (V1.4.3)
-    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).replace(
-        tzinfo=None
-    )
+        # 4. Critical Stock Alert count
+        low_stock_count = db.exec(
+            select(func.count(StockBalance.id)).where(
+                StockBalance.tenant_id == tenant_id, StockBalance.balance <= 0
+            )
+        ).one()
 
-    from app.models.models import InventoryMovement
+        # 5. Formatted Lists Logic
+        stock_balances = db.exec(
+            select(Product.name, StockBalance.balance)
+            .join(StockBalance, Product.id == StockBalance.product_id)
+            .where(Product.tenant_id == tenant_id)
+        ).all()
 
-    # In Entrega, users sometimes use 'adjustment' to record production
-    produced_this_week = (
-        db.exec(
-            select(func.sum(InventoryMovement.quantity))
+        formatted_stock = [
+            {"product": str(name), "stock": float(balance or 0.0)}
+            for name, balance in stock_balances
+        ]
+
+        top_debtors = db.exec(
+            select(Customer, CustomerBalance)
+            .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
+            .where(Customer.tenant_id == tenant_id)
+            .order_by(CustomerBalance.balance)
+            .limit(5)
+        ).all()
+
+        # 🔄 RECENT ACTIVITY (Aggregated Resilience V1.9.8)
+        recent_movements = db.exec(
+            select(InventoryMovement, Customer)
+            .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
             .where(InventoryMovement.tenant_id == tenant_id)
-            .where(InventoryMovement.type.in_(["restock", "adjustment"]))
-            .where(InventoryMovement.quantity > 0)
-            .where(InventoryMovement.created_at >= seven_days_ago)
-        ).first()
-        or 0.0
-    )
+            .order_by(desc(InventoryMovement.created_at))
+            .limit(20)
+        ).all()
 
-    delivered_this_week = (
-        db.exec(
-            select(func.sum(InventoryMovement.quantity))
-            .where(InventoryMovement.tenant_id == tenant_id)
-            .where(InventoryMovement.type.in_(["delivery", "delivery_to_customer"]))
-            .where(InventoryMovement.created_at >= seven_days_ago)
-        ).first()
-        or 0.0
-    )
+        recent_payments = db.exec(
+            select(Payment, Customer)
+            .join(Customer, Payment.customer_id == Customer.id, isouter=True)
+            .where(Payment.tenant_id == tenant_id)
+            .order_by(desc(Payment.created_at))
+            .limit(20)
+        ).all()
 
-    delivered_abs = abs(float(delivered_this_week))
+        unified_activity = []
+        for m, c in recent_movements:
+            unified_activity.append(
+                {
+                    "id": str(m.id),
+                    "type": "movement",
+                    "customer_name": str(c.name if c else "S/N"),
+                    "description": f"{m.quantity} unidades",
+                    "quantity": float(m.quantity or 0.0),
+                    "amount": 0.0,
+                    "created_at": m.created_at,
+                    "is_payment": False,
+                }
+            )
 
-    # 4. Master Stock (Warehouse + Outside)
-    # Get outside quantities per product (delivery - returns - sales)
-    outside_types = [
-        "delivery",
-        "delivery_to_customer",
-        "return",
-        "return_from_customer",
-        "sale_reported",
-    ]
-    outside_query = (
-        select(
-            InventoryMovement.product_id,
-            func.sum(InventoryMovement.quantity).label("outside_net"),
-        )
-        .where(InventoryMovement.tenant_id == tenant_id)
-        .where(InventoryMovement.type.in_(outside_types))
-        .group_by(InventoryMovement.product_id)
-    )
-    outside_data = {
-        row[0]: -float(row[1] or 0.0) for row in db.exec(outside_query).all()
-    }
+        for p, c in recent_payments:
+            unified_activity.append(
+                {
+                    "id": str(p.id),
+                    "type": "payment",
+                    "customer_name": str(c.name if c else "S/N"),
+                    "description": str(p.payment_method or "Pago"),
+                    "quantity": 0.0,
+                    "amount": float(p.amount or 0.0),
+                    "created_at": p.created_at,
+                    "is_payment": True,
+                }
+            )
 
-    top_stock_query = (
-        select(Product.id, Product.name, StockBalance.quantity)
-        .join(StockBalance, Product.id == StockBalance.product_id)
-        .where(Product.tenant_id == tenant_id)
-        .order_by(desc(StockBalance.quantity))
-    )
-    top_stock_results = db.exec(top_stock_query).all()
-
-    formatted_stock = []
-    for p_id, name, qty in top_stock_results:
-        qty_safe = float(qty or 0.0)
-        qty_outside = float(outside_data.get(p_id, 0.0))
-        formatted_stock.append(
-            {
-                "name": name,
-                "quantity": qty_safe,
-                "quantity_outside": qty_outside,
-                "total": qty_safe + qty_outside,
-            }
-        )
-
-    # 6. Top Debtors (First 5 customers by balance)
-    top_debtors = db.exec(
-        select(Customer, CustomerBalance)
-        .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
-        .where(Customer.tenant_id == tenant_id)
-        .order_by(CustomerBalance.balance)  # Lowest (most negative) first
-        .limit(5)
-    ).all()
-
-    # 7. Recent Activity (Last 10 movements)
-    # 6. Unified Recent Activity (Movements + Payments) (V1.4.4)
-    from app.models.models import Payment
-
-    recent_movements = db.exec(
-        select(InventoryMovement, Customer)
-        .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
-        .where(InventoryMovement.tenant_id == tenant_id)
-        .order_by(desc(InventoryMovement.created_at))
-        .limit(10)
-    ).all()
-
-    recent_payments = db.exec(
-        select(Payment, Customer)
-        .join(Customer, Payment.customer_id == Customer.id, isouter=True)
-        .where(Payment.tenant_id == tenant_id)
-        .order_by(desc(Payment.created_at))
-        .limit(10)
-    ).all()
-
-    # Combine and Sort
-    unified_activity = []
-    for m, c in recent_movements:
-        unified_activity.append(
-            {
-                "id": f"mov-{m.id}",
-                "customer_name": c.name if c else "Desconocido",
-                "description": m.description or f"Movimiento de {m.type}",
-                "quantity": abs(m.quantity or 0),
-                "type": m.type,
-                "amount": float(m.total_amount or 0.0),
-                "created_at": m.created_at,
-                "is_payment": False,
-            }
-        )
-
-    for p, c in recent_payments:
-        unified_activity.append(
-            {
-                "id": f"pay-{p.id}",
-                "customer_name": c.name if c else "Desconocido",
-                "description": f"Pago recibido - {p.method or 'Manual'}",
-                "quantity": 1,
-                "type": "payment",
-                "amount": float(p.amount or 0.0),
-                "created_at": p.created_at,
-                "is_payment": True,
-            }
-        )
-
-    # Final Sort by created_at desc (Paranoid Resilience V1.9.4)
-    def sort_key(x):
-        try:
-            dt = x.get("created_at")
-            if not dt:
+        # Final Sort with Paranoid Logic
+        def sort_key(x):
+            try:
+                dt = x.get("created_at")
+                if not dt:
+                    return datetime(1970, 1, 1)
+                if isinstance(dt, str):
+                    try:
+                        return datetime.fromisoformat(
+                            dt.replace("Z", "+00:00")
+                        ).replace(tzinfo=None)
+                    except:
+                        return datetime(1970, 1, 1)
+                if hasattr(dt, "replace"):
+                    return dt.replace(tzinfo=None)
+                return datetime(1970, 1, 1)
+            except:
                 return datetime(1970, 1, 1)
 
-            # If already a string, try to parse or just return old date
-            if isinstance(dt, str):
-                try:
-                    dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
-                except:
-                    return datetime(1970, 1, 1)
+        unified_activity.sort(key=sort_key, reverse=True)
+        unified_activity = unified_activity[:10]
 
-            # Force to Naive for comparison
-            if hasattr(dt, "replace"):
-                return dt.replace(tzinfo=None)
-            return datetime(1970, 1, 1)
-        except:
-            return datetime(1970, 1, 1)
+        activity_resp = []
+        for item in unified_activity:
+            try:
+                dt = item["created_at"]
+                dt_str = dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
+                activity_resp.append(
+                    {
+                        "id": item["id"],
+                        "customer_name": item["customer_name"],
+                        "description": item["description"],
+                        "quantity": item["quantity"],
+                        "type": item["type"],
+                        "amount": item["amount"],
+                        "created_at": dt_str,
+                        "is_payment": item["is_payment"],
+                    }
+                )
+            except:
+                continue
 
-    unified_activity.sort(key=sort_key, reverse=True)
-    unified_activity = unified_activity[:10]
+        # 6. Billing & Context
+        status = str(active_tenant.billing_status or "trial")
+        # Calc trial days etc
+        trial_end = active_tenant.trial_ends_at
+        days_remaining = (
+            (trial_end.replace(tzinfo=None) - datetime.now().replace(tzinfo=None)).days
+            if trial_end
+            else 0
+        )
+        is_expired = status == "suspended" or (
+            trial_end
+            and datetime.now().replace(tzinfo=None) > trial_end.replace(tzinfo=None)
+        )
 
-    # 6. Billing & Conversion (V1.3 Hardening)
-    def ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
-        """Normalizes naive DB datetimes to UTC to prevent aware/naive crashes (V1.3.8)"""
-        if dt and dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt
-
-    now = datetime.now(timezone.utc)
-    status = active_tenant.billing_status or "trial"
-
-    is_expired = False
-    days_remaining = 0
-
-    trial_end = ensure_aware(active_tenant.trial_ends_at)
-    grace_end = ensure_aware(active_tenant.grace_ends_at)
-
-    if status == "suspended":
-        is_expired = True
-    elif status == "active_paid":
-        is_expired = False
-    elif status == "trial":
-        if not trial_end or now > trial_end:
-            is_expired = True
-        else:
-            days_remaining = (trial_end - now).days
-    elif status == "grace":
-        if not grace_end or now > grace_end:
-            is_expired = True
-        else:
-            days_remaining = (grace_end - now).days
-
-    # Operational triggers (V2 Scaled)
-    total_deliveries = int(total_deliveries_kpi or 0)
-
-    # sales_today already pulled from ds
-
-    activity_resp = [
-        {
-            "id": str(item["id"]),
-            "customer_name": item["customer_name"],
-            "description": item["description"],
-            "quantity": item["quantity"],
-            "type": item["type"],
-            "amount": item["amount"],
-            "created_at": (
-                item["created_at"].isoformat()
-                if item["created_at"]
-                else datetime.now(timezone.utc).isoformat()
-            ),
-            "is_payment": item.get("is_payment", False),
+        return {
+            "stats": {
+                "customer_count": int(customer_count or 0),
+                "product_count": int(product_count or 0),
+                "total_payments": int(total_payments or 0),
+                "total_debt": abs(float(total_debt_abs or 0.0)),
+                "low_stock_count": int(low_stock_count or 0),
+                "weekly_produced": float(produced_this_week or 0.0),
+                "weekly_delivered": float(delivered_abs or 0.0),
+            },
+            "kpis": {
+                "sales_today": float(sales_today or 0.0),
+                "total_debt": float(total_debt_abs or 0.0),
+                "deliveries_today": int(total_deliveries_kpi or 0),
+                "status": status,
+            },
+            "billing": {
+                "status": status,
+                "days_remaining": max(0, days_remaining),
+                "is_expired": bool(is_expired),
+                "trial_ends_at": trial_end.isoformat() if trial_end else None,
+            },
+            "stock": formatted_stock,
+            "debtors": [
+                {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
+                for c, cb in top_debtors
+                if cb and cb.balance is not None and cb.balance < 0
+            ],
+            "activity": activity_resp,
+            "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
+            "business_name": str(active_tenant.name or "Mi Negocio"),
         }
-        for item in unified_activity
-    ]
+    except Exception as e:
+        import traceback
 
-    return {
-        "stats": {
-            "customer_count": int(customer_count or 0),
-            "product_count": int(product_count or 0),
-            "total_payments": int(total_payments or 0),
-            "total_debt": abs(float(total_debt_abs or 0.0)),
-            "low_stock_count": int(low_stock_count or 0),
-            "weekly_produced": float(produced_this_week or 0.0),
-            "weekly_delivered": float(delivered_abs or 0.0),
-        },
-        "kpis": {
-            "sales_today": float(sales_today or 0.0),
-            "total_debt": float(total_debt_abs or 0.0),
-            "deliveries_today": int(float(total_deliveries_kpi or 0.0)),
-            "status": str(active_tenant.billing_status or "active"),
-        },
-        "billing": {
-            "status": str(status or "trial"),
-            "days_remaining": int(days_remaining or 0),
-            "is_expired": bool(is_expired),
-            "trial_ends_at": trial_end.isoformat() if trial_end else None,
-            "grace_ends_at": grace_end.isoformat() if grace_end else None,
-            "subscription_ends_at": (
-                ensure_aware(active_tenant.subscription_ends_at).isoformat()
-                if active_tenant.subscription_ends_at
-                else None
-            ),
-        },
-        "stock": formatted_stock,
-        "debtors": [
-            {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
-            for c, cb in top_debtors
-            if cb and cb.balance is not None and cb.balance < 0
-        ],
-        "activity": activity_resp,
-        "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
-        "business_name": str(active_tenant.name or "Mi Negocio"),
-    }
+        return {
+            "error": "DASHBOARD_CRASH",
+            "message": str(e),
+            "traceback": traceback.format_exc(),
+            "user_id": str(current_user.id),
+            "tenant_id": str(active_tenant.id),
+        }
