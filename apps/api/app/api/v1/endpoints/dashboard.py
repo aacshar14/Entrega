@@ -190,15 +190,16 @@ async def get_dashboard_summary(
             }
         )
 
-    # Final Sort by created_at desc (Resilient to NULL dates V1.6.2)
+    # Final Sort by created_at desc (Resilient to NULL and Aware/Naive mix V1.6.3)
     def sort_key(x):
         dt = x.get("created_at")
         if dt:
-            # Ensure it's a datetime object
-            if isinstance(dt, datetime):
-                return dt
-            return datetime.now(timezone.utc)
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+            # Ensure it's naive to match DB instances
+            if hasattr(dt, "tzinfo") and dt.tzinfo is not None:
+                return dt.replace(tzinfo=None)
+            return dt
+        # Return a very old NAIVE date as fallback
+        return datetime(1970, 1, 1)
 
     unified_activity.sort(key=sort_key, reverse=True)
     unified_activity = unified_activity[:10]
