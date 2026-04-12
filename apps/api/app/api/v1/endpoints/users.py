@@ -111,7 +111,7 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
         and has_products,  # Business rule: customers + stock = ready
         billing_status=tenant.billing_status or "trial",
         trial_ends_at=tenant.trial_ends_at,
-        grace_ends_at=tenant.grace_ends_at,
+        grace_ends_at=None,
         subscription_ends_at=tenant.subscription_ends_at,
     )
 
