@@ -137,11 +137,12 @@ async def get_me(
         for t in tenants_db:
             try:
                 t_info = get_tenant_info(db, t)
+                is_platform = t.slug == "entrega"
 
                 m_info = MembershipInfo(
                     tenant=t_info,
                     role="owner",
-                    is_default=t.slug == "entrega" or not membership_infos,
+                    is_default=is_platform,
                 )
                 membership_infos.append(m_info)
 
@@ -153,7 +154,7 @@ async def get_me(
                     "users.get_me.admin_tenant_error", tenant_id=str(t.id), error=str(e)
                 )
 
-        # fallback: if no active tenant, but we have memberships, pick default or first
+        # fallback: if no active tenant, pick 'entrega' first, or simply the first one available
         if not active_tenant_info and membership_infos:
             default_m = next(
                 (m for m in membership_infos if m.is_default), membership_infos[0]

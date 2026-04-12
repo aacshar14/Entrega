@@ -255,10 +255,11 @@ async def get_active_membership(
                     status_code=400, detail="Invalid X-Tenant-Id format."
                 )
         else:
-            # Fallback for admin: Pick first tenant if none specified
+            # Fallback for admin: Pick 'entrega' (Platform) first, then any other
             from app.models.models import Tenant
-
-            first_tenant = db.exec(select(Tenant)).first()
+            first_tenant = db.exec(
+                select(Tenant).where(Tenant.slug == "entrega")
+            ).first() or db.exec(select(Tenant)).first()
             if first_tenant:
                 membership = TenantUser(
                     tenant_id=first_tenant.id,
