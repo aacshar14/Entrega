@@ -22,7 +22,7 @@ def get_application() -> FastAPI:
         version="1.4.0",
         docs_url="/docs",
         redoc_url="/redoc",
-        redirect_slashes=False,  # Reverting to handle manually or via router
+        redirect_slashes=True,  # 🛡️ Hardening: Ensure standard slash behavior (V1.5.1)
     )
 
     # Setup Rate Limiting
@@ -44,6 +44,7 @@ def get_application() -> FastAPI:
     # We must explicitly list the authorized origins to allow the Authorization header.
     authorized_origins = [
         "https://entrega.space",
+        "https://app.entrega.space",
         "https://www.entrega.space",
         "https://entregaspace.vercel.app",
         "http://localhost:3000",
