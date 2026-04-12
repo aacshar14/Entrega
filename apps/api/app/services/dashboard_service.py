@@ -269,7 +269,7 @@ class DashboardService:
                     Payment.created_at >= day_start,
                     Payment.created_at < day_end,
                 )
-            ).one()
+            ).first()
             or 0.0
         )
 
@@ -280,7 +280,7 @@ class DashboardService:
                         CustomerBalance.tenant_id == tenant_id,
                         CustomerBalance.balance < 0,
                     )
-                ).one()
+                ).first()
                 or 0.0
             )
         )
@@ -293,12 +293,12 @@ class DashboardService:
                     InventoryMovement.created_at >= day_start,
                     InventoryMovement.created_at < day_end,
                 )
-            ).one()
+            ).first()
             or 0
         )
 
         return {
-            "sales_today": float(sales),
-            "total_debt": float(debt),
-            "deliveries_today": float(deliveries),
+            "sales_today": float(sales or 0.0),
+            "total_debt": float(debt or 0.0),
+            "deliveries_today": float(deliveries or 0.0),
         }
