@@ -145,7 +145,7 @@ async def get_dashboard_summary(
                     "id": str(p.id),
                     "type": "payment",
                     "customer_name": str(c.name if c else "S/N"),
-                    "description": str(p.payment_method or "Pago"),
+                    "description": str(p.method or "Pago"),
                     "quantity": 0.0,
                     "amount": float(p.amount or 0.0),
                     "created_at": p.created_at,
