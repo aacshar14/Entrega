@@ -57,7 +57,10 @@ async def get_dashboard_summary(
     # 5. Weekly Stats (Production vs Deliveries)
     from datetime import timedelta
 
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    # 🛡️ Hardening: Force naive comparison to match DB records (V1.4.3)
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).replace(
+        tzinfo=None
+    )
 
     from app.models.models import InventoryMovement
 
