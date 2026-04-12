@@ -30,7 +30,7 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. KPIs Authoritative Refresh (Audit Verified)
+        # 1. KPIs Authoritative Refresh
         from app.services.dashboard_service import DashboardService
 
         ds = DashboardService(db)
@@ -40,7 +40,7 @@ async def get_dashboard_summary(
         sales_today = float(kpis.get("sales_today", 0.0) or 0.0)
         total_deliveries_kpi = int(float(kpis.get("deliveries_today", 0.0) or 0.0))
 
-        # 2. Historical Total Payments (CORRECTED: SUM instead of COUNT V1.9.16)
+        # 2. Financial History
         historical_total_payments = (
             db.exec(
                 select(func.sum(Payment.amount)).where(Payment.tenant_id == tenant_id)
@@ -48,7 +48,7 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 3. Weekly Flow (Audit Verified)
+        # 3. Weekly Flow
         last_monday_naive = (now_naive - timedelta(days=now_naive.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -75,27 +75,20 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 4. Stock Maestro (Format fixed + "Outside" Logic V1.9.16)
-        low_stock_count = db.exec(
-            select(func.count(StockBalance.id)).where(
-                StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
-            )
-        ).one()
-
+        # 4. Stock Maestro with "Outside" logic
         stock_balances = db.exec(
-            select(Product.id, Product.name, StockBalance.quantity)
+            select(Product, StockBalance)
             .join(StockBalance, Product.id == StockBalance.product_id)
             .where(Product.tenant_id == tenant_id)
         ).all()
 
         formatted_stock = []
-        for p_id, p_name, p_qty in stock_balances:
-            # Calculate "Outside" as sum of deliveries minus returns for this specific product
+        for p, sb in stock_balances:
             outside_qty = (
                 db.exec(
                     select(func.sum(InventoryMovement.quantity)).where(
                         InventoryMovement.tenant_id == tenant_id,
-                        InventoryMovement.product_id == p_id,
+                        InventoryMovement.product_id == p.id,
                         InventoryMovement.type.in_(
                             ["delivery", "delivery_to_customer"]
                         ),
@@ -104,42 +97,54 @@ async def get_dashboard_summary(
                 or 0.0
             )
 
-            # Since delivery quantities are stored as negative in InventoryMovement, we take absolute value
             outside_abs = abs(float(outside_qty))
-
             formatted_stock.append(
                 {
-                    "name": str(p_name),
-                    "quantity": float(p_qty or 0.0),  # Inside Warehouse
-                    "quantity_outside": outside_abs,  # Total historical deliveries (proxy for "outside")
-                    "total": float(p_qty or 0.0) + outside_abs,
+                    "name": str(p.name),
+                    "quantity": float(sb.quantity or 0.0),
+                    "quantity_outside": outside_abs,
+                    "total": float(sb.quantity or 0.0) + outside_abs,
                 }
             )
 
-        # 5. Activity
+        # 5. Activity (CORRECTED: Calculate amount based on CRM Tier V1.9.17)
         recent_movements = db.exec(
-            select(InventoryMovement, Customer)
+            select(InventoryMovement, Customer, Product)
             .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
+            .join(Product, InventoryMovement.product_id == Product.id, isouter=True)
             .where(InventoryMovement.tenant_id == tenant_id)
             .order_by(desc(InventoryMovement.created_at))
-            .limit(10)
+            .limit(15)
         ).all()
 
         recent_activity_resp = []
-        for m, c in recent_movements:
+        for m, c, p in recent_movements:
+            # Dynamic pricing based on tier
+            calculated_amount = 0.0
+            if m.type in ["delivery", "delivery_to_customer"] and p:
+                tier = (c.tier if c else "menudeo") or "menudeo"
+                if tier == "mayoreo":
+                    price = p.price_mayoreo or p.price or 0.0
+                elif tier == "especial":
+                    price = p.price_especial or p.price or 0.0
+                else:  # menudeo
+                    price = p.price_menudeo or p.price or 0.0
+
+                calculated_amount = abs(m.quantity) * price
+
             recent_activity_resp.append(
                 {
                     "id": str(m.id),
                     "customer_name": str(c.name if c else "S/N"),
-                    "description": f"{m.quantity} unid. ({m.type})",
+                    "description": f"{abs(m.quantity)} unid. ({m.type})",
                     "quantity": float(m.quantity or 0.0),
                     "type": "movement",
-                    "amount": 0.0,
+                    "amount": float(calculated_amount),  # Dynamic value
                     "created_at": m.created_at.isoformat() if m.created_at else None,
                 }
             )
 
-        # 6. Billing & Metadata
+        # 6. Response
         status = str(active_tenant.billing_status or "trial")
         trial_end = active_tenant.trial_ends_at
         days_rem = (trial_end.replace(tzinfo=None) - now_naive).days if trial_end else 0
@@ -154,11 +159,13 @@ async def get_dashboard_summary(
                 "product_count": db.exec(
                     select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
                 ).one(),
-                "total_payments": float(
-                    historical_total_payments
-                ),  # NOW SUM, NOT COUNT
+                "total_payments": float(historical_total_payments),
                 "total_debt": total_debt_abs,
-                "low_stock_count": int(low_stock_count or 0),
+                "low_stock_count": db.exec(
+                    select(func.count(StockBalance.id)).where(
+                        StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
+                    )
+                ).one(),
                 "weekly_produced": float(produced_this_week or 0.0),
                 "weekly_delivered": abs(float(delivered_this_week or 0.0)),
             },
@@ -193,7 +200,7 @@ async def get_dashboard_summary(
         import traceback
 
         return {
-            "error": "DASHBOARD_LOGIC_FAILURE",
+            "error": "DASHBOARD_TIER_LOGIC_FAILURE",
             "message": str(e),
             "traceback": traceback.format_exc(),
         }
