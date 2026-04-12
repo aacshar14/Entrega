@@ -170,34 +170,72 @@ jobs:
     if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - name: Dynamic Supabase Login
-        id: auth
+      - name: Get Smoke Test Token from Supabase
+        id: smoke_auth
         run: |
-          if [ -z "${{ secrets.SMOKE_USER_EMAIL }}" ] || [ -z "${{ secrets.SMOKE_USER_PASSWORD }}" ]; then
-            echo "❌ CRITICAL: Smoke User credentials missing in GitHub Secrets!"
+          set -euo pipefail
+
+          echo "🔍 Validating required secrets..."
+
+          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+            echo "❌ SUPABASE_URL missing"
             exit 1
           fi
-          
-          echo "🔐 Obtaining fresh token from Supabase..."
-          AUTH_RES=$(curl -s -X POST "${{ secrets.SUPABASE_URL }}/auth/v1/token?grant_type=password" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+
+          if [ -z "${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}" ]; then
+            echo "❌ SUPABASE_PUBLISHABLE_DEFAULT_KEY missing"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.SMOKE_USER_EMAIL }}" ]; then
+            echo "❌ SMOKE_USER_EMAIL missing"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.SMOKE_USER_PASSWORD }}" ]; then
+            echo "❌ SMOKE_USER_PASSWORD missing"
+            exit 1
+          fi
+
+          echo "🔐 Authenticating against Supabase..."
+
+          AUTH_RESPONSE=$(curl -sS -X POST "${{ secrets.SUPABASE_URL }}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}" \
             -H "Content-Type: application/json" \
-            -d "{\"email\": \"${{ secrets.SMOKE_USER_EMAIL }}\", \"password\": \"${{ secrets.SMOKE_USER_PASSWORD }}\"}")
-          
-          TOKEN=$(echo "$AUTH_RES" | jq -r '.access_token')
-          
-          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
-            echo "❌ Authentication Failed!"
-            echo "Response: $AUTH_RES"
+            --data @- <<EOF
+      {
+        "email": "${{ secrets.SMOKE_USER_EMAIL }}",
+        "password": "${{ secrets.SMOKE_USER_PASSWORD }}"
+      }
+      EOF
+          )
+
+          echo "$AUTH_RESPONSE" > /tmp/smoke_auth.json
+
+          ACCESS_TOKEN=$(python3 - <<EOF
+      import json
+      try:
+          data = json.load(open("/tmp/smoke_auth.json"))
+          print(data.get("access_token",""))
+      except:
+          print("")
+      EOF
+          )
+
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ Supabase authentication failed"
+            echo "Response:"
+            cat /tmp/smoke_auth.json
             exit 1
           fi
-          
-          echo "::add-mask::$TOKEN"
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+          echo "SMOKE_ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+          echo "✅ Token acquired successfully"
 
       - name: API Contract Validation
         run: |
-          TOKEN="${{ steps.auth.outputs.token }}"
+          TOKEN="${{ env.SMOKE_ACCESS_TOKEN }}"
           BASE_URL="https://api.entrega.space/api/v1"
           
           check_route() {
