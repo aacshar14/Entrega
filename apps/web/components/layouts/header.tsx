@@ -28,7 +28,7 @@ export function Header({ onMenuClick }) {
       user?.platform_role === "admin"
         ? "Plataforma Admin"
         : activeRole === "owner"
-          ? "Dueño / Admin"
+          ? "Dueño"
           : "Operador",
   };
 

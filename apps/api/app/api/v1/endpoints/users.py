@@ -137,8 +137,6 @@ async def get_me(
         for t in tenants_db:
             try:
                 t_info = get_tenant_info(db, t)
-                # 👑 Admin Bypass: Admins are always "ready" to manage the platform
-                t_info.ready = True
 
                 m_info = MembershipInfo(
                     tenant=t_info,
