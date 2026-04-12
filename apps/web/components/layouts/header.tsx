@@ -114,12 +114,12 @@ export function Header({ onMenuClick }) {
                   Empresa Activa
                 </p>
                 <p className="text-sm font-black text-[#1D3146]">
-                  {activeTenant?.name || "Ninguna"}
+                  {isPlatformPath ? "EntréGA Platform" : activeTenant?.name || "Ninguna"}
                 </p>
               </div>
               <div className="space-y-1">
                 <Link
-                  href="/settings"
+                  href={isPlatformPath ? "/platform/settings" : "/settings"}
                   onClick={() => setShowUserMenu(false)}
                   className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-[#56CCF2]/5 hover:text-[#56CCF2] rounded-xl transition-all"
                 >

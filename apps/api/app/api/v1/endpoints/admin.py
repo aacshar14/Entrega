@@ -50,6 +50,9 @@ async def admin_health_check():
 
 
 @router.get(
+    "/queue/stats/", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+)
+@router.get(
     "/queue/stats", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
 )
 async def get_queue_stats(db: Session = Depends(get_session)):
@@ -159,6 +162,10 @@ async def get_queue_stats(db: Session = Depends(get_session)):
 
 
 @router.get(
+    "/whatsapp/funnel/",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+@router.get(
     "/whatsapp/funnel",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
 )
@@ -199,6 +206,10 @@ async def get_whatsapp_funnel(db: Session = Depends(get_session)):
     }
 
 
+@router.get(
+    "/tenants/pressure/",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
 @router.get(
     "/tenants/pressure",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
@@ -338,6 +349,7 @@ async def get_capacity_advisor(db: Session = Depends(get_session)):
     }
 
 
+@router.get("/users/", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 @router.get("/users", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 async def get_all_users(db: Session = Depends(get_session)):
     """
@@ -381,6 +393,10 @@ async def get_all_users(db: Session = Depends(get_session)):
 
 
 @router.patch(
+    "/users/{user_id}/status/",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
+@router.patch(
     "/users/{user_id}/status",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
 )
@@ -400,6 +416,10 @@ async def update_user_status(
     return {"status": "updated", "is_active": user.is_active}
 
 
+@router.delete(
+    "/users/{user_id}/",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
 @router.delete(
     "/users/{user_id}",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
@@ -666,6 +686,10 @@ async def update_tenant_billing(
     return {"message": "Billing updated", "status": tenant.billing_status}
 
 
+@router.get(
+    "/whatsapp/status/",
+    dependencies=[Depends(require_platform_role(["admin", "owner"]))],
+)
 @router.get(
     "/whatsapp/status",
     dependencies=[Depends(require_platform_role(["admin", "owner"]))],
