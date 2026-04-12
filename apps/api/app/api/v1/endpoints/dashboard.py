@@ -207,21 +207,26 @@ async def get_dashboard_summary(
         },
         "stock": formatted_stock,
         "debtors": [
-            {"name": c.name, "amount": abs(float(cb.balance))}
+            {"name": c.name, "amount": abs(float(cb.balance or 0.0))}
             for c, cb in top_debtors
-            if cb.balance < 0
+            if cb and cb.balance is not None and cb.balance < 0
         ],
         "recent_activity": [
             {
                 "id": str(m.id),
                 "customer_name": c.name if c else "Desconocido",
                 "description": m.description or "Movimiento de stock",
-                "quantity": abs(m.quantity),
-                "type": m.type,
-                "amount": m.total_amount,
-                "created_at": m.created_at.isoformat(),
+                "quantity": abs(m.quantity or 0),
+                "type": m.type or "unknown",
+                "amount": float(m.total_amount or 0.0),
+                "created_at": (
+                    m.created_at.isoformat()
+                    if m.created_at
+                    else datetime.now(timezone.utc).isoformat()
+                ),
             }
             for m, c in recent_movements
+            if m
         ],
         "welcome_message": f"¡Hola de nuevo, {current_user.full_name}!",
         "business_name": active_tenant.name,
