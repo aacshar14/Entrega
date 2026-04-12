@@ -7,6 +7,10 @@ on:
       - completed
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 env:
   PROJECT_ID: entrega-468815
   REGION: us-central1
@@ -16,6 +20,7 @@ env:
 jobs:
   changes:
     name: Detect Changes
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
