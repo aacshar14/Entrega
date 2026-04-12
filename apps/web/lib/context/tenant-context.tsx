@@ -253,6 +253,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         if (!authIsReady.current) {
           authIsReady.current = true;
           await fetchContext(undefined, session.access_token);
+        } else {
+          setIsLoading(false);
         }
       } else {
         setIsLoading(false);
