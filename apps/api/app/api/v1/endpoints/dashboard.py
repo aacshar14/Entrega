@@ -30,7 +30,7 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. KPIs Authoritative Refresh
+        # 1. KPIs
         from app.services.dashboard_service import DashboardService
 
         ds = DashboardService(db)
@@ -48,16 +48,18 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 3. Weekly Flow
+        # 3. Weekly Flow (CORRECTED: IN uses 'adjustment' > 0 V1.9.18)
         last_monday_naive = (now_naive - timedelta(days=now_naive.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
 
+        # IN = Adjustments with positive quantity
         produced_this_week = (
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
                     InventoryMovement.tenant_id == tenant_id,
-                    InventoryMovement.type == "production",
+                    InventoryMovement.type == "adjustment",
+                    InventoryMovement.quantity > 0,
                     InventoryMovement.created_at >= last_monday_naive,
                 )
             ).one()
@@ -75,11 +77,15 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 4. Stock Maestro with "Outside" logic
+        # 4. Stock Maestro (Excluding Hidden/Test Products V1.9.18)
+        # Note: In the future we can use is_active, but for now we filter 'Birthday Cake' manually if requested
         stock_balances = db.exec(
             select(Product, StockBalance)
             .join(StockBalance, Product.id == StockBalance.product_id)
-            .where(Product.tenant_id == tenant_id)
+            .where(
+                Product.tenant_id == tenant_id,
+                Product.name != "Birthday Cake",  # Explicit manual filter for cleanup
+            )
         ).all()
 
         formatted_stock = []
@@ -107,7 +113,7 @@ async def get_dashboard_summary(
                 }
             )
 
-        # 5. Activity (CORRECTED: Calculate amount based on CRM Tier V1.9.17)
+        # 5. Activity
         recent_movements = db.exec(
             select(InventoryMovement, Customer, Product)
             .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
@@ -119,17 +125,14 @@ async def get_dashboard_summary(
 
         recent_activity_resp = []
         for m, c, p in recent_movements:
-            # Dynamic pricing based on tier
             calculated_amount = 0.0
             if m.type in ["delivery", "delivery_to_customer"] and p:
                 tier = (c.tier if c else "menudeo") or "menudeo"
+                price = p.price_menudeo or p.price or 0.0
                 if tier == "mayoreo":
                     price = p.price_mayoreo or p.price or 0.0
                 elif tier == "especial":
                     price = p.price_especial or p.price or 0.0
-                else:  # menudeo
-                    price = p.price_menudeo or p.price or 0.0
-
                 calculated_amount = abs(m.quantity) * price
 
             recent_activity_resp.append(
@@ -139,7 +142,7 @@ async def get_dashboard_summary(
                     "description": f"{abs(m.quantity)} unid. ({m.type})",
                     "quantity": float(m.quantity or 0.0),
                     "type": "movement",
-                    "amount": float(calculated_amount),  # Dynamic value
+                    "amount": float(calculated_amount),
                     "created_at": m.created_at.isoformat() if m.created_at else None,
                 }
             )
@@ -149,6 +152,12 @@ async def get_dashboard_summary(
         trial_end = active_tenant.trial_ends_at
         days_rem = (trial_end.replace(tzinfo=None) - now_naive).days if trial_end else 0
 
+        product_count = db.exec(
+            select(func.count(Product.id)).where(
+                Product.tenant_id == tenant_id, Product.name != "Birthday Cake"
+            )
+        ).one()
+
         return {
             "stats": {
                 "customer_count": db.exec(
@@ -156,9 +165,7 @@ async def get_dashboard_summary(
                         Customer.tenant_id == tenant_id
                     )
                 ).one(),
-                "product_count": db.exec(
-                    select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
-                ).one(),
+                "product_count": product_count,
                 "total_payments": float(historical_total_payments),
                 "total_debt": total_debt_abs,
                 "low_stock_count": db.exec(
@@ -166,7 +173,9 @@ async def get_dashboard_summary(
                         StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
                     )
                 ).one(),
-                "weekly_produced": float(produced_this_week or 0.0),
+                "weekly_produced": float(
+                    produced_this_week or 0.0
+                ),  # Reflecting adjustments as IN
                 "weekly_delivered": abs(float(delivered_this_week or 0.0)),
             },
             "stock": formatted_stock,
@@ -200,7 +209,7 @@ async def get_dashboard_summary(
         import traceback
 
         return {
-            "error": "DASHBOARD_TIER_LOGIC_FAILURE",
+            "error": "DASHBOARD_INVENTORY_LOGIC_FAILURE",
             "message": str(e),
             "traceback": traceback.format_exc(),
         }
