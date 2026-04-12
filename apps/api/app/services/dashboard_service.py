@@ -28,7 +28,9 @@ class DashboardService:
     ) -> Optional[float]:
         """Reads a metric from the snapshot table for a specific day."""
         # 🛡️ Hardening: Force naive comparison to prevent aware/naive crashes (V1.4.1)
-        period_start = date.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+        period_start = date.replace(hour=0, minute=0, second=0, microsecond=0).replace(
+            tzinfo=None
+        )
 
         snapshot = self.db.exec(
             select(MetricSnapshot).where(
@@ -48,7 +50,9 @@ class DashboardService:
         if not date:
             date = datetime.now(timezone.utc)
 
-        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0).replace(
+            tzinfo=None
+        )
         day_end = (day_start + timedelta(days=1)).replace(tzinfo=None)
 
         sales = (
