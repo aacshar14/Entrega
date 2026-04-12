@@ -140,6 +140,9 @@ async def get_dashboard_summary(
     ).all()
 
     # 7. Recent Activity (Last 10 movements)
+    # 6. Unified Recent Activity (Movements + Payments) (V1.4.4)
+    from app.models.models import Payment
+
     recent_movements = db.exec(
         select(InventoryMovement, Customer)
         .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
@@ -147,6 +150,48 @@ async def get_dashboard_summary(
         .order_by(desc(InventoryMovement.created_at))
         .limit(10)
     ).all()
+
+    recent_payments = db.exec(
+        select(Payment, Customer)
+        .join(Customer, Payment.customer_id == Customer.id, isouter=True)
+        .where(Payment.tenant_id == tenant_id)
+        .order_by(desc(Payment.created_at))
+        .limit(10)
+    ).all()
+
+    # Combine and Sort
+    unified_activity = []
+    for m, c in recent_movements:
+        unified_activity.append(
+            {
+                "id": f"mov-{m.id}",
+                "customer_name": c.name if c else "Desconocido",
+                "description": m.description or f"Movimiento de {m.type}",
+                "quantity": abs(m.quantity or 0),
+                "type": m.type,
+                "amount": float(m.total_amount or 0.0),
+                "created_at": m.created_at,
+                "is_payment": False,
+            }
+        )
+
+    for p, c in recent_payments:
+        unified_activity.append(
+            {
+                "id": f"pay-{p.id}",
+                "customer_name": c.name if c else "Desconocido",
+                "description": f"Pago recibido - {p.payment_method or 'Manual'}",
+                "quantity": 1,
+                "type": "payment",
+                "amount": float(p.amount or 0.0),
+                "created_at": p.created_at,
+                "is_payment": True,
+            }
+        )
+
+    # Final Sort by created_at desc
+    unified_activity.sort(key=lambda x: x["created_at"], reverse=True)
+    unified_activity = unified_activity[:10]
 
     # 6. Billing & Conversion (V1.3 Hardening)
     def ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
@@ -216,20 +261,20 @@ async def get_dashboard_summary(
         ],
         "recent_activity": [
             {
-                "id": str(m.id),
-                "customer_name": c.name if c else "Desconocido",
-                "description": m.description or "Movimiento de stock",
-                "quantity": abs(m.quantity or 0),
-                "type": m.type or "unknown",
-                "amount": float(m.total_amount or 0.0),
+                "id": str(item["id"]),
+                "customer_name": item["customer_name"],
+                "description": item["description"],
+                "quantity": item["quantity"],
+                "type": item["type"],
+                "amount": item["amount"],
                 "created_at": (
-                    m.created_at.isoformat()
-                    if m.created_at
+                    item["created_at"].isoformat()
+                    if item["created_at"]
                     else datetime.now(timezone.utc).isoformat()
                 ),
+                "is_payment": item.get("is_payment", False),
             }
-            for m, c in recent_movements
-            if m
+            for item in unified_activity
         ],
         "welcome_message": f"¡Hola de nuevo, {current_user.full_name}!",
         "business_name": active_tenant.name,
