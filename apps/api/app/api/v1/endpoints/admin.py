@@ -40,6 +40,15 @@ class DemoMessageRequest(BaseModel):
     from_number: str = "5218781234567"
 
 
+@router.get("/health/", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+@router.get("/health", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
+async def admin_health_check():
+    """
+    Platform Admin only: Quick connectivity check for the admin module.
+    """
+    return {"status": "ok", "module": "admin"}
+
+
 @router.get(
     "/queue/stats", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
 )
