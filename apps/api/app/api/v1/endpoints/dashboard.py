@@ -40,10 +40,10 @@ async def get_dashboard_summary(
     # 2. Basic Metadata counts
     customer_count = db.exec(
         select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
-    ).one()
+    ).first()
     product_count = db.exec(
         select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
-    ).one()
+    ).first()
 
     total_payments = sales_today  # Approximate as payments today for dashboard card
 
@@ -52,7 +52,7 @@ async def get_dashboard_summary(
         select(func.count(StockBalance.id))
         .where(StockBalance.tenant_id == tenant_id)
         .where(StockBalance.quantity <= 10)
-    ).one()
+    ).first()
 
     # 5. Weekly Stats (Production vs Deliveries)
     from datetime import timedelta
@@ -72,7 +72,7 @@ async def get_dashboard_summary(
             .where(InventoryMovement.type.in_(["restock", "adjustment"]))
             .where(InventoryMovement.quantity > 0)
             .where(InventoryMovement.created_at >= seven_days_ago)
-        ).one()
+        ).first()
         or 0.0
     )
 
@@ -82,7 +82,7 @@ async def get_dashboard_summary(
             .where(InventoryMovement.tenant_id == tenant_id)
             .where(InventoryMovement.type.in_(["delivery", "delivery_to_customer"]))
             .where(InventoryMovement.created_at >= seven_days_ago)
-        ).one()
+        ).first()
         or 0.0
     )
 
@@ -180,7 +180,7 @@ async def get_dashboard_summary(
             {
                 "id": f"pay-{p.id}",
                 "customer_name": c.name if c else "Desconocido",
-                "description": f"Pago recibido - {p.payment_method or 'Manual'}",
+                "description": f"Pago recibido - {p.method or 'Manual'}",
                 "quantity": 1,
                 "type": "payment",
                 "amount": float(p.amount or 0.0),
