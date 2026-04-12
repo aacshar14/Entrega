@@ -40,9 +40,19 @@ def get_application() -> FastAPI:
     app.add_middleware(ObservabilityMiddleware)
 
     # Include CORSMiddleware
+    # 🛡️ Hardening: Browsers forbid allow_origins=["*"] when allow_credentials=True.
+    # We must explicitly list the authorized origins to allow the Authorization header.
+    authorized_origins = [
+        "https://entrega.space",
+        "https://www.entrega.space",
+        "https://entregaspace.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=authorized_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

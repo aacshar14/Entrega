@@ -56,6 +56,7 @@ def get_db():
 
 
 async def get_current_user(
+    request: Request,
     token: Optional[HTTPAuthorizationCredentials] = Security(security),
     db: Session = Depends(get_db),
 ) -> Any:
@@ -66,6 +67,13 @@ async def get_current_user(
     from app.core.logging import logger
 
     if not token:
+        safe_headers = dict(request.headers)
+        if "authorization" in safe_headers:
+            safe_headers["authorization"] = "PRESENT [MASKED]"
+        logger.warning(
+            "AUTH FAILURE: No Bearer token found in request headers",
+            headers=safe_headers,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
