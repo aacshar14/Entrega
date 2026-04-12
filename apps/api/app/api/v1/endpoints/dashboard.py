@@ -102,7 +102,9 @@ async def get_dashboard_summary(
         .where(InventoryMovement.type.in_(outside_types))
         .group_by(InventoryMovement.product_id)
     )
-    outside_data = {row[0]: -float(row[1]) for row in db.exec(outside_query).all()}
+    outside_data = {
+        row[0]: -float(row[1] or 0.0) for row in db.exec(outside_query).all()
+    }
 
     top_stock_query = (
         select(Product.id, Product.name, StockBalance.quantity)
@@ -174,7 +176,7 @@ async def get_dashboard_summary(
             days_remaining = (grace_end - now).days
 
     # Operational triggers (V2 Scaled)
-    total_deliveries = int(total_deliveries_kpi)
+    total_deliveries = int(total_deliveries_kpi or 0)
 
     # sales_today already pulled from ds
 

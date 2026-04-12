@@ -50,7 +50,6 @@ class DashboardService:
         day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
 
-        # 1. Sales Today (Sum of payments)
         sales = (
             self.db.exec(
                 select(func.sum(Payment.amount)).where(
@@ -58,7 +57,7 @@ class DashboardService:
                     Payment.created_at >= day_start,
                     Payment.created_at < day_end,
                 )
-            ).one()
+            ).first()
             or 0.0
         )
 
@@ -70,7 +69,7 @@ class DashboardService:
                         CustomerBalance.tenant_id == tenant_id,
                         CustomerBalance.balance < 0,
                     )
-                ).one()
+                ).first()
                 or 0.0
             )
         )
@@ -84,7 +83,7 @@ class DashboardService:
                     InventoryMovement.created_at >= day_start,
                     InventoryMovement.created_at < day_end,
                 )
-            ).one()
+            ).first()
             or 0
         )
 
