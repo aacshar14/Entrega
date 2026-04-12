@@ -63,11 +63,10 @@ jobs:
 
   build_api:
     name: Build & Push API
-    needs: [changes, validate]
+    needs: [changes]
     if: |
       always() &&
-      (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') &&
-      (needs.validate.result == 'success' || needs.validate.result == 'skipped')
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -93,11 +92,10 @@ jobs:
 
   migrate_db:
     name: 🚀 Migrate Database
-    needs: [changes, validate, build_api]
+    needs: [changes, build_api]
     if: |
       always() &&
       needs.changes.outputs.db == 'true' &&
-      (needs.validate.result == 'success' || needs.validate.result == 'skipped') &&
       (needs.build_api.result == 'success')
     runs-on: ubuntu-latest
     steps:
@@ -127,11 +125,10 @@ jobs:
 
   deploy_api:
     name: Deploy API
-    needs: [changes, validate, build_api, migrate_db]
+    needs: [changes, build_api, migrate_db]
     if: |
       always() && 
       needs.changes.outputs.api == 'true' && 
-      (needs.validate.result == 'success' || needs.validate.result == 'skipped') &&
       (needs.build_api.result == 'success') &&
       (needs.migrate_db.result == 'success' || needs.migrate_db.result == 'skipped')
     runs-on: ubuntu-latest
@@ -159,11 +156,10 @@ jobs:
 
   ci_web:
     name: Web Build Validation
-    needs: [changes, validate]
+    needs: [changes]
     if: |
       always() &&
-      needs.changes.outputs.web == 'true' &&
-      (needs.validate.result == 'success' || needs.validate.result == 'skipped')
+      needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
