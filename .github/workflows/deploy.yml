@@ -204,23 +204,23 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }}" \
             -H "Content-Type: application/json" \
             --data @- <<EOF
-      {
-        "email": "${{ secrets.SMOKE_USER_EMAIL }}",
-        "password": "${{ secrets.SMOKE_USER_PASSWORD }}"
-      }
-      EOF
+          {
+            "email": "${{ secrets.SMOKE_USER_EMAIL }}",
+            "password": "${{ secrets.SMOKE_USER_PASSWORD }}"
+          }
+          EOF
           )
 
           echo "$AUTH_RESPONSE" > /tmp/smoke_auth.json
 
           ACCESS_TOKEN=$(python3 - <<EOF
-      import json
-      try:
-          data = json.load(open("/tmp/smoke_auth.json"))
-          print(data.get("access_token",""))
-      except:
-          print("")
-      EOF
+          import json
+          try:
+              data = json.load(open("/tmp/smoke_auth.json"))
+              print(data.get("access_token",""))
+          except:
+              print("")
+          EOF
           )
 
           if [ -z "$ACCESS_TOKEN" ]; then
