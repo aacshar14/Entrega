@@ -12,8 +12,18 @@ from app.models.models import User, Tenant, TenantUser
 
 
 def seed():
-    print(f"Connecting to: {settings.DATABASE_URL.split('@')[-1]}")  # Log safe URL
-    engine = create_engine(settings.DATABASE_URL, echo=True)
+    # 🔒 Production Guard: NEVER run against non-local DBs without explicit override
+    db_url = settings.DATABASE_URL
+    if "localhost" not in db_url and "127.0.0.1" not in db_url:
+        print("!!! PREVENTING PRODUCTION SEEDING !!!")
+        print(f"Target: {db_url.split('@')[-1]}")
+        confirm = os.getenv("FORCE_PRODUCTION_SEED", "false")
+        if confirm.lower() != "true":
+            print("Aborting. To force this, set FORCE_PRODUCTION_SEED=true")
+            sys.exit(1)
+
+    print(f"Connecting to: {db_url.split('@')[-1]}")
+    engine = create_engine(db_url, echo=True)
 
     # 0. Ensure tables are created IN THE SAME SESSION
     print("Forcing table creation...")
