@@ -8,6 +8,7 @@ import { useTenant } from "../lib/context/tenant-context";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layouts/sidebar";
 import { Header } from "@/components/layouts/header";
+import Logo from "@/components/logo";
 
 function UI_Shell({ children }) {
   const pathname = usePathname();
