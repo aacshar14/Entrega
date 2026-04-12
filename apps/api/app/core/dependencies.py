@@ -190,7 +190,7 @@ async def get_current_user(
         # 🛡️ Hardening: Bind user_id to session context immediately
         structlog.contextvars.bind_contextvars(user_id=str(user.id))
 
-        if not user.is_active:
+        if user.is_active is False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Inactive account"
             )
@@ -279,7 +279,7 @@ async def get_active_membership(
                 select(TenantUser).where(
                     TenantUser.user_id == current_user.id,
                     TenantUser.tenant_id == target_id,
-                    TenantUser.is_active == True,
+                    TenantUser.is_active != False,
                 )
             ).first()
 
@@ -304,7 +304,7 @@ async def get_active_membership(
         # Fallback to default/first membership if no header
         membership = db.exec(
             select(TenantUser)
-            .where(TenantUser.user_id == current_user.id, TenantUser.is_active == True)
+            .where(TenantUser.user_id == current_user.id, TenantUser.is_active != False)
             .order_by(TenantUser.is_default.desc())
         ).first()
 
