@@ -3,9 +3,9 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  X, 
-  ArrowLeft, 
+import {
+  X,
+  ArrowLeft,
   Settings,
   LayoutDashboard,
   Package,
@@ -18,7 +18,7 @@ import {
   HeartPulse,
   Coins,
   User as UserIcon,
-  Layers
+  Layers,
 } from "lucide-react";
 import { useTenant } from "@/lib/context/tenant-context";
 import { FEATURES } from "@/config/feature-flags";
@@ -36,11 +36,20 @@ const tenantMenuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Users, label: "Clientes", href: "/customers" },
   { icon: Package, label: "Inventario", href: "/stock" },
-  { icon: Layers, label: "Inventario por Cliente", href: "/customer-inventory" },
+  {
+    icon: Layers,
+    label: "Inventario por Cliente",
+    href: "/customer-inventory",
+  },
   { icon: Layout, label: "Operaciones", href: "/operations" },
   { icon: Clock, label: "Movimientos", href: "/movements" },
   { icon: CreditCard, label: "Pagos", href: "/payments" },
-  { icon: FileText, label: "Reportes", href: "/reports/weekly", ownerOnly: true },
+  {
+    icon: FileText,
+    label: "Reportes",
+    href: "/reports/weekly",
+    ownerOnly: true,
+  },
 ];
 
 const platformMenuItems: MenuItem[] = [
@@ -112,7 +121,9 @@ export function Sidebar({ isOpen, onClose }) {
               >
                 <item.icon
                   size={20}
-                  className={isActive ? "" : `text-slate-500 group-${hoverColor}`}
+                  className={
+                    isActive ? "" : `text-slate-500 group-${hoverColor}`
+                  }
                 />
                 {item.label}
               </Link>

@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  Menu, 
-  ShieldCheck, 
-  ChevronDown, 
-  User as UserIcon, 
-  LogOut 
+import {
+  Menu,
+  ShieldCheck,
+  ChevronDown,
+  User as UserIcon,
+  LogOut,
 } from "lucide-react";
 import { useTenant } from "@/lib/context/tenant-context";
 import { createClient } from "@/utils/supabase/client";
@@ -69,7 +69,9 @@ export function Header({ onMenuClick }) {
           /
         </span>
         <h2 className="text-[10px] md:text-sm font-black text-[#1D3146] uppercase tracking-widest truncate max-w-[150px] md:max-w-none">
-          {isPlatformPath ? "Global Control" : activeTenant?.name || "Seleccionar Negocio"}
+          {isPlatformPath
+            ? "Global Control"
+            : activeTenant?.name || "Seleccionar Negocio"}
         </h2>
       </div>
 

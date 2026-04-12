@@ -75,7 +75,9 @@ export default function Dashboard() {
       setData(res);
     } catch (err) {
       console.error("Dashboard fetch failed:", err);
-      setError("No se pudieron cargar los datos del dashboard. Verifica tu conexión.");
+      setError(
+        "No se pudieron cargar los datos del dashboard. Verifica tu conexión.",
+      );
     } finally {
       setLoading(false);
     }
@@ -105,12 +107,14 @@ export default function Dashboard() {
           <AlertCircle size={40} />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-black text-[#1D3146]">Error de Conexión</h3>
+          <h3 className="text-xl font-black text-[#1D3146]">
+            Error de Conexión
+          </h3>
           <p className="text-slate-500 font-medium max-w-xs">
             {error || "El dashboard no está disponible en este momento."}
           </p>
         </div>
-        <button 
+        <button
           onClick={() => fetchDashboard()}
           className="h-12 px-8 bg-[#1D3146] text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-105 active:scale-95 transition-all shadow-lg"
         >

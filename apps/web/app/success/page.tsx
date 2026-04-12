@@ -51,7 +51,7 @@ export default function PaymentSuccessPage() {
             {isActivating ? "Activando tu cuenta..." : "¡Pago Confirmado!"}
           </h1>
           <p className="text-slate-500 font-medium">
-            {isActivating 
+            {isActivating
               ? "Estamos procesando tu suscripción de forma segura. Tardará unos segundos."
               : "Tu suscripción premium ha sido activada con éxito. Ya tienes acceso total."}
           </p>
@@ -63,16 +63,19 @@ export default function PaymentSuccessPage() {
             className="group h-16 w-full bg-[#1D3146] text-white rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#1D3146]/20"
           >
             Ir al Dashboard
-            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            <ArrowRight
+              size={20}
+              className="group-hover:translate-x-1 transition-transform"
+            />
           </Link>
         )}
-        
+
         {isActivating && (
-            <div className="pt-4">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">
-                    No cierres esta ventana
-                </p>
-            </div>
+          <div className="pt-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">
+              No cierres esta ventana
+            </p>
+          </div>
         )}
       </div>
     </div>

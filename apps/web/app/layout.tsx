@@ -84,7 +84,10 @@ function UI_Shell({ children }) {
 
       {/* Modern Sidebar component */}
       {!isTenantSetupPath && (
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
       )}
 
       {/* Main Content Area */}
