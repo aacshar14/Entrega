@@ -139,7 +139,7 @@ async def get_me(
                 t_info = get_tenant_info(db, t)
                 # 👑 Admin Bypass: Admins are always "ready" to manage the platform
                 t_info.ready = True
-                
+
                 m_info = MembershipInfo(
                     tenant=t_info,
                     role="owner",

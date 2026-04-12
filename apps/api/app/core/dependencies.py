@@ -304,7 +304,10 @@ async def get_active_membership(
         # Fallback to default/first membership if no header
         membership = db.exec(
             select(TenantUser)
-            .where(TenantUser.user_id == current_user.id, TenantUser.is_active.is_not(False))
+            .where(
+                TenantUser.user_id == current_user.id,
+                TenantUser.is_active.is_not(False),
+            )
             .order_by(TenantUser.is_default.desc())
         ).first()
 
