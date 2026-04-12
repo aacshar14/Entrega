@@ -38,10 +38,36 @@ jobs:
             db:
               - 'apps/api/alembic/versions/**'
 
+  validate:
+    name: 🧪 Quality & Style Gate
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 🐍 Python Validation
+      - name: 🐍 API Lint (Black)
+        if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
+        run: |
+          pip install black==26.3.1
+          black --check . --exclude "apps/api/alembic/versions/"
+
+      # ⚛️ Web Validation (Prettier)
+      - name: ⚛️ Web Lint (Prettier)
+        if: needs.changes.outputs.web == 'true'
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx prettier --check .
+
   build_api:
     name: Build & Push API
-    needs: changes
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
+    needs: [changes, validate]
+    if: |
+      always() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') &&
+      (needs.validate.result == 'success' || needs.validate.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,12 +85,6 @@ jobs:
         run: |-
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-      - name: 🧪 Code Quality Validation
-        run: |
-          pip install black==26.3.1
-          echo "Running Black format check..."
-          black --check . --exclude "apps/api/alembic/versions/"
-
       - name: Build and Push Docker Image
         run: |-
           docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
@@ -73,8 +93,12 @@ jobs:
 
   migrate_db:
     name: 🚀 Migrate Database
-    needs: [changes, build_api]
-    if: needs.changes.outputs.db == 'true'
+    needs: [changes, validate, build_api]
+    if: |
+      always() &&
+      needs.changes.outputs.db == 'true' &&
+      (needs.validate.result == 'success' || needs.validate.result == 'skipped') &&
+      (needs.build_api.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -103,10 +127,11 @@ jobs:
 
   deploy_api:
     name: Deploy API
-    needs: [changes, build_api, migrate_db]
+    needs: [changes, validate, build_api, migrate_db]
     if: |
       always() && 
       needs.changes.outputs.api == 'true' && 
+      (needs.validate.result == 'success' || needs.validate.result == 'skipped') &&
       (needs.build_api.result == 'success') &&
       (needs.migrate_db.result == 'success' || needs.migrate_db.result == 'skipped')
     runs-on: ubuntu-latest
@@ -134,8 +159,11 @@ jobs:
 
   ci_web:
     name: Web Build Validation
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
+    needs: [changes, validate]
+    if: |
+      always() &&
+      needs.changes.outputs.web == 'true' &&
+      (needs.validate.result == 'success' || needs.validate.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
