@@ -30,7 +30,7 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. Main Stats (Audit Verified)
+        # 1. KPIs Authoritative Refresh (Audit Verified)
         from app.services.dashboard_service import DashboardService
 
         ds = DashboardService(db)
@@ -40,18 +40,15 @@ async def get_dashboard_summary(
         sales_today = float(kpis.get("sales_today", 0.0) or 0.0)
         total_deliveries_kpi = int(float(kpis.get("deliveries_today", 0.0) or 0.0))
 
-        # 2. Counts
-        customer_count = db.exec(
-            select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
-        ).one()
-        product_count = db.exec(
-            select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
-        ).one()
-        payment_count = db.exec(
-            select(func.count(Payment.id)).where(Payment.tenant_id == tenant_id)
-        ).one()
+        # 2. Historical Total Payments (CORRECTED: SUM instead of COUNT V1.9.16)
+        historical_total_payments = (
+            db.exec(
+                select(func.sum(Payment.amount)).where(Payment.tenant_id == tenant_id)
+            ).one()
+            or 0.0
+        )
 
-        # 3. Flow
+        # 3. Weekly Flow (Audit Verified)
         last_monday_naive = (now_naive - timedelta(days=now_naive.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -78,7 +75,7 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 4. Stock Maestro (Format fixed for Frontend page.tsx)
+        # 4. Stock Maestro (Format fixed + "Outside" Logic V1.9.16)
         low_stock_count = db.exec(
             select(func.count(StockBalance.id)).where(
                 StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
@@ -86,23 +83,40 @@ async def get_dashboard_summary(
         ).one()
 
         stock_balances = db.exec(
-            select(Product.name, StockBalance.quantity)
+            select(Product.id, Product.name, StockBalance.quantity)
             .join(StockBalance, Product.id == StockBalance.product_id)
             .where(Product.tenant_id == tenant_id)
         ).all()
 
-        # Frontend StockItem Interface: name, quantity, quantity_outside, total
-        formatted_stock = [
-            {
-                "name": str(name),
-                "quantity": float(qty or 0.0),
-                "quantity_outside": 0.0,  # Placeholder until logistics logic
-                "total": float(qty or 0.0),
-            }
-            for name, qty in stock_balances
-        ]
+        formatted_stock = []
+        for p_id, p_name, p_qty in stock_balances:
+            # Calculate "Outside" as sum of deliveries minus returns for this specific product
+            outside_qty = (
+                db.exec(
+                    select(func.sum(InventoryMovement.quantity)).where(
+                        InventoryMovement.tenant_id == tenant_id,
+                        InventoryMovement.product_id == p_id,
+                        InventoryMovement.type.in_(
+                            ["delivery", "delivery_to_customer"]
+                        ),
+                    )
+                ).one()
+                or 0.0
+            )
 
-        # 5. Activity (Field name fixed: activity -> recent_activity)
+            # Since delivery quantities are stored as negative in InventoryMovement, we take absolute value
+            outside_abs = abs(float(outside_qty))
+
+            formatted_stock.append(
+                {
+                    "name": str(p_name),
+                    "quantity": float(p_qty or 0.0),  # Inside Warehouse
+                    "quantity_outside": outside_abs,  # Total historical deliveries (proxy for "outside")
+                    "total": float(p_qty or 0.0) + outside_abs,
+                }
+            )
+
+        # 5. Activity
         recent_movements = db.exec(
             select(InventoryMovement, Customer)
             .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
@@ -113,7 +127,6 @@ async def get_dashboard_summary(
 
         recent_activity_resp = []
         for m, c in recent_movements:
-            ts = m.created_at
             recent_activity_resp.append(
                 {
                     "id": str(m.id),
@@ -122,31 +135,28 @@ async def get_dashboard_summary(
                     "quantity": float(m.quantity or 0.0),
                     "type": "movement",
                     "amount": 0.0,
-                    "created_at": (
-                        ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
-                    ),
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
                 }
             )
 
-        # 6. Debtors
-        top_debtors = db.exec(
-            select(Customer, CustomerBalance)
-            .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
-            .where(Customer.tenant_id == tenant_id)
-            .order_by(CustomerBalance.balance)
-            .limit(5)
-        ).all()
-
-        # 7. Billing Corrected (Adding total_orders, sales_today metadata)
+        # 6. Billing & Metadata
         status = str(active_tenant.billing_status or "trial")
         trial_end = active_tenant.trial_ends_at
         days_rem = (trial_end.replace(tzinfo=None) - now_naive).days if trial_end else 0
 
         return {
             "stats": {
-                "customer_count": int(customer_count or 0),
-                "product_count": int(product_count or 0),
-                "total_payments": int(payment_count or 0),
+                "customer_count": db.exec(
+                    select(func.count(Customer.id)).where(
+                        Customer.tenant_id == tenant_id
+                    )
+                ).one(),
+                "product_count": db.exec(
+                    select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
+                ).one(),
+                "total_payments": float(
+                    historical_total_payments
+                ),  # NOW SUM, NOT COUNT
                 "total_debt": total_debt_abs,
                 "low_stock_count": int(low_stock_count or 0),
                 "weekly_produced": float(produced_this_week or 0.0),
@@ -156,7 +166,13 @@ async def get_dashboard_summary(
             "recent_activity": recent_activity_resp,
             "debtors": [
                 {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
-                for c, cb in top_debtors
+                for c, cb in db.exec(
+                    select(Customer, CustomerBalance)
+                    .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
+                    .where(Customer.tenant_id == tenant_id)
+                    .order_by(CustomerBalance.balance)
+                    .limit(5)
+                ).all()
                 if cb and cb.balance is not None and cb.balance < 0
             ],
             "billing": {
@@ -167,9 +183,7 @@ async def get_dashboard_summary(
                     or (trial_end and now_naive > trial_end.replace(tzinfo=None))
                 ),
                 "trial_ends_at": trial_end.isoformat() if trial_end else None,
-                "total_orders": int(
-                    total_deliveries_kpi or 0
-                ),  # Mapping deliveries to total_orders
+                "total_orders": int(total_deliveries_kpi or 0),
                 "sales_today": sales_today,
             },
             "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
@@ -179,7 +193,7 @@ async def get_dashboard_summary(
         import traceback
 
         return {
-            "error": "DASHBOARD_FRONTEND_SYNC_FAILURE",
+            "error": "DASHBOARD_LOGIC_FAILURE",
             "message": str(e),
             "traceback": traceback.format_exc(),
         }
