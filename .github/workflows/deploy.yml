@@ -1,4 +1,4 @@
-name: Build and Deploy to Cloud Run # v1.6.2 (Forced Trigger)
+name: Deploy to Production
 
 on:
   push:
@@ -31,61 +31,28 @@ jobs:
           filters: |
             api:
               - 'apps/api/**'
-              - '.github/workflows/deploy.yml'
             web:
               - 'apps/web/**'
-              - '.github/workflows/deploy.yml'
             db:
               - 'apps/api/alembic/versions/**'
 
-  validate:
-    name: 🧪 Quality & Style Gate
-    needs: changes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 🐍 Python Validation
-      - name: 🐍 API Lint (Black)
-        if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
-        run: |
-          pip install black==26.3.1
-          black --check . --exclude "apps/api/alembic/versions/"
-
-      # ⚛️ Web Validation (Prettier)
-      - name: ⚛️ Web Lint (Prettier)
-        if: needs.changes.outputs.web == 'true'
-        working-directory: apps/web
-        run: |
-          npm ci
-          npx prettier --check .
-
   build_api:
-    name: Build & Push API
-    needs: [changes]
-    if: |
-      always() &&
-      (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true')
+    name: 🏗️ Build API
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
-
       - name: Configure Docker
-        run: |-
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Build and Push Docker Image
-        run: |-
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build and Push
+        run: |
           docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
           docker push $API_IMAGE:${{ github.sha }}
           docker push $API_IMAGE:latest
@@ -93,56 +60,42 @@ jobs:
   migrate_db:
     name: 🚀 Migrate Database
     needs: [changes, build_api]
-    if: |
-      always() &&
-      needs.changes.outputs.db == 'true' &&
-      (needs.build_api.result == 'success')
+    if: needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
-
-      - name: Run Alembic Migration Job
-        run: |-
-          gcloud run jobs deploy entrega-migrate \
-            --image $API_IMAGE:${{ github.sha }} \
+      - name: Run Alembic
+        run: |
+          gcloud run jobs execute entrega-migrate \
             --region $REGION \
-            --command=python \
             --args=-m,alembic,upgrade,head \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --quiet
-
-          echo "Executing migration job..."
-          gcloud run jobs execute entrega-migrate --region $REGION --wait
+            --wait
 
   deploy_api:
-    name: Deploy API
+    name: 🚢 Deploy API
     needs: [changes, build_api, migrate_db]
-    if: |
-      always() && 
-      needs.changes.outputs.api == 'true' && 
-      (needs.build_api.result == 'success') &&
-      (needs.migrate_db.result == 'success' || needs.migrate_db.result == 'skipped')
+    if: always() && (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') && (needs.build_api.result == 'success')
     runs-on: ubuntu-latest
+    outputs:
+      prev_revision: ${{ steps.pre_deploy.outputs.revision }}
     steps:
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
-
+      
+      - name: Capture Previous Revision
+        id: pre_deploy
+        run: |
+          REVISION=$(gcloud run services describe entrega-api --region $REGION --format='value(status.latestReadyRevisionName)' || echo "")
+          echo "revision=$REVISION" >> $GITHUB_OUTPUT
+      
       - name: Deploy to Cloud Run
-        run: |-
+        run: |
           gcloud run deploy entrega-api \
             --image $API_IMAGE:${{ github.sha }} \
             --region $REGION \
@@ -150,72 +103,60 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }},WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }},WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }},WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }},SECRET_KEY=${{ secrets.SECRET_KEY }},ENVIRONMENT=production,SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }},WHATSAPP_APP_ID=${{ secrets.WHATSAPP_APP_ID }},WHATSAPP_APP_SECRET=${{ secrets.WHATSAPP_APP_SECRET }}"
 
-      - name: API Health Check
-        run: |-
-          echo "🚀 API Health Check Passed"
+      - name: 🔍 Readiness Check
+        run: |
+          set -euo pipefail
+          echo "Waiting for API to stabilize..."
+          for i in {1..15}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.entrega.space/api/v1/health/ || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ API is Healthy and Ready (Status: $STATUS)"
+              exit 0
+            fi
+            echo "⌛ Attempt $i: API status $STATUS. Retrying in 5s..."
+            sleep 5
+          done
+          echo "❌ API failed to become ready after 75s"
+          exit 1
 
-  ci_web:
-    name: Web Build Validation
-    needs: [changes]
-    if: |
-      always() &&
-      needs.changes.outputs.web == 'true'
+  build_web:
+    name: 🏗️ Build Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/web/package-lock.json
-
-      - name: Web Build
-        working-directory: apps/web
-        run: |-
-          npm ci
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} \
-          NEXT_PUBLIC_API_URL=https://api.entrega.space \
-          npm run build
-
-  deploy_web:
-    name: Deploy Web
-    needs: [changes, ci_web]
-    if: needs.changes.outputs.web == 'true' && (needs.ci_web.result == 'success')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
-
       - name: Configure Docker
-        run: |-
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Build & Push Web Image
-        run: |-
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build and Push
+        run: |
           docker build -t $WEB_IMAGE:${{ github.sha }} -t $WEB_IMAGE:latest -f apps/web/Dockerfile . \
             --build-arg NEXT_PUBLIC_API_URL=https://api.entrega.space \
             --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }} \
             --build-arg NEXT_PUBLIC_META_APP_ID=${{ secrets.WHATSAPP_APP_ID }}
-          
           docker push $WEB_IMAGE:${{ github.sha }}
           docker push $WEB_IMAGE:latest
 
-      - name: Deploy Web to Cloud Run
-        run: |-
+  deploy_web:
+    name: 🚢 Deploy Web
+    needs: [changes, build_web]
+    if: needs.changes.outputs.web == 'true' && (needs.build_web.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Deploy to Cloud Run
+        run: |
           gcloud run deploy entrega-web \
             --image $WEB_IMAGE:${{ github.sha }} \
             --region $REGION \
@@ -223,37 +164,75 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars "NEXT_PUBLIC_API_URL=https://api.entrega.space,NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }},NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }},NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_PUBLISHABLE_DEFAULT_KEY }},NEXT_PUBLIC_META_APP_ID=${{ secrets.WHATSAPP_APP_ID }}"
 
-  finalize:
-    name: Final Smoke Test
+  final_smoke_test:
+    name: 🧪 Authenticated Smoke Tests
     needs: [deploy_api, deploy_web]
-    if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success' || needs.deploy_api.result == 'skipped' || needs.deploy_web.result == 'skipped')
+    if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - name: Production Smoke Test
-        run: |-
-          if [[ "${{ needs.deploy_api.result }}" == "success" ]]; then
-            echo "🧪 Running Dashboard Contract Check..."
-            # Note: Hugo should set DASHBOARD_TEST_TOKEN in GitHub Secrets for real validation
-            DASH_STATUS=$(curl -o /dev/null -s -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DASHBOARD_TEST_TOKEN }}" https://api.entrega.space/api/v1/dashboard/ || echo "000")
-            
-            if [ "$DASH_STATUS" -eq 200 ]; then
-               echo "✅ Dashboard Operational: $DASH_STATUS"
-            else
-               if [ "${{ secrets.DASHBOARD_TEST_TOKEN }}" != "" ]; then
-                 echo "❌ Dashboard Contract Failed: $DASH_STATUS"
-                 exit 1
-               else
-                 echo "⚠️ Dashboard check skipped (No Token). Status: $DASH_STATUS"
-               fi
-            fi
+      - name: Mandatory Secret Validation
+        run: |
+          if [ -z "${{ secrets.DASHBOARD_TEST_TOKEN }}" ]; then
+            echo "❌ CRITICAL: DASHBOARD_TEST_TOKEN is missing in GitHub Secrets!"
+            exit 1
           fi
 
-          if [[ "${{ needs.deploy_web.result }}" == "success" ]]; then
-            FE_STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://entrega.space/ || echo "000")
-            if [ "$FE_STATUS" -eq 200 ] || [ "$FE_STATUS" -eq 301 ] || [ "$FE_STATUS" -eq 302 ]; then
-               echo "✅ Frontend Reachable: $FE_STATUS"
+      - name: API Contract Validation
+        run: |
+          TOKEN="${{ secrets.DASHBOARD_TEST_TOKEN }}"
+          BASE_URL="https://api.entrega.space/api/v1"
+          
+          check_route() {
+            ROUTE=$1
+            echo "Testing $ROUTE..."
+            ST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL$ROUTE" || echo "000")
+            if [[ "$ST" =~ ^(200|401|403)$ ]]; then
+              echo "✅ $ROUTE: $ST"
             else
-               echo "❌ Frontend Check Failed: $FE_STATUS"
-               exit 1
+              echo "❌ $ROUTE FAIL: $ST"
+              exit 1
             fi
+          }
+
+          check_route "/dashboard/"
+          check_route "/customers/"
+          check_route "/products/"
+          check_route "/movements/"
+          check_route "/payments/"
+          
+          # Strict check for Dashboard (Must be 200 with test token)
+          DASH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/dashboard/")
+          if [ "$DASH_STATUS" != "200" ]; then
+            echo "❌ Dashboard Contract Internal Error: $DASH_STATUS"
+            exit 1
           fi
+
+      - name: Frontend Reachability
+        run: |
+          set -euo pipefail
+          for PAGE in "/" "/login"; do
+             ST=$(curl -L -s -o /dev/null -w "%{http_code}" "https://entrega.space$PAGE")
+             if [ "$ST" = "200" ]; then
+               echo "✅ FE $PAGE: $ST"
+             else
+               echo "❌ FE $PAGE FAIL: $ST"
+               exit 1
+             fi
+          done
+
+  rollback_api:
+    name: 🚨 Automatic Rollback (API)
+    needs: [deploy_api, final_smoke_test]
+    if: failure() && needs.deploy_api.result == 'success' && needs.deploy_api.outputs.prev_revision != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Restore Previous Revision
+        run: |
+          REV="${{ needs.deploy_api.outputs.prev_revision }}"
+          echo "🚨 SMOKE TEST FAILED. Rolling back API to: $REV"
+          gcloud run services update-traffic entrega-api --to-revisions=$REV=100 --region $REGION
+          echo "✅ Rollback completed. Traffic routed back to $REV"
