@@ -170,16 +170,34 @@ jobs:
     if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - name: Mandatory Secret Validation
+      - name: Dynamic Supabase Login
+        id: auth
         run: |
-          if [ -z "${{ secrets.DASHBOARD_TEST_TOKEN }}" ]; then
-            echo "❌ CRITICAL: DASHBOARD_TEST_TOKEN is missing in GitHub Secrets!"
+          if [ -z "${{ secrets.SMOKE_USER_EMAIL }}" ] || [ -z "${{ secrets.SMOKE_USER_PASSWORD }}" ]; then
+            echo "❌ CRITICAL: Smoke User credentials missing in GitHub Secrets!"
             exit 1
           fi
+          
+          echo "🔐 Obtaining fresh token from Supabase..."
+          AUTH_RES=$(curl -s -X POST "${{ secrets.SUPABASE_URL }}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\": \"${{ secrets.SMOKE_USER_EMAIL }}\", \"password\": \"${{ secrets.SMOKE_USER_PASSWORD }}\"}")
+          
+          TOKEN=$(echo "$AUTH_RES" | jq -r '.access_token')
+          
+          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
+            echo "❌ Authentication Failed!"
+            echo "Response: $AUTH_RES"
+            exit 1
+          fi
+          
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
       - name: API Contract Validation
         run: |
-          TOKEN="${{ secrets.DASHBOARD_TEST_TOKEN }}"
+          TOKEN="${{ steps.auth.outputs.token }}"
           BASE_URL="https://api.entrega.space/api/v1"
           
           check_route() {
