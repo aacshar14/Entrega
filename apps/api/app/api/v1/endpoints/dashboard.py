@@ -190,16 +190,26 @@ async def get_dashboard_summary(
             }
         )
 
-    # Final Sort by created_at desc (Resilient to NULL and Aware/Naive mix V1.6.3)
+    # Final Sort by created_at desc (Paranoid Resilience V1.9.4)
     def sort_key(x):
-        dt = x.get("created_at")
-        if dt:
-            # Ensure it's naive to match DB instances
-            if hasattr(dt, "tzinfo") and dt.tzinfo is not None:
+        try:
+            dt = x.get("created_at")
+            if not dt:
+                return datetime(1970, 1, 1)
+
+            # If already a string, try to parse or just return old date
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+                except:
+                    return datetime(1970, 1, 1)
+
+            # Force to Naive for comparison
+            if hasattr(dt, "replace"):
                 return dt.replace(tzinfo=None)
-            return dt
-        # Return a very old NAIVE date as fallback
-        return datetime(1970, 1, 1)
+            return datetime(1970, 1, 1)
+        except:
+            return datetime(1970, 1, 1)
 
     unified_activity.sort(key=sort_key, reverse=True)
     unified_activity = unified_activity[:10]
@@ -240,20 +250,44 @@ async def get_dashboard_summary(
 
     # sales_today already pulled from ds
 
+    activity_resp = [
+        {
+            "id": str(item["id"]),
+            "customer_name": item["customer_name"],
+            "description": item["description"],
+            "quantity": item["quantity"],
+            "type": item["type"],
+            "amount": item["amount"],
+            "created_at": (
+                item["created_at"].isoformat()
+                if item["created_at"]
+                else datetime.now(timezone.utc).isoformat()
+            ),
+            "is_payment": item.get("is_payment", False),
+        }
+        for item in unified_activity
+    ]
+
     return {
         "stats": {
-            "customer_count": customer_count,
-            "product_count": product_count,
-            "total_payments": total_payments,
-            "total_debt": abs(float(total_debt_abs)),
-            "low_stock_count": low_stock_count,
-            "weekly_produced": float(produced_this_week),
-            "weekly_delivered": delivered_abs,
+            "customer_count": int(customer_count or 0),
+            "product_count": int(product_count or 0),
+            "total_payments": int(total_payments or 0),
+            "total_debt": abs(float(total_debt_abs or 0.0)),
+            "low_stock_count": int(low_stock_count or 0),
+            "weekly_produced": float(produced_this_week or 0.0),
+            "weekly_delivered": float(delivered_abs or 0.0),
+        },
+        "kpis": {
+            "sales_today": float(sales_today or 0.0),
+            "total_debt": float(total_debt_abs or 0.0),
+            "deliveries_today": int(float(total_deliveries_kpi or 0.0)),
+            "status": str(active_tenant.billing_status or "active"),
         },
         "billing": {
-            "status": status,
-            "days_remaining": days_remaining,
-            "is_expired": is_expired,
+            "status": str(status or "trial"),
+            "days_remaining": int(days_remaining or 0),
+            "is_expired": bool(is_expired),
             "trial_ends_at": trial_end.isoformat() if trial_end else None,
             "grace_ends_at": grace_end.isoformat() if grace_end else None,
             "subscription_ends_at": (
@@ -261,32 +295,14 @@ async def get_dashboard_summary(
                 if active_tenant.subscription_ends_at
                 else None
             ),
-            "total_orders": total_deliveries,
-            "sales_today": float(sales_today),
         },
         "stock": formatted_stock,
         "debtors": [
-            {"name": c.name, "amount": abs(float(cb.balance or 0.0))}
+            {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
             for c, cb in top_debtors
             if cb and cb.balance is not None and cb.balance < 0
         ],
-        "recent_activity": [
-            {
-                "id": str(item["id"]),
-                "customer_name": item["customer_name"],
-                "description": item["description"],
-                "quantity": item["quantity"],
-                "type": item["type"],
-                "amount": item["amount"],
-                "created_at": (
-                    item["created_at"].isoformat()
-                    if item["created_at"]
-                    else datetime.now(timezone.utc).isoformat()
-                ),
-                "is_payment": item.get("is_payment", False),
-            }
-            for item in unified_activity
-        ],
+        "activity": activity_resp,
         "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
         "business_name": str(active_tenant.name or "Mi Negocio"),
     }
