@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func, desc
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, get_active_tenant
@@ -30,7 +30,7 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. Main Stats (Performance Hardening V3 - Audit Verified)
+        # 1. Main Stats (Audit Verified)
         from app.services.dashboard_service import DashboardService
 
         ds = DashboardService(db)
@@ -40,7 +40,7 @@ async def get_dashboard_summary(
         sales_today = float(kpis.get("sales_today", 0.0) or 0.0)
         total_deliveries_kpi = int(float(kpis.get("deliveries_today", 0.0) or 0.0))
 
-        # 2. Metadata counts (Audit Verified)
+        # 2. Counts
         customer_count = db.exec(
             select(func.count(Customer.id)).where(Customer.tenant_id == tenant_id)
         ).one()
@@ -51,7 +51,7 @@ async def get_dashboard_summary(
             select(func.count(Payment.id)).where(Payment.tenant_id == tenant_id)
         ).one()
 
-        # 3. Weekly Flow (Audit Verified)
+        # 3. Flow
         last_monday_naive = (now_naive - timedelta(days=now_naive.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
@@ -77,28 +77,58 @@ async def get_dashboard_summary(
             ).one()
             or 0.0
         )
-        delivered_abs = abs(float(delivered_this_week))
 
-        # 4. Critical Stock (Attribute: quantity - Audit Verified)
+        # 4. Stock Maestro (Format fixed for Frontend page.tsx)
         low_stock_count = db.exec(
             select(func.count(StockBalance.id)).where(
                 StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
             )
         ).one()
 
-        # 5. Formatted Stock (Attribute: quantity - Audit Verified)
         stock_balances = db.exec(
             select(Product.name, StockBalance.quantity)
             .join(StockBalance, Product.id == StockBalance.product_id)
             .where(Product.tenant_id == tenant_id)
         ).all()
 
+        # Frontend StockItem Interface: name, quantity, quantity_outside, total
         formatted_stock = [
-            {"product": str(name), "stock": float(qty or 0.0)}
+            {
+                "name": str(name),
+                "quantity": float(qty or 0.0),
+                "quantity_outside": 0.0,  # Placeholder until logistics logic
+                "total": float(qty or 0.0),
+            }
             for name, qty in stock_balances
         ]
 
-        # 6. Top Debtors (Attribute: balance - Audit Verified)
+        # 5. Activity (Field name fixed: activity -> recent_activity)
+        recent_movements = db.exec(
+            select(InventoryMovement, Customer)
+            .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
+            .where(InventoryMovement.tenant_id == tenant_id)
+            .order_by(desc(InventoryMovement.created_at))
+            .limit(10)
+        ).all()
+
+        recent_activity_resp = []
+        for m, c in recent_movements:
+            ts = m.created_at
+            recent_activity_resp.append(
+                {
+                    "id": str(m.id),
+                    "customer_name": str(c.name if c else "S/N"),
+                    "description": f"{m.quantity} unid. ({m.type})",
+                    "quantity": float(m.quantity or 0.0),
+                    "type": "movement",
+                    "amount": 0.0,
+                    "created_at": (
+                        ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+                    ),
+                }
+            )
+
+        # 6. Debtors
         top_debtors = db.exec(
             select(Customer, CustomerBalance)
             .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
@@ -107,91 +137,10 @@ async def get_dashboard_summary(
             .limit(5)
         ).all()
 
-        # 7. Recent Activity (Attributes: quantity, type, method - Audit Verified)
-        recent_movements = db.exec(
-            select(InventoryMovement, Customer)
-            .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
-            .where(InventoryMovement.tenant_id == tenant_id)
-            .order_by(desc(InventoryMovement.created_at))
-            .limit(20)
-        ).all()
-
-        recent_payments = db.exec(
-            select(Payment, Customer)
-            .join(Customer, Payment.customer_id == Customer.id, isouter=True)
-            .where(Payment.tenant_id == tenant_id)
-            .order_by(desc(Payment.created_at))
-            .limit(20)
-        ).all()
-
-        unified_activity = []
-        for m, c in recent_movements:
-            unified_activity.append(
-                {
-                    "id": str(m.id),
-                    "type": "movement",
-                    "customer_name": str(c.name if c else "S/N"),
-                    "description": f"{m.quantity} unidades ({m.type})",
-                    "quantity": float(m.quantity or 0.0),
-                    "amount": 0.0,
-                    "created_at": m.created_at,
-                    "is_payment": False,
-                }
-            )
-
-        for p, c in recent_payments:
-            unified_activity.append(
-                {
-                    "id": str(p.id),
-                    "type": "payment",
-                    "customer_name": str(c.name if c else "S/N"),
-                    "description": f"Pago: {p.method or 'Efectivo'}",
-                    "quantity": 0.0,
-                    "amount": float(p.amount or 0.0),
-                    "created_at": p.created_at,
-                    "is_payment": True,
-                }
-            )
-
-        # Naive-Safe Sort
-        def get_timestamp(x):
-            ts = x.get("created_at")
-            if not ts:
-                return datetime(1970, 1, 1)
-            return (
-                ts.replace(tzinfo=None)
-                if hasattr(ts, "replace")
-                else datetime(1970, 1, 1)
-            )
-
-        unified_activity.sort(key=get_timestamp, reverse=True)
-        unified_activity = unified_activity[:10]
-
-        activity_resp = []
-        for item in unified_activity:
-            ts = item["created_at"]
-            ts_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
-            activity_resp.append(
-                {
-                    "id": item["id"],
-                    "customer_name": item["customer_name"],
-                    "description": item["description"],
-                    "quantity": item["quantity"],
-                    "type": item["type"],
-                    "amount": item["amount"],
-                    "created_at": ts_str,
-                    "is_payment": item["is_payment"],
-                }
-            )
-
-        # 8. Billing Context (Audit Verified)
-        billing_status = str(active_tenant.billing_status or "trial")
+        # 7. Billing Corrected (Adding total_orders, sales_today metadata)
+        status = str(active_tenant.billing_status or "trial")
         trial_end = active_tenant.trial_ends_at
-
-        days_remaining = 0
-        if trial_end:
-            delta = trial_end.replace(tzinfo=None) - now_naive
-            days_remaining = max(0, delta.days)
+        days_rem = (trial_end.replace(tzinfo=None) - now_naive).days if trial_end else 0
 
         return {
             "stats": {
@@ -201,41 +150,36 @@ async def get_dashboard_summary(
                 "total_debt": total_debt_abs,
                 "low_stock_count": int(low_stock_count or 0),
                 "weekly_produced": float(produced_this_week or 0.0),
-                "weekly_delivered": delivered_abs,
-            },
-            "kpis": {
-                "sales_today": sales_today,
-                "total_debt": total_debt_abs,
-                "deliveries_today": total_deliveries_kpi,
-                "status": billing_status,
-            },
-            "billing": {
-                "status": billing_status,
-                "days_remaining": days_remaining,
-                "is_expired": (
-                    billing_status == "suspended"
-                    or (trial_end and now_naive > trial_end.replace(tzinfo=None))
-                ),
-                "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                "weekly_delivered": abs(float(delivered_this_week or 0.0)),
             },
             "stock": formatted_stock,
+            "recent_activity": recent_activity_resp,
             "debtors": [
                 {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
                 for c, cb in top_debtors
                 if cb and cb.balance is not None and cb.balance < 0
             ],
-            "activity": activity_resp,
+            "billing": {
+                "status": status,
+                "days_remaining": max(0, days_rem),
+                "is_expired": (
+                    status == "suspended"
+                    or (trial_end and now_naive > trial_end.replace(tzinfo=None))
+                ),
+                "trial_ends_at": trial_end.isoformat() if trial_end else None,
+                "total_orders": int(
+                    total_deliveries_kpi or 0
+                ),  # Mapping deliveries to total_orders
+                "sales_today": sales_today,
+            },
             "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
             "business_name": str(active_tenant.name or "Mi Negocio"),
         }
-
     except Exception as e:
         import traceback
 
-        # Critical Fallback Mode (Production Safe)
         return {
-            "error": "DASHBOARD_CRITICAL_FAILURE",
+            "error": "DASHBOARD_FRONTEND_SYNC_FAILURE",
             "message": str(e),
             "traceback": traceback.format_exc(),
-            "status": "emergency_degraded_mode",
         }
