@@ -44,11 +44,16 @@ function UI_Shell({ children }) {
 
   if (pathname === "/" && user && !isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#1D3146] gap-4">
-        <Loader2 className="animate-spin text-[#56CCF2]" size={40} />
-        <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] animate-pulse">
-          Sincronizando EntréGA Intelligence...
-        </p>
+      <div className="flex flex-col items-center justify-center h-screen bg-[#1D3146] gap-8">
+        <div className="animate-pulse">
+           <Logo variant="master" className="h-16 w-auto" />
+        </div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-[#56CCF2]" size={24} />
+          <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.4em] animate-pulse">
+            Sincronizando EntréGA Intelligence
+          </p>
+        </div>
       </div>
     );
   }
