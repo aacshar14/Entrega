@@ -79,6 +79,7 @@ class CustomerResponse(BaseModel):
     created_at: datetime
 
 
+@router.get("/", response_model=List[CustomerResponse])
 @router.get("", response_model=List[CustomerResponse])
 async def list_customers(
     db: Session = Depends(get_session),

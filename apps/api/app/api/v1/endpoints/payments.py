@@ -18,6 +18,11 @@ class PaymentCreate(BaseModel):
 
 
 @router.get(
+    "/",
+    response_model=List[Payment],
+    dependencies=[Depends(require_roles(["owner", "operator"]))],
+)
+@router.get(
     "",
     response_model=List[Payment],
     dependencies=[Depends(require_roles(["owner", "operator"]))],

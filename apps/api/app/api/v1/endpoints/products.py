@@ -55,6 +55,7 @@ class ProductImportCommitRequest(BaseModel):
     rows: List[ProductImportRow]
 
 
+@router.get("/", response_model=List[Product])
 @router.get("", response_model=List[Product])
 async def list_products(
     db: Session = Depends(get_session),

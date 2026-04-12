@@ -28,6 +28,11 @@ router = APIRouter()
 
 
 @router.get(
+    "/",
+    response_model=List[InventoryMovement],
+    dependencies=[Depends(require_roles(["owner", "operator"]))],
+)
+@router.get(
     "",
     response_model=List[InventoryMovement],
     dependencies=[Depends(require_roles(["owner", "operator"]))],
