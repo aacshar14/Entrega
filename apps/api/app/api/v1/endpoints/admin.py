@@ -484,7 +484,7 @@ async def get_platform_settings(db: Session = Depends(get_session)):
             "max_tenants_per_admin": int(config.get("max_tenants_per_admin", "10")),
             "max_events_per_day_free_tier": int(config.get("max_events_per_day_free_tier", "1000")),
         },
-        "environment": "production" if not settings.DEBUG else "development",
+        "environment": "production" if settings.ENVIRONMENT != "development" else "development",
     }
 
 
