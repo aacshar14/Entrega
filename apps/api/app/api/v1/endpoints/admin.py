@@ -27,6 +27,9 @@ from pydantic import BaseModel
 from app.core.dependencies import get_current_user
 from app.core.queue import QueueManager
 import time
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -448,11 +451,14 @@ async def get_platform_costs(db: Session = Depends(get_session)):
 
 
 @router.get(
+    "/settings/", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+)
+@router.get(
     "/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
 )
 async def get_platform_settings(db: Session = Depends(get_session)):
     """
-    Platform Admin only: Global configuration from database.
+    Platform Admin only: Global configuration from database with dynamic resolution.
     """
     settings_db = db.exec(select(SystemSetting)).all()
     # Map to dict
@@ -461,15 +467,21 @@ async def get_platform_settings(db: Session = Depends(get_session)):
     return {
         "db_backed": config,
         "features": {
-            "enable_whatsapp": True,
-            "enable_sre_dashboard": True,
-            "maintenance_mode": config.get("maintenance_mode") == "true",
+            "enable_whatsapp": config.get("enable_whatsapp", "true") == "true",
+            "enable_sre_dashboard": config.get("enable_sre_dashboard", "true") == "true",
+            "maintenance_mode": config.get("maintenance_mode", "false") == "true",
         },
-        "limits": {"max_tenants_per_admin": 10, "max_events_per_day_free_tier": 1000},
+        "limits": {
+            "max_tenants_per_admin": int(config.get("max_tenants_per_admin", "10")),
+            "max_events_per_day_free_tier": int(config.get("max_events_per_day_free_tier", "1000")),
+        },
         "environment": "production" if not settings.DEBUG else "development",
     }
 
 
+@router.patch(
+    "/settings/", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
+)
 @router.patch(
     "/settings", dependencies=[Depends(require_platform_role(["admin", "owner"]))]
 )
@@ -479,7 +491,7 @@ async def update_platform_settings(
     user_id: str = Depends(get_current_user_id),
 ):
     """
-    Platform Admin only: Update global configuration with audit trail.
+    Platform Admin only: Update global configuration with audit trail and REAL persistence.
     """
     # 1. Capture audit trail
     log = AuditLog(
@@ -487,14 +499,55 @@ async def update_platform_settings(
         action="update_settings",
         module="platform_admin",
         data_after=json.dumps(payload),
-        ip_address="internal",  # Placeholder for future IP tracking
+        ip_address="internal",
     )
     db.add(log)
+
+    # 2. Persistence Logic: Update system_settings table
+    # We flatten or extract specific keys we care about
+    # Features
+    if "features" in payload:
+        for key, value in payload["features"].items():
+            db_key = key
+            db_val = "true" if value else "false"
+            setting = db.get(SystemSetting, db_key)
+            if not setting:
+                setting = SystemSetting(key=db_key, value=db_val)
+            else:
+                setting.value = db_val
+                setting.updated_at = get_utc_now()
+            db.add(setting)
+
+    # Limits
+    if "limits" in payload:
+        for key, value in payload["limits"].items():
+            db_key = key
+            db_val = str(value)
+            setting = db.get(SystemSetting, db_key)
+            if not setting:
+                setting = SystemSetting(key=db_key, value=db_val)
+            else:
+                setting.value = db_val
+                setting.updated_at = get_utc_now()
+            db.add(setting)
+
+    # Direct keys (maintenance_mode, etc)
+    for key, value in payload.items():
+        if key not in ["features", "limits"]:
+            db_key = key
+            db_val = "true" if value is True else "false" if value is False else str(value)
+            setting = db.get(SystemSetting, db_key)
+            if not setting:
+                setting = SystemSetting(key=db_key, value=db_val)
+            else:
+                setting.value = db_val
+                setting.updated_at = get_utc_now()
+            db.add(setting)
+
     db.commit()
 
     logger.info("admin.settings_updated", performed_by=user_id, changes=payload)
 
-    # 2. Return success
     return {"status": "success", "updated_values": payload, "audit_id": log.id}
 
 
