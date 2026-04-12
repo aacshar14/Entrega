@@ -18,11 +18,11 @@ setup_logging()
 # Delayed import of api_router to prevent top-level circular crashes
 def get_application() -> FastAPI:
     app = FastAPI(
-        title=settings.PROJECT_NAME,
-        version=settings.VERSION,
-        description=f"Backend for {settings.PROJECT_NAME} delivery and inventory management.",
-        openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        redirect_slashes=True,
+        title="EntréGA API",
+        version="1.4.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        redirect_slashes=False,  # Reverting to handle manually or via router
     )
 
     # Setup Rate Limiting

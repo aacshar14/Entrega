@@ -18,7 +18,8 @@ from app.services.metrics_service import get_tenant_metrics
 router = APIRouter()
 
 
-@router.get("")
+@router.get("/", name="get_dashboard_summary")
+@router.get("", include_in_schema=False)
 async def get_dashboard_summary(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
