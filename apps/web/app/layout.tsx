@@ -35,13 +35,19 @@ function UI_Shell({ children }) {
     "/data-deletion",
   ].includes(pathname);
 
-  // 🛡️ Auth Protection: Redirect logic helper
+  // 🛡️ Auth Protection: Redirect logged-in users from landing to dashboard
+  useEffect(() => {
+    if (pathname === "/" && user && !isLoading) {
+      router.replace("/dashboard");
+    }
+  }, [pathname, user, isLoading, router]);
+
   if (pathname === "/" && user && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#1D3146] gap-4">
         <Loader2 className="animate-spin text-[#56CCF2]" size={40} />
         <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] animate-pulse">
-          Iniciando EntréGA Intelligence...
+          Sincronizando EntréGA Intelligence...
         </p>
       </div>
     );
