@@ -80,23 +80,23 @@ async def get_dashboard_summary(
         )
         delivered_abs = abs(float(delivered_this_week))
 
-        # 4. Critical Stock Alert count
+        # 4. Critical Stock Alert count (Attribute corrected: balance -> quantity V1.9.12)
         low_stock_count = db.exec(
             select(func.count(StockBalance.id)).where(
-                StockBalance.tenant_id == tenant_id, StockBalance.balance <= 0
+                StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
             )
         ).one()
 
-        # 5. Formatted Lists Logic
+        # 5. Formatted Lists Logic (Attribute corrected: balance -> quantity V1.9.12)
         stock_balances = db.exec(
-            select(Product.name, StockBalance.balance)
+            select(Product.name, StockBalance.quantity)
             .join(StockBalance, Product.id == StockBalance.product_id)
             .where(Product.tenant_id == tenant_id)
         ).all()
 
         formatted_stock = [
-            {"product": str(name), "stock": float(balance or 0.0)}
-            for name, balance in stock_balances
+            {"product": str(name), "stock": float(qty or 0.0)}
+            for name, qty in stock_balances
         ]
 
         top_debtors = db.exec(
