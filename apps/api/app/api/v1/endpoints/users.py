@@ -193,11 +193,13 @@ async def get_me(
                 "users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e)
             )
 
-    logger.info(
-        "users.get_me.response_assembled_user",
-        user_id=str(current_user.id),
-        membership_count=len(membership_infos),
-    )
+    # fallback: if no active tenant, but we have memberships, pick default or first
+    if not active_tenant_info and membership_infos:
+        default_m = next(
+            (m for m in membership_infos if m.is_default), membership_infos[0]
+        )
+        active_tenant_info = default_m.tenant
+
     return MeResponse(
         user=current_user,
         active_tenant=active_tenant_info,

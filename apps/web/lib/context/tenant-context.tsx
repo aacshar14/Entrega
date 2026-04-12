@@ -178,6 +178,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             router.replace(isAdmin ? "/platform" : "/dashboard");
           }
         }
+        // Rule 3: Has memberships but NO active tenant resolved -> Force Selection
+        else if (mCount > 0 && !isPublic && !isPlatformArea) {
+          router.replace("/select-tenant");
+        }
       } catch (error: any) {
         if (error.status === 401 || error.status === 403) {
           handleManualLogout();
