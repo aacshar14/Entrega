@@ -2,7 +2,7 @@ import React from "react";
 
 interface LogoProps {
   className?: string;
-  variant?: "master" | "light";
+  variant?: "master" | "light" | "dark";
 }
 
 export default function Logo({
@@ -12,8 +12,13 @@ export default function Logo({
   // Hugo: Este componente es el ÚNICO punto de verdad para la marca.
   // 'master' (logo.png): Para fondos oscuros (Navy, Negro, Gris).
   // 'light' (logo_light.png): Para fondos blancos/claros (Landing Header, Papelería).
+  // 'dark' (logo_black.png): Para fondos blancos con alto contraste.
   const assetPath =
-    variant === "light" ? "/logo_light.png" : "/logo_official.png";
+    variant === "dark" 
+      ? "/logo_black.png" 
+      : variant === "light" 
+        ? "/logo_light.png" 
+        : "/logo_official.png";
 
   return (
     <div className={className}>

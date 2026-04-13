@@ -49,7 +49,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
           <Link href="/">
-            <Logo variant="master" className="w-64 h-auto" />
+            <Logo variant="dark" className="w-64 h-auto" />
           </Link>
           <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Bienvenido de nuevo</h1>
           <p className="text-slate-500 font-medium">Inicia sesión para controlar tu negocio.</p>
