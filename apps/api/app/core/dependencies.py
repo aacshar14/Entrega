@@ -232,6 +232,12 @@ async def get_active_membership(
         # Admin with header: Force validation
         try:
             target_id = UUID(header_tenant_id)
+            
+            # 🛡️ PHANTOM BLOCK (V3.4.3): Block placeholder IDs even for admins
+            ZERO_UUID = "00000000-0000-0000-0000-000000000000"
+            if str(target_id) == ZERO_UUID:
+                raise HTTPException(status_code=400, detail="Identidad fantasma bloqueada.")
+
             tenant = db.get(Tenant, target_id)
             if not tenant:
                 raise HTTPException(status_code=404, detail="Tenant not found")
@@ -280,6 +286,12 @@ async def get_active_membership(
             TenantUser.tenant_id.asc(),
         )
     ).first()
+
+    # 🛡️ PHANTOM BLOCK (V3.4.3): Never allow the placeholder UUID to hydrate in a real runtime context.
+    ZERO_UUID = "00000000-0000-0000-0000-000000000000"
+    if membership and str(membership.tenant_id) == ZERO_UUID:
+        logger.warning("tenant_resolution.phantom_rejected", user_id=str(current_user.id), tenant_id=ZERO_UUID)
+        return None
 
     if membership:
         logger.info("tenant_resolution.fallback_success", user_id=str(current_user.id), tenant_id=str(membership.tenant_id))
