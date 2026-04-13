@@ -482,7 +482,9 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={async () => {
+                  if (!activeTenant?.id) return;
                   setLoading(true);
+                  setError(null);
                   try {
                     const data = await apiRequest(
                       "/billing/checkout-session",
@@ -494,19 +496,24 @@ export default function SettingsPage() {
                       },
                       activeTenant.id
                     );
-                    if (data?.url) window.location.href = data.url;
+                    if (data?.url) {
+                      window.location.href = data.url;
+                    } else {
+                      throw new Error("No se pudo generar la sesión de pago. Intenta más tarde.");
+                    }
                   } catch (err: any) {
-                    setError(err.message);
+                    console.error("Billing Error:", err);
+                    setError(err.message || "Error al conectar con el sistema de pagos");
                   } finally {
                     setLoading(false);
                   }
                 }}
-                disabled={loading}
-                className="px-8 py-4 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-[10px] tracking-widest disabled:opacity-50"
+                disabled={loading || activeRole !== "owner"}
+                className="px-8 py-4 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-[10px] tracking-widest disabled:opacity-50 disabled:hover:scale-100"
               >
                 {loading ? <Loader2 className="animate-spin" size={16} /> : (
                   <>
-                    <CheckCircle2 size={16} />
+                    <DollarSign size={16} />
                     {activeTenant.billing?.effective_status === "active_paid" 
                       ? "Administrar suscripción" 
                       : activeTenant.billing?.effective_status === "trial_active"
