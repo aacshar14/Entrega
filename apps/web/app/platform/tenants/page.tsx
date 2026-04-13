@@ -33,6 +33,10 @@ export default function PlatformTenants() {
   const [modalConfig, setModalConfig] = useState<any>(null);
 
   const filtered = memberships.filter((m) => {
+    // 🛡️ PHANTOM BLOCK (V3.4.5): Redundant frontend gate to ensure dev seeds 
+    // never appear in production registry views.
+    if (m.tenant.id.startsWith("00000000")) return false;
+
     const matchesSearch =
       m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase());
@@ -220,9 +224,13 @@ export default function PlatformTenants() {
                     Billing Plan
                   </p>
                   <p
-                    className={`text-xs font-black uppercase mb-1 ${m.tenant.billing_status === "active_paid" ? "text-emerald-500" : "text-amber-500"}`}
+                    className={`text-xs font-black uppercase mb-1 ${
+                      m.tenant.billing?.effective_status === "active_paid" ? "text-emerald-500" : 
+                      m.tenant.billing?.effective_status === "trial_active" ? "text-blue-500" :
+                      "text-amber-500"
+                    }`}
                   >
-                    {m.tenant.billing_status || "Trial"}
+                    {m.tenant.billing?.effective_status?.replace("_", " ") || "Trial"}
                   </p>
                   <div className="flex flex-wrap gap-1">
                     <button
