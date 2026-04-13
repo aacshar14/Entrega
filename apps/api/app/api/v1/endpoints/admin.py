@@ -291,9 +291,14 @@ async def get_tenant_pressure(db: Session = Depends(get_session)):
     V1.2 Final: Shifted from snapshot-only to Tenant-primary for 100% support visibility.
     """
     # 1. Get all active tenants (limited to 10 for dashboard preview)
+    # 🛡️ DATA INTEGRITY (V3.5.0): Filter out placeholder tenants from UI/Metrics at the SQL layer.
+    ZERO_UUID = "00000000-0000-0000-0000-000000000000"
     tenants = db.exec(
         select(Tenant)
-        .where(Tenant.status == "active")
+        .where(
+            Tenant.status == "active",
+            Tenant.id != ZERO_UUID
+        )
         .order_by(Tenant.created_at.desc())
         .limit(10)
     ).all()
