@@ -65,6 +65,7 @@ export default function SignupPage() {
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Nombre Completo</label>
               <input
                 type="text"
+                name="full_name_signup"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 autoComplete="off"
@@ -76,6 +77,7 @@ export default function SignupPage() {
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Email</label>
               <input
                 type="email"
+                name="email_signup"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="off"
@@ -87,6 +89,7 @@ export default function SignupPage() {
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Contraseña</label>
               <input
                 type="password"
+                name="password_signup"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"

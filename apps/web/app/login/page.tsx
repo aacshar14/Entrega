@@ -61,6 +61,7 @@ export default function LoginPage() {
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Email</label>
               <input
                 type="email"
+                name="user_email_identity"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="off"
@@ -72,9 +73,10 @@ export default function LoginPage() {
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Contraseña</label>
               <input
                 type="password"
+                name="user_password_identity"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
+                autoComplete="off"
                 placeholder=""
                 className="w-full h-16 px-6 bg-white border-none rounded-2xl outline-none focus:ring-4 focus:ring-[#56CCF2]/20 transition-all font-bold text-[#1D3146]"
               />

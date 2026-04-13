@@ -175,7 +175,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             router.replace("/onboarding");
           } else if (
             isReady &&
-            (isOnboarding || pathname === "/" || pathname === "/login")
+            (isOnboarding || pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname === "/demo")
           ) {
             router.replace(isAdmin ? "/platform" : "/dashboard");
           }
