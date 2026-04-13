@@ -70,17 +70,21 @@ jobs:
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-      - name: Run Alembic
+      - name: Run Deterministic Migration and Validation
         run: |
           gcloud run jobs execute entrega-migrate \
             --region $REGION \
-            --args=-m,alembic,upgrade,head \
+            --command=python \
+            --args=migrate_and_validate.py \
             --wait
 
   deploy_api:
     name: 🚢 Deploy API
     needs: [changes, build_api, migrate_db]
-    if: always() && (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') && (needs.build_api.result == 'success')
+    if: |
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') && 
+      (needs.build_api.result == 'success') &&
+      (needs.changes.outputs.db != 'true' || needs.migrate_db.result == 'success')
     runs-on: ubuntu-latest
     outputs:
       prev_revision: ${{ steps.pre_deploy.outputs.revision }}
@@ -169,7 +173,9 @@ jobs:
   final_smoke_test:
     name: 🧪 Authenticated Smoke Tests
     needs: [deploy_api, deploy_web]
-    if: always() && (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
+    if: |
+      (needs.deploy_api.result == 'success' || needs.deploy_api.result == 'skipped') &&
+      (needs.deploy_web.result == 'success' || needs.deploy_web.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Get Smoke Test Token from Supabase
