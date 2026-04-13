@@ -2,12 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
+import { ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import Logo from "@/components/logo";
-import { ArrowRight, Play, ShieldCheck, Zap } from "lucide-react";
+import DemoWalkthrough from "@/components/demo-walkthrough";
 
 /**
- * DEMO PAGE V2.7.0 (VIDEO-FIRST)
- * Replaces interactive sessions with deterministic video value discovery.
+ * DEMO PAGE V2.7.0 (VIDEO-ANIMATED)
+ * Replaces static video with a live CSS walkthrough.
  */
 export default function DemoPage() {
   return (
@@ -27,30 +28,14 @@ export default function DemoPage() {
               Mira <span className="text-[#56CCF2]">EntréGA</span> en acción
             </h1>
             <p className="text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
-              Descubre cómo registrar ventas, deudas y controlar tu inventario desde WhatsApp en menos de 1 minuto.
+              Descubre cómo registrar ventas, deudas y controlar tu inventario desde WhatsApp en segundos.
             </p>
           </div>
         </div>
 
-        {/* Video Section (Conversion Point) */}
-        <div className="relative group aspect-video w-full bg-black/40 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-3xl">
-          {/* Placeholder/Player Implementation */}
-          <div className="absolute inset-0 flex items-center justify-center">
-             <div className="w-24 h-24 bg-[#56CCF2] rounded-full flex items-center justify-center shadow-2xl shadow-[#56CCF2]/40 transition-transform group-hover:scale-110 duration-500 cursor-pointer">
-               <Play size={40} className="text-[#1D3146] fill-[#1D3146] ml-2" />
-             </div>
-          </div>
-          
-          {/* Mockup Overlay (Shows value even without play) */}
-          <div className="absolute bottom-10 left-10 right-10 flex justify-between items-end">
-             <div className="text-left space-y-2">
-                <div className="flex gap-2">
-                   <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase text-[#56CCF2] tracking-tighter">WhatsApp Integration</span>
-                   <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase text-[#56CCF2] tracking-tighter">Real-time Dashboard</span>
-                </div>
-                <p className="text-white/60 text-xs font-bold leading-none">Tour oficial del producto • 45 segundos</p>
-             </div>
-          </div>
+        {/* Live Animated Walkthrough Section */}
+        <div className="relative group aspect-[16/10] w-full bg-black/40 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-3xl">
+          <DemoWalkthrough />
         </div>
 
         {/* Action Section */}
