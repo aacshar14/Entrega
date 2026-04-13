@@ -49,11 +49,11 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#EBEEF2] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 -mt-10">
+      <div className="w-full max-w-md space-y-10">
         <div className="flex flex-col items-center text-center space-y-4">
-          <Link href="/">
-            <Logo variant="master" className="w-64 h-auto" />
+          <Link href="/" className="transition-transform hover:scale-105 active:scale-95">
+            <Logo variant="master" className="w-72 md:w-80 h-auto opacity-100 drop-shadow-sm" />
           </Link>
           <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Crea tu cuenta gratis</h1>
           <p className="text-slate-500 font-medium">Empieza a controlar tu negocio en 3 minutos.</p>
