@@ -14,6 +14,7 @@ down_revision = 'bdb22424235f'
 branch_labels = None
 depends_on = None
 
+# V3.6.1: Forced trigger for pipeline stabilization
 ZERO_UUID = '00000000-0000-0000-0000-000000000000'
 
 def upgrade():

@@ -37,6 +37,7 @@ jobs:
               - '.github/workflows/deploy.yml'
             db:
               - 'apps/api/alembic/versions/**'
+              - '.github/workflows/deploy.yml'
 
   build_api:
     name: 🏗️ Build API
