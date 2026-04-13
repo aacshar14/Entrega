@@ -25,6 +25,20 @@ def get_application() -> FastAPI:
         redirect_slashes=True,  # 🛡️ Hardening: Ensure standard slash behavior (V1.5.1)
     )
 
+    # 🛡️ Global Identity & Dashboard Bridges (Absolute High Priority - V3.1.4)
+    from app.api.v1.endpoints import users, dashboard
+    
+    @app.get("/me", response_model=None, tags=["identity-bridge"])
+    @app.get("/me/", response_model=None, tags=["identity-bridge"])
+    async def get_me_bridge(
+        current_user: users.User = users.Depends(users.get_current_user),
+        active_membership: users.Optional[users.TenantUser] = users.Depends(users.get_active_membership),
+        db: users.Session = users.Depends(users.get_session),
+    ):
+        return await users.get_me(current_user, active_membership, db)
+
+    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard-gateway"])
+    
     # Setup Rate Limiting
     from app.core.limiter import limiter
 
@@ -59,21 +73,6 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # 🛡️ Global Identity & Dashboard Bridges (Root Level Compatibility)
-    from app.api.v1.endpoints import users, dashboard
-    root_bridge = APIRouter()
-    
-    @root_bridge.get("/me", response_model=None, tags=["identity"])
-    @root_bridge.get("/me/", response_model=None, tags=["identity"])
-    async def get_me_bridge(
-        current_user: users.User = users.Depends(users.get_current_user),
-        active_membership: users.Optional[users.TenantUser] = users.Depends(users.get_active_membership),
-        db: users.Session = users.Depends(users.get_session),
-    ):
-        return await users.get_me(current_user, active_membership, db)
-
-    app.include_router(root_bridge)
-    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard-gateway"])
     app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
 
     # Include API Router (Lazy load to break circularity)

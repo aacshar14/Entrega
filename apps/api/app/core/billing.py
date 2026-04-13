@@ -23,9 +23,17 @@ class BillingResolver:
         if tenant.is_blocked:
             effective_status = "suspended"
         
-        # Priority 2: Expiry Logic
+        # Priority 2: Expiry & Status Logic (V2.5.1 Hardened)
         else:
-            if tenant.subscription_ends_at and now < tenant.subscription_ends_at.replace(tzinfo=timezone.utc):
+            # Trust explicit active_paid status as primary authority
+            if status == "active_paid":
+                effective_status = "active_paid"
+                # If there's an explicit expiry in the past, override back to suspended
+                if tenant.subscription_ends_at and now > tenant.subscription_ends_at.replace(tzinfo=timezone.utc):
+                    effective_status = "suspended"
+            
+            # Fallback to date-based resolution for trials and grace periods
+            elif tenant.subscription_ends_at and now < tenant.subscription_ends_at.replace(tzinfo=timezone.utc):
                 effective_status = "active_paid"
             elif tenant.trial_ends_at and now < tenant.trial_ends_at.replace(tzinfo=timezone.utc):
                 effective_status = "trial_active"
