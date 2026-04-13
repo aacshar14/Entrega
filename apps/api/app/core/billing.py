@@ -35,26 +35,27 @@ class BillingResolver:
         
         # Priority 2: Multi-Layer Access Resolution (V3.3.0 Hardened)
         else:
-            # Layer A: Check for VALID subscription (Active status with no expiry or future expiry)
-            # We trust active_paid as primary, but ONLY if not strictly expired
+            # Priority 2: Multi-Layer Access Resolution (V4.0.0 Deterministic)
+            # We check in order of quality of access
             sub_end = tenant.subscription_ends_at.replace(tzinfo=timezone.utc) if tenant.subscription_ends_at else None
             trial_end = tenant.trial_ends_at.replace(tzinfo=timezone.utc) if tenant.trial_ends_at else None
             grace_end = tenant.grace_ends_at.replace(tzinfo=timezone.utc) if tenant.grace_ends_at else None
 
+            # A. VALID PAID (Active status and either no expiry or future expiry)
             if status == "active_paid" and (not sub_end or now < sub_end):
                 effective_status = "active_paid"
             elif sub_end and now < sub_end:
                 effective_status = "active_paid"
             
-            # Layer B: RESCUE PATH (Trial Extension)
+            # B. ACTIVE TRIAL (Manual or Onboarding)
             elif trial_end and now < trial_end:
                 effective_status = "trial_active"
             
-            # Layer C: RESCUE PATH (Grace Period)
+            # C. GRACE PERIOD (Manual or System)
             elif grace_end and now < grace_end:
                 effective_status = "grace"
                 
-            # Layer D: EXHAUSTED (Suspended)
+            # D. EXHAUSTED (Suspended)
             else:
                 effective_status = "suspended"
 
@@ -85,6 +86,9 @@ class BillingResolver:
             billing_status=status,
             effective_status=effective_status,
             plan_code=plan,
+            trial_extension_days=None,
+            subscription_extension_days=None,
+            grace_extension_days=None,
             trial_ends_at=tenant.trial_ends_at,
             subscription_ends_at=tenant.subscription_ends_at,
             grace_ends_at=tenant.grace_ends_at,

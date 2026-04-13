@@ -47,6 +47,7 @@ class BillingOverrideRequest(BaseModel):
     block_reason: Optional[str] = None
     trial_extension_days: Optional[int] = None
     subscription_extension_days: Optional[int] = None
+    grace_extension_days: Optional[int] = None
 
 
 @router.post("/tenants/{tenant_id}/billing-control", dependencies=[Depends(require_platform_role(["admin"]))])
@@ -89,6 +90,14 @@ async def admin_billing_control(
 
         base_date = max(current_val or get_utc_now(), get_utc_now())
         tenant.subscription_ends_at = base_date + timedelta(days=req.subscription_extension_days)
+
+    if req.grace_extension_days:
+        current_val = tenant.grace_ends_at
+        if current_val and current_val.tzinfo is None:
+            current_val = current_val.replace(tzinfo=timezone.utc)
+            
+        base_date = max(current_val or get_utc_now(), get_utc_now())
+        tenant.grace_ends_at = base_date + timedelta(days=req.grace_extension_days)
 
     tenant.manually_overridden_by = current_admin_id
     tenant.manually_overridden_at = get_utc_now()

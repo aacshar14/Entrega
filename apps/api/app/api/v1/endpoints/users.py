@@ -130,12 +130,7 @@ async def get_me(
     ).all()
 
     membership_infos = []
-    ZERO_UUID = "00000000-0000-0000-0000-000000000000"
     for tu, t in memberships_db:
-        # 🛡️ UI CLEANUP (V3.4.4): Never expose phantom tenants to the user interface
-        if str(t.id) == ZERO_UUID:
-            continue
-            
         try:
             membership_infos.append(
                 MembershipInfo(

@@ -29,63 +29,25 @@ export default function PlatformTenants() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState<any>(null);
-
   const filtered = memberships.filter((m) => {
-    // 🛡️ MISSION CRITICAL (V3.7.2): Never hide valid tenants from the Admin Registry.
-    // If we have a membership, it MUST be visible unless explicitly searched away.
     if (!m.tenant) return false;
-
     const name = m.tenant.name?.toLowerCase() || "";
     const slug = m.tenant.slug?.toLowerCase() || "";
     const query = searchTerm.toLowerCase();
-
     const matchesSearch = !query || name.includes(query) || slug.includes(query);
-    
-    // Status filter logic
     if (statusFilter === "all") return matchesSearch;
-    
     const ws = (m.tenant as any).whatsapp_status;
     return matchesSearch && ws === statusFilter;
   });
 
-  const executeUpdate = async () => {
-    if (!modalConfig) return;
+  const runBillingAction = async (tenantId: string, payload: any) => {
     try {
-      await apiRequest(
-        `admin/tenants/${modalConfig.tenantId}/billing`,
-        "PATCH",
-        {
-          status: modalConfig.status,
-          trial_days:
-            modalConfig.status === "trial" ? modalConfig.days : undefined,
-          grace_days:
-            modalConfig.status === "grace" ? modalConfig.days : undefined,
-          notes: `Manual Update: ${modalConfig.status}`,
-        },
-      );
-      setModalOpen(false);
+      await apiRequest(`admin/tenants/${tenantId}/billing-control`, "POST", payload);
       window.location.reload();
     } catch (err) {
-      console.error(err);
+      console.error("Billing update failed", err);
+      alert("Error al actualizar facturación");
     }
-  };
-
-  const triggerUpdate = (tenantId: string, status: string, days?: number) => {
-    setModalConfig({
-      tenantId,
-      status,
-      days,
-      title: status === "suspended" ? "Suspender Acceso" : "Actualizar Billing",
-      message:
-        status === "suspended"
-          ? "Cuidado: Esto bloqueará el acceso al dashboard."
-          : `Se aplicará el estado ${status.toUpperCase()} por ${days || ""} días.`,
-      confirmLabel: "Confirmar",
-      variant: status === "suspended" ? "danger" : "info",
-    });
-    setModalOpen(true);
   };
 
   const renderWhatsAppStatus = (tenant: any) => {
@@ -232,35 +194,67 @@ export default function PlatformTenants() {
                     className={`text-xs font-black uppercase mb-1 ${
                       m.tenant.billing?.effective_status === "active_paid" ? "text-emerald-500" : 
                       m.tenant.billing?.effective_status === "trial_active" ? "text-blue-500" :
-                      "text-amber-500"
+                      m.tenant.billing?.effective_status === "grace" ? "text-purple-500" :
+                      "text-rose-500"
                     }`}
                   >
-                    {m.tenant.billing?.effective_status?.replace("_", " ") || "Trial"}
+                    {m.tenant.billing?.effective_status?.replace("_", " ") || "TRIAL"}
                   </p>
-                  <div className="flex flex-wrap gap-1">
+                  
+                  <div className="flex flex-col gap-2">
+                    {/* PLAN CONTROL */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { plan_code: "basic_monthly" })}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-black transition-all ${m.tenant.plan_code === "basic_monthly" ? "bg-slate-200 text-slate-800" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`}
+                      >
+                        BASIC
+                      </button>
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { plan_code: "pro_monthly" })}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-black transition-all ${m.tenant.plan_code === "pro_monthly" ? "bg-blue-100 text-blue-600" : "bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600"}`}
+                      >
+                        PRO
+                      </button>
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { plan_code: "premium_monthly" })}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-black transition-all ${m.tenant.plan_code === "premium_monthly" ? "bg-amber-100 text-amber-600" : "bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600"}`}
+                      >
+                        PREMIUM
+                      </button>
+                    </div>
+
+                    {/* TIME CONTROL */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { trial_extension_days: 7 })}
+                        className="px-1.5 py-0.5 bg-blue-50 text-blue-500 rounded text-[8px] font-black hover:bg-blue-600 hover:text-white transition-all"
+                        title="Add 7 Trial Days"
+                      >
+                        +7D Trial
+                      </button>
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { grace_extension_days: 7 })}
+                        className="px-1.5 py-0.5 bg-purple-50 text-purple-500 rounded text-[8px] font-black hover:bg-purple-600 hover:text-white transition-all"
+                        title="Add 7 Grace Days"
+                      >
+                        +7D Gracia
+                      </button>
+                      <button
+                        onClick={() => runBillingAction(m.tenant.id, { grace_extension_days: 10 })}
+                        className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[8px] font-black hover:bg-purple-800 hover:text-white transition-all"
+                        title="Add 10 Grace Days"
+                      >
+                        +10D Gracia
+                      </button>
+                    </div>
+
+                    {/* SUSPEND CONTROL */}
                     <button
-                      onClick={() => triggerUpdate(m.tenant.id, "trial", 7)}
-                      className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-amber-50 hover:text-amber-600 transition-all"
+                      onClick={() => runBillingAction(m.tenant.id, { is_blocked: !m.tenant.is_blocked, block_reason: m.tenant.is_blocked ? null : "manual_suspension" })}
+                      className={`px-1.5 py-1 rounded text-[8px] font-black transition-all ${m.tenant.is_blocked ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-rose-50 text-rose-400 hover:bg-rose-600 hover:text-white"}`}
                     >
-                      +7D
-                    </button>
-                    <button
-                      onClick={() => triggerUpdate(m.tenant.id, "active_paid")}
-                      className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-emerald-50 hover:text-emerald-600 transition-all"
-                    >
-                      Pagar
-                    </button>
-                    <button
-                      onClick={() => triggerUpdate(m.tenant.id, "grace", 3)}
-                      className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-purple-50 hover:text-purple-600 transition-all"
-                    >
-                      +3D Gracia
-                    </button>
-                    <button
-                      onClick={() => triggerUpdate(m.tenant.id, "suspended")}
-                      className="px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-[8px] font-black hover:bg-rose-50 hover:text-rose-600 transition-all text-rose-400"
-                    >
-                      Suspender
+                      {m.tenant.is_blocked ? "Reactivar" : "Suspender"}
                     </button>
                   </div>
                 </div>

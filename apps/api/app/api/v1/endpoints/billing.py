@@ -26,6 +26,18 @@ async def create_billing_checkout_session(
     Creates a Stripe Checkout session for the active tenant.
     Enforces that only owners can initiate billing changes.
     """
+    # 🛡️ HARDENING: Prevent operations on placeholder tenants (V3.4.2)
+    ZERO_UUID = "00000000-0000-0000-0000-000000000000"
+    if str(membership.tenant_id) == ZERO_UUID:
+        from app.core.logging import logger
+        logger.error("billing.checkout_blocked_placeholder_context", 
+                     user_id=str(membership.user_id), 
+                     tenant_id=str(membership.tenant_id))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contexto de negocio inválido. Por favor intenta re-ingresar al sistema.",
+        )
+
     if membership.tenant_role != "owner":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

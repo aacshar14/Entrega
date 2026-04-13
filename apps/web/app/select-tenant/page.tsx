@@ -30,9 +30,7 @@ export default function SelectTenantPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {memberships
-          .filter((m) => !m.tenant.id.startsWith("00000000"))
-          .map((membership) => (
+        {memberships.map((membership) => (
           <button
             key={membership.tenant.id}
             onClick={() => switchTenant(membership.tenant.id)}

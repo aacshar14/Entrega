@@ -28,11 +28,23 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: activeTenant?.name || "",
-    whatsapp: activeTenant?.business_whatsapp_number || "",
-    timezone: activeTenant?.timezone || "America/Mexico_City",
-    currency: activeTenant?.currency || "MXN",
+    name: "",
+    whatsapp: "",
+    timezone: "America/Mexico_City",
+    currency: "MXN",
   });
+
+  // 🔄 Context Sync (V3.4.1): Keep local form in sync with resolved tenant data
+  useEffect(() => {
+    if (activeTenant) {
+      setFormData({
+        name: activeTenant.name || "",
+        whatsapp: activeTenant.business_whatsapp_number || "",
+        timezone: activeTenant.timezone || "America/Mexico_City",
+        currency: activeTenant.currency || "MXN",
+      });
+    }
+  }, [activeTenant]);
 
   const [metaFormData, setMetaFormData] = useState({
     waba_id: "",
@@ -78,6 +90,10 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+    // 🛡️ BILLING SYNC (V3.4.1): Proactively refresh identity context to ensure latest 
+    // billing resolution (manual overrides or stripe sync) is visible.
+    refreshUser?.();
+
     if (user?.platform_role === "admin") {
       fetchPlatformSettings();
     }
@@ -453,7 +469,9 @@ export default function SettingsPage() {
                   ? "bg-emerald-100 text-emerald-600"
                   : activeTenant.billing?.effective_status === "trial_active"
                     ? "bg-blue-100 text-blue-600"
-                    : "bg-rose-100 text-rose-600"
+                    : activeTenant.billing?.effective_status === "grace"
+                      ? "bg-purple-100 text-purple-600"
+                      : "bg-rose-100 text-rose-600"
               }`}
             >
               <div
@@ -463,7 +481,9 @@ export default function SettingsPage() {
                 ? "Suscripción Activa"
                 : activeTenant.billing?.effective_status === "trial_active"
                   ? "Periodo de Prueba"
-                  : "Suscripción Suspendida"}
+                  : activeTenant.billing?.effective_status === "grace"
+                    ? "Periodo de Gracia"
+                    : "Suscripción Suspendida"}
             </div>
           </div>
 
@@ -482,15 +502,17 @@ export default function SettingsPage() {
               <div className="space-y-0.5">
                 <p className={`text-sm font-black ${
                   activeTenant.billing?.effective_status === "active_paid" ? "text-emerald-600" :
-                  activeTenant.billing?.effective_status === "trial_active" ? "text-blue-600" : "text-rose-600"
+                  activeTenant.billing?.effective_status === "trial_active" ? "text-blue-600" : 
+                  activeTenant.billing?.effective_status === "grace" ? "text-purple-600" : "text-rose-600"
                 }`}>
                   {activeTenant.billing?.effective_status === "active_paid" ? "Activo" :
-                   activeTenant.billing?.effective_status === "trial_active" ? "Prueba activa" : "Vencido"}
+                   activeTenant.billing?.effective_status === "trial_active" ? "Prueba activa" : 
+                   activeTenant.billing?.effective_status === "grace" ? "Periodo de Gracia" : "Vencido"}
                 </p>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">
                   {activeTenant.billing?.effective_status === "active_paid" 
                     ? `Próximo cobro: ${activeTenant.billing?.subscription_ends_at ? new Date(activeTenant.billing.subscription_ends_at).toLocaleDateString() : "N/A"}`
-                    : activeTenant.billing?.effective_status === "trial_active"
+                    : (activeTenant.billing?.effective_status === "trial_active" || activeTenant.billing?.effective_status === "grace")
                       ? `${activeTenant.billing?.days_remaining} días restantes`
                       : "Acceso restringido por pago"}
                 </p>
@@ -504,7 +526,11 @@ export default function SettingsPage() {
                 onClick={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (!activeTenant?.id) return;
+                  const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+                  if (!activeTenant?.id || activeTenant.id === ZERO_UUID) {
+                    setBillingError("Contexto de negocio inválido. Por favor refresca la página.");
+                    return;
+                  }
                   setBillingLoading(true);
                   setBillingError(null);
                   try {
