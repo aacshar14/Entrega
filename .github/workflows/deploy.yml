@@ -82,9 +82,10 @@ jobs:
     name: 🚢 Deploy API
     needs: [changes, build_api, migrate_db]
     if: |
+      always() &&
       (needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true') && 
       (needs.build_api.result == 'success') &&
-      (needs.changes.outputs.db != 'true' || needs.migrate_db.result == 'success')
+      (needs.migrate_db.result == 'success' || needs.migrate_db.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       prev_revision: ${{ steps.pre_deploy.outputs.revision }}
@@ -174,8 +175,10 @@ jobs:
     name: 🧪 Authenticated Smoke Tests
     needs: [deploy_api, deploy_web]
     if: |
+      always() &&
       (needs.deploy_api.result == 'success' || needs.deploy_api.result == 'skipped') &&
-      (needs.deploy_web.result == 'success' || needs.deploy_web.result == 'skipped')
+      (needs.deploy_web.result == 'success' || needs.deploy_web.result == 'skipped') &&
+      (needs.deploy_api.result == 'success' || needs.deploy_web.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Get Smoke Test Token from Supabase
