@@ -180,7 +180,7 @@ export default function PlatformTenants() {
                   </h4>
                   <p className="text-xs font-mono font-bold text-slate-400 uppercase tracking-tighter">
                     {m.tenant.slug}
-                    {(m.tenant as any).display_code && ` • ${(m.tenant as any).display_code}`}
+                    {m.tenant.display_code && ` • ${m.tenant.display_code}`}
                   </p>
                 </div>
               </div>

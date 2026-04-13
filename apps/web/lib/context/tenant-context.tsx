@@ -39,6 +39,9 @@ interface Tenant {
   currency?: string;
   plan_code?: string;
   billing_status?: string;
+  is_blocked?: boolean;
+  block_reason?: string;
+  display_code?: string;
   billing?: {
     billing_status: string;
     effective_status: string;
