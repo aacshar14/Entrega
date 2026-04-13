@@ -33,17 +33,21 @@ export default function PlatformTenants() {
   const [modalConfig, setModalConfig] = useState<any>(null);
 
   const filtered = memberships.filter((m) => {
-    // 🛡️ PHANTOM BLOCK (V3.4.5): Redundant frontend gate to ensure dev seeds 
-    // never appear in production registry views.
-    if (m.tenant.id.startsWith("00000000")) return false;
+    // 🛡️ MISSION CRITICAL (V3.7.2): Never hide valid tenants from the Admin Registry.
+    // If we have a membership, it MUST be visible unless explicitly searched away.
+    if (!m.tenant) return false;
 
-    const matchesSearch =
-      m.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.tenant.slug.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" ||
-      (m.tenant as any).whatsapp_status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const name = m.tenant.name?.toLowerCase() || "";
+    const slug = m.tenant.slug?.toLowerCase() || "";
+    const query = searchTerm.toLowerCase();
+
+    const matchesSearch = !query || name.includes(query) || slug.includes(query);
+    
+    // Status filter logic
+    if (statusFilter === "all") return matchesSearch;
+    
+    const ws = (m.tenant as any).whatsapp_status;
+    return matchesSearch && ws === statusFilter;
   });
 
   const executeUpdate = async () => {
@@ -197,7 +201,7 @@ export default function PlatformTenants() {
       </div>
 
       {/* Modern Card View (Mobile Optimized Table) */}
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filtered.map((m) => (
           <div
             key={m.tenant.id}
