@@ -30,6 +30,8 @@ function UI_Shell({ children }) {
   const isPublicPath = [
     "/landing",
     "/login",
+    "/signup",
+    "/demo",
     "/",
     "/privacy-policy",
     "/terms",

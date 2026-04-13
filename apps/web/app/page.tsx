@@ -46,7 +46,7 @@ export default function RootPage() {
           <div className="flex items-center gap-4">
             <Link href="/login" className="hidden sm:block text-sm font-bold text-white/80 hover:text-white transition-all">Log in</Link>
             <Link
-              href="/onboarding"
+              href="/signup"
               onClick={() => trackEvent("signup_start")}
               className="bg-[#56CCF2] text-[#1D3146] px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#1D3146]/20"
             >
@@ -72,7 +72,7 @@ export default function RootPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
-                href="/onboarding"
+                href="/signup"
                 onClick={() => trackEvent("cta_primary_click")}
                 className="group h-16 px-10 bg-[#1D3146] text-white rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#1D3146]/30"
               >
@@ -80,7 +80,8 @@ export default function RootPage() {
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
-                href="https://wa.me/message/ENTREGA_DEMO"
+                href="/demo"
+                onClick={() => trackEvent("demo_click")}
                 className="h-16 px-10 bg-white border-2 border-slate-100 text-[#1D3146] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-sm tracking-widest hover:bg-slate-50 transition-all"
               >
                 <PlayCircle size={20} />
@@ -260,7 +261,7 @@ export default function RootPage() {
            <p className="text-xl font-bold opacity-80">Empieza tu prueba de 7 días hoy mismo. Sin tarjeta, sin compromisos.</p>
            <div className="pt-4">
               <Link
-                href="/onboarding"
+                href="/signup"
                 className="inline-flex h-20 px-12 bg-[#1D3146] text-white rounded-3xl items-center justify-center gap-4 font-black uppercase tracking-widest text-lg hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[#1D3146]/30"
               >
                 Prueba gratis 7 días
