@@ -29,14 +29,15 @@ router = APIRouter()
 
 def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
     """
-    STRICT BEST-EFFORT (V2.2.0): Resolves tenant info without ever failing the response.
-    Implements mandatory fallback table for all optional metrics.
+    STRICT BEST-EFFORT (V2.2.0/V2.3.0): Resolves tenant info without ever failing.
+    Uses persisted onboarding state as the primary source of truth.
     """
-    # 1. Operational "Ready" Semantics (Deterministic)
-    # Target: Tenant active AND explicitly marked ready in DB.
+    # 1. Operational "Ready" Semantics (V2.3.0 Deterministic)
+    # Reflects capacity for the base platform to operate.
     is_ready = tenant.ready and tenant.status == "active"
 
-    # 2. Best-Effort Metrics (Onboarding Counters)
+    # 2. Support Metrics (Onboarding Counters for Context)
+    # These are secondary to onboarding_state in V2.3.0.
     has_customers = tenant.clients_imported
     has_products = tenant.stock_imported
     try:
@@ -59,8 +60,7 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
             error=str(metrics_err),
         )
 
-    # 3. Best-Effort WhatsApp Status
-    # Defaults according to V2.2.0 Fallback Table
+    # 3. WhatsApp Status (Best-Effort)
     wa_status = "not_connected"
     wa_display = None
     wa_acc_name = None
@@ -87,14 +87,20 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
             error=str(wa_err),
         )
 
-    # 4. Assembly with Null-Safe Defaults (V2.2.0 Table)
+    # 4. Onboarding Info (V2.3.0 Persisted State)
+    # The source of truth for the onboarding flow progression.
+    onboarding_state = tenant.onboarding_state or "created"
+    onboarding_step = tenant.onboarding_step or 1
+
+    # 5. Assembly with Null-Safe Defaults (V2.3.0 Hardened Contract)
     return TenantInfo(
         id=tenant.id,
         name=tenant.name,
         slug=tenant.slug,
         logo_url=tenant.logo_url,
         status=tenant.status,
-        onboarding_step=tenant.onboarding_step or 1,
+        onboarding_state=onboarding_state,
+        onboarding_step=onboarding_step,
         business_whatsapp_number=tenant.business_whatsapp_number,
         clients_imported=has_customers,
         stock_imported=has_products,
@@ -109,6 +115,7 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
         billing_status=tenant.billing_status or "inactive",
         plan_code=tenant.plan_code or "basic_monthly",
         trial_ends_at=tenant.trial_ends_at,
+        grace_ends_at=tenant.grace_ends_at,
         subscription_ends_at=tenant.subscription_ends_at,
     )
 
@@ -120,13 +127,12 @@ async def get_me(
     db: Session = Depends(get_session),
 ):
     """
-    DETERMINISTIC BOOTSTRAP (V2.2.0): Single source of truth for identity and context.
-    Strict enforcement of tenant precedence and null-safe resilience.
+    DETERMINISTIC BOOTSTRAP (V2.2.0/V2.3.0): Single source of truth.
+    Ensures that identity and active tenant context follow strict resolution.
     """
     logger.info("users.get_me.start", user_id=str(current_user.id))
 
-    # 1. Build Membership List (Null-Safe Iteration)
-    # We query ALL memberships for this user
+    # 1. Build Membership List (V2.3.0 Strict Determinism)
     memberships_db = db.exec(
         select(TenantUser, Tenant)
         .join(Tenant)
@@ -157,7 +163,6 @@ async def get_me(
             )
 
     # 2. Resolve Active Tenant Info
-    # If get_active_membership (deterministic resolver) returned a context, use it.
     active_tenant_info = None
     if active_membership:
         target_tenant = db.get(Tenant, active_membership.tenant_id)
@@ -165,14 +170,6 @@ async def get_me(
             active_tenant_info = get_tenant_info_safe(db, target_tenant)
 
     # 3. Assemble Response
-    # Determinism check: Admin without header MUST have active_tenant=None
-    if current_user.platform_role == "admin" and active_tenant_info:
-        logger.debug(
-            "users.get_me.admin_context_active", tenant_id=str(active_tenant_info.id)
-        )
-    elif current_user.platform_role == "admin":
-        logger.info("users.get_me.admin_global_context")
-
     return MeResponse(
         user=current_user,
         active_tenant=active_tenant_info,
@@ -197,7 +194,6 @@ async def list_users(
     # Return mapping
     response = []
     for u, role, active in users_db:
-        # 🛡️ Privacy Filter: Hide Platform Admins from regular tenant team views
         if u.platform_role == "admin":
             continue
 

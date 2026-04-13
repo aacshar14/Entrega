@@ -38,7 +38,11 @@ class Tenant(SQLModel, table=True):
     business_name: Optional[str] = None
     business_whatsapp_number: Optional[str] = None
 
-    # Onboarding Readiness Flags (State Machine)
+    # Onboarding Readiness (Explicit V2.3.0 State)
+    onboarding_state: str = Field(default="created", index=True)
+    onboarding_step: int = Field(default=1)
+
+    # Onboarding Readiness Flags (State Machine Legacy - Keeping for compat)
     clients_imported: bool = Field(default=False)
     stock_imported: bool = Field(default=False)
     business_whatsapp_connected: bool = Field(default=False)
@@ -52,13 +56,14 @@ class Tenant(SQLModel, table=True):
     # --- Billing & Plan Control ---
     billing_status: str = Field(
         default="inactive", index=True
-    )  # active, grace, past_due, canceled, inactive
+    )  # trial_active, active, grace, past_due, canceled, inactive
     plan_code: str = Field(default="basic_monthly", index=True)
     stripe_customer_id: Optional[str] = Field(default=None, index=True)
     stripe_subscription_id: Optional[str] = Field(default=None, index=True)
     stripe_price_id: Optional[str] = None
     subscription_ends_at: Optional[datetime] = None
     trial_ends_at: Optional[datetime] = None
+    grace_ends_at: Optional[datetime] = None
 
     last_payment_status: Optional[str] = None
     last_stripe_event_id: Optional[str] = None
@@ -491,6 +496,7 @@ class TenantInfo(BaseModel):
     slug: str
     logo_url: Optional[str] = None
     status: str = "active"
+    onboarding_state: str = "created"
     onboarding_step: int = 1
     business_whatsapp_number: Optional[str] = None
     clients_imported: bool = False
