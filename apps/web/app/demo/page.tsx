@@ -25,17 +25,23 @@ export default function DemoPage() {
           </Link>
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-tight">
-              Mira <span className="text-[#56CCF2]">EntréGA</span> en acción
+              Así conviertes mensajes de <br />
+              WhatsApp en <span className="text-[#56CCF2]">ventas</span> automáticamente
             </h1>
             <p className="text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
-              Descubre cómo registrar ventas, deudas y controlar tu inventario desde WhatsApp en segundos.
+              Ve cómo Entrega registra ventas, controla deudas y actualiza tu inventario en segundos.
             </p>
           </div>
         </div>
 
         {/* Live Animated Walkthrough Section */}
-        <div className="relative group aspect-[16/10] w-full bg-black/40 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-3xl">
-          <DemoWalkthrough />
+        <div className="space-y-4">
+          <div className="relative group aspect-[16/10] w-full bg-black/40 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-3xl">
+            <DemoWalkthrough />
+          </div>
+          <p className="text-white/60 text-xs font-bold uppercase tracking-widest">
+            Esto es exactamente cómo funciona en tu negocio.
+          </p>
         </div>
 
         {/* Action Section */}
@@ -45,7 +51,7 @@ export default function DemoPage() {
               href="/signup"
               className="h-20 px-12 bg-[#56CCF2] text-[#1D3146] rounded-[2rem] font-black uppercase tracking-widest text-lg shadow-2xl shadow-[#56CCF2]/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-4"
             >
-              Empieza gratis ahora
+              Empieza gratis en 7 días
               <ArrowRight size={24} />
             </Link>
             <div className="flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/40">
@@ -55,7 +61,7 @@ export default function DemoPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <Zap size={14} className="text-[#56CCF2]" />
-                Setup {"<"} 1 minuto
+                Configuración en menos de 1 minuto
               </div>
             </div>
           </div>
