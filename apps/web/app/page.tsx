@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   BarChart3,
   XCircle,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/logo";
