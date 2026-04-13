@@ -74,11 +74,20 @@ async def admin_billing_control(
         tenant.plan_code = req.plan_code
 
     if req.trial_extension_days:
-        base_date = tenant.trial_ends_at or get_utc_now()
+        # Surgical Fix V3.3.0: Ensure extension is from Today if already expired
+        current_val = tenant.trial_ends_at
+        if current_val and current_val.tzinfo is None:
+            current_val = current_val.replace(tzinfo=timezone.utc)
+        
+        base_date = max(current_val or get_utc_now(), get_utc_now())
         tenant.trial_ends_at = base_date + timedelta(days=req.trial_extension_days)
     
     if req.subscription_extension_days:
-        base_date = tenant.subscription_ends_at or get_utc_now()
+        current_val = tenant.subscription_ends_at
+        if current_val and current_val.tzinfo is None:
+            current_val = current_val.replace(tzinfo=timezone.utc)
+
+        base_date = max(current_val or get_utc_now(), get_utc_now())
         tenant.subscription_ends_at = base_date + timedelta(days=req.subscription_extension_days)
 
     tenant.manually_overridden_by = current_admin_id
