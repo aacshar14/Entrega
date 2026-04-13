@@ -55,7 +55,7 @@ export default function DemoPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <Zap size={14} className="text-[#56CCF2]" />
-                Setup < 1 minuto
+                Setup {"<"} 1 minuto
               </div>
             </div>
           </div>
