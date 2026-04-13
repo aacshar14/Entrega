@@ -49,17 +49,17 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 -mt-10">
+    <div className="min-h-screen bg-[#1D3146] flex flex-col items-center justify-center p-6 -mt-10">
       <div className="w-full max-w-md space-y-10">
         <div className="flex flex-col items-center text-center space-y-4">
           <Link href="/" className="transition-transform hover:scale-105 active:scale-95">
-            <Logo variant="dark" className="w-72 md:w-80 h-auto opacity-100 drop-shadow-sm" />
+            <Logo variant="master" className="w-72 md:w-80 h-auto opacity-100" />
           </Link>
-          <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Crea tu cuenta gratis</h1>
-          <p className="text-slate-500 font-medium">Empieza a controlar tu negocio en 3 minutos.</p>
+          <h1 className="text-3xl font-black text-white tracking-tight">Crea tu cuenta gratis</h1>
+          <p className="text-white/60 font-medium">Empieza a controlar tu negocio en 3 minutos.</p>
         </div>
 
-        <form onSubmit={handleSignup} className="bg-[#1D3146] p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-white/5 space-y-6">
+        <form onSubmit={handleSignup} className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-6">
           <div className="space-y-4">
             <div>
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Nombre Completo</label>
@@ -120,16 +120,16 @@ export default function SignupPage() {
         </form>
 
         <div className="text-center">
-          <Link href="/login" className="text-sm font-bold text-[#1D3146]/60 hover:text-[#1D3146] transition-colors">
-            ¿Ya tienes cuenta? <span className="text-[#1D3146] underline">Inicia Sesión</span>
+          <Link href="/login" className="text-sm font-bold text-white/50 hover:text-white transition-colors">
+            ¿Ya tienes cuenta? <span className="text-white underline">Inicia Sesión</span>
           </Link>
         </div>
 
-        <div className="flex items-center justify-center gap-6 pt-4 opacity-40">
-           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#1D3146]">
+        <div className="flex items-center justify-center gap-6 pt-4 opacity-70">
+           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white">
              <ShieldCheck size={14} /> Sin tarjeta
            </div>
-           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#1D3146]">
+           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white">
              <Zap size={14} /> Setup instantáneo
            </div>
         </div>

@@ -45,17 +45,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#EBEEF2] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-[#1D3146] flex flex-col items-center justify-center p-6 -mt-10">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
           <Link href="/">
-            <Logo variant="dark" className="w-64 h-auto" />
+            <Logo variant="master" className="w-64 h-auto" />
           </Link>
-          <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">Bienvenido de nuevo</h1>
-          <p className="text-slate-500 font-medium">Inicia sesión para controlar tu negocio.</p>
+          <h1 className="text-3xl font-black text-white tracking-tight">Bienvenido de nuevo</h1>
+          <p className="text-white/60 font-medium">Inicia sesión para controlar tu negocio.</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-[#1D3146] p-10 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/5 space-y-8">
+        <form onSubmit={handleLogin} className="bg-white/5 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-8">
           <div className="space-y-6">
             <div>
               <label className="block text-[10px] font-black uppercase text-white/50 tracking-[0.2em] mb-2 ml-1">Email</label>
@@ -92,7 +92,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-16 bg-white text-[#1D3146] rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+            className="w-full h-16 bg-[#56CCF2] text-[#1D3146] rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
           >
             {loading ? "Entrando..." : "Iniciar Sesión"}
             <ArrowRight size={18} />
@@ -100,11 +100,11 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center space-y-4">
-          <Link href="/signup" className="text-sm font-bold text-[#1D3146]/60 hover:text-[#1D3146] transition-colors">
-            ¿No tienes cuenta? <span className="text-[#1D3146] underline">Crear cuenta</span>
+          <Link href="/signup" className="text-sm font-bold text-white/60 hover:text-white transition-colors">
+            ¿No tienes cuenta? <span className="text-white underline">Crear cuenta</span>
           </Link>
           <div className="pt-2">
-             <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-[#1D3146] transition-colors">
+             <Link href="/" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors">
                ← Volver al inicio
              </Link>
           </div>
