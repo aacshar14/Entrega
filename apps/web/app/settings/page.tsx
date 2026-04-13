@@ -431,12 +431,17 @@ export default function SettingsPage() {
           </div>
         </div>
         
-        {/* PLAN Y FACTURACIÓN (V3.0.0 Surgical) */}
+        {/* PLAN Y FACTURACIÓN (V3.1.0 Surgical - Money Button) */}
         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-2">
-              <DollarSign size={16} /> Plan y Facturación
-            </h3>
+            <div className="space-y-1">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-2">
+                <DollarSign size={16} /> Plan y Facturación
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-6">
+                Gestiona tu suscripción y acceso
+              </p>
+            </div>
             <div
               className={`flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
                 activeTenant.billing?.effective_status === "active_paid"
@@ -457,28 +462,38 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="bg-[#EBEEF2]/30 rounded-[2rem] p-8 border border-slate-100 grid md:grid-cols-2 gap-8 items-center">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#1D3146] rounded-xl flex items-center justify-center text-[#56CCF2] shadow-lg">
-                  <DollarSign size={24} />
-                </div>
-                <div>
-                  <h4 className="text-base font-black text-[#1D3146]">
-                    Plan {activeTenant.billing?.plan_code?.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                  </h4>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    {activeTenant.billing?.effective_status === "active_paid" 
-                      ? `Próxima renovación: ${activeTenant.billing?.subscription_ends_at ? new Date(activeTenant.billing.subscription_ends_at).toLocaleDateString() : "N/A"}`
-                      : activeTenant.billing?.effective_status === "trial_active"
-                        ? `Vence en: ${activeTenant.billing?.days_remaining} días`
-                        : "Acceso restringido por pago"}
-                  </p>
-                </div>
+          <div className="bg-slate-50/50 rounded-[2rem] p-8 border border-slate-100 grid md:grid-cols-3 gap-8 items-center">
+            {/* Plan Info Block */}
+            <div className="space-y-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan Actual</p>
+              <p className="text-xl font-black text-[#1D3146]">
+                {activeTenant.billing?.plan_code?.split("_")[0].toUpperCase() || "BÁSICO"}
+              </p>
+            </div>
+
+            {/* Status Info Block */}
+            <div className="space-y-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Estado</p>
+              <div className="space-y-0.5">
+                <p className={`text-sm font-black ${
+                  activeTenant.billing?.effective_status === "active_paid" ? "text-emerald-600" :
+                  activeTenant.billing?.effective_status === "trial_active" ? "text-blue-600" : "text-rose-600"
+                }`}>
+                  {activeTenant.billing?.effective_status === "active_paid" ? "Activo" :
+                   activeTenant.billing?.effective_status === "trial_active" ? "Prueba activa" : "Vencido"}
+                </p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">
+                  {activeTenant.billing?.effective_status === "active_paid" 
+                    ? `Próximo cobro: ${activeTenant.billing?.subscription_ends_at ? new Date(activeTenant.billing.subscription_ends_at).toLocaleDateString() : "N/A"}`
+                    : activeTenant.billing?.effective_status === "trial_active"
+                      ? `${activeTenant.billing?.days_remaining} días restantes`
+                      : "Acceso restringido por pago"}
+                </p>
               </div>
             </div>
 
-            <div className="flex justify-end">
+            {/* CTA Block */}
+            <div className="flex flex-col items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={async () => {
@@ -496,24 +511,19 @@ export default function SettingsPage() {
                       },
                       activeTenant.id
                     );
-                    if (data?.url) {
-                      window.location.href = data.url;
-                    } else {
-                      throw new Error("No se pudo generar la sesión de pago. Intenta más tarde.");
-                    }
+                    if (data?.url) window.location.href = data.url;
                   } catch (err: any) {
-                    console.error("Billing Error:", err);
-                    setError(err.message || "Error al conectar con el sistema de pagos");
+                    setError(err.message || "Error al conectar con Stripe");
                   } finally {
                     setLoading(false);
                   }
                 }}
                 disabled={loading || activeRole !== "owner"}
-                className="px-8 py-4 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-[10px] tracking-widest disabled:opacity-50 disabled:hover:scale-100"
+                className="w-full py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest disabled:opacity-50 disabled:hover:scale-100"
               >
-                {loading ? <Loader2 className="animate-spin" size={16} /> : (
+                {loading ? <Loader2 className="animate-spin" size={18} /> : (
                   <>
-                    <DollarSign size={16} />
+                    <DollarSign size={18} />
                     {activeTenant.billing?.effective_status === "active_paid" 
                       ? "Administrar suscripción" 
                       : activeTenant.billing?.effective_status === "trial_active"
@@ -522,6 +532,9 @@ export default function SettingsPage() {
                   </>
                 )}
               </button>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.15em] italic">
+                Sin tarjeta • Cancelas cuando quieras
+              </p>
             </div>
           </div>
         </div>
