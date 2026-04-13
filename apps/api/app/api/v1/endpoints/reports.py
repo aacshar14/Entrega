@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func, desc
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, require_roles, get_active_tenant_id
+from app.core.dependencies import get_current_user, require_roles, require_premium
 from app.models.models import (
     User,
+    Tenant,
     InventoryMovement,
     Payment,
     Customer,
@@ -19,7 +20,7 @@ router = APIRouter()
 @router.get("/weekly", dependencies=[Depends(require_roles(["owner"]))])
 async def get_weekly_report(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_premium),
 ):
     """Generates simple weekly summary for pilot user (owner only)."""
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
@@ -28,7 +29,7 @@ async def get_weekly_report(
     deliveries = (
         db.exec(
             select(func.count(InventoryMovement.id)).where(
-                (InventoryMovement.tenant_id == active_tenant_id)
+                (InventoryMovement.tenant_id == tenant.id)
                 & (InventoryMovement.type == "delivery")
                 & (InventoryMovement.created_at >= seven_days_ago)
             )
@@ -40,7 +41,7 @@ async def get_weekly_report(
     payments = (
         db.exec(
             select(func.sum(Payment.amount)).where(
-                (Payment.tenant_id == active_tenant_id)
+                (Payment.tenant_id == tenant.id)
                 & (Payment.created_at >= seven_days_ago)
             )
         ).one()
@@ -51,7 +52,7 @@ async def get_weekly_report(
     new_customers = (
         db.exec(
             select(func.count(Customer.id)).where(
-                (Customer.tenant_id == active_tenant_id)
+                (Customer.tenant_id == tenant.id)
                 & (Customer.created_at >= seven_days_ago)
             )
         ).one()
@@ -64,7 +65,7 @@ async def get_weekly_report(
         select(Product.name, qty_label)
         .join(InventoryMovement, Product.id == InventoryMovement.product_id)
         .where(
-            (InventoryMovement.tenant_id == active_tenant_id)
+            (InventoryMovement.tenant_id == tenant.id)
             & (InventoryMovement.type.in_(["delivery", "sale_reported"]))
             & (InventoryMovement.created_at >= seven_days_ago)
         )
@@ -78,7 +79,7 @@ async def get_weekly_report(
     top_debtors_query = (
         select(Customer.name, CustomerBalance.balance)
         .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
-        .where((Customer.tenant_id == active_tenant_id) & (CustomerBalance.balance < 0))
+        .where((Customer.tenant_id == tenant.id) & (CustomerBalance.balance < 0))
         .order_by(CustomerBalance.balance)  # Lowest first
         .limit(3)
     )

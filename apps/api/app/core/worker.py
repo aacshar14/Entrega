@@ -116,6 +116,20 @@ class EventWorker:
             tenant_id=str(tenant.id), event_id=str(event.id)
         )
 
+        # --- BILLING ENFORCEMENT (V2.5.0 Async) ---
+        from app.core.billing import BillingResolver
+        billing = BillingResolver.resolve_billing(tenant)
+        
+        if not billing.entitlements.can_process_whatsapp:
+            logger.warning(
+                "worker.billing_block_active", 
+                status=billing.effective_status,
+                event_type=event.event_type
+            )
+            # We don't want to retry this event if billing is the issue.
+            # Mark as failed with a specific reason.
+            return # Silent exit, we rely on the webhook-level persistence
+
         if event.source == "whatsapp" and event.event_type == "message":
             msg_id = event.message_sid
 

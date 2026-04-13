@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, func
 from app.core.db import get_session
-from app.core.dependencies import get_current_user, require_roles, get_active_tenant_id
-from app.models.models import (
+from app.core.dependencies import get_current_user, require_roles, require_active_billing
     User,
+    Tenant,
     InventoryMovement,
     Customer,
     Product,
@@ -39,11 +39,11 @@ router = APIRouter()
 )
 async def list_movements(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """List all inventory movements for the tenant."""
     movements = db.exec(
-        select(InventoryMovement).where(InventoryMovement.tenant_id == active_tenant_id)
+        select(InventoryMovement).where(InventoryMovement.tenant_id == tenant.id)
     ).all()
     return movements
 
@@ -53,7 +53,7 @@ async def create_manual_movement(
     movement: MovementManualCreate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """Create a manual inventory movement with automated tier-pricing for deliveries."""
     product_id = movement.product_id
@@ -66,7 +66,7 @@ async def create_manual_movement(
 
     # 1. Fetch Product for SKU and basic info
     product = db.get(Product, product_id)
-    if not product or product.tenant_id != active_tenant_id:
+    if not product or product.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
 
     unit_price = 0.0
@@ -91,7 +91,7 @@ async def create_manual_movement(
             )
 
         customer = db.get(Customer, customer_id)
-        if not customer or customer.tenant_id != active_tenant_id:
+        if not customer or customer.tenant_id != tenant.id:
             raise HTTPException(
                 status_code=404, detail="Customer not found in your tenant"
             )
@@ -117,7 +117,7 @@ async def create_manual_movement(
 
     # 3. Create Movement
     new_movement = InventoryMovement(
-        tenant_id=active_tenant_id,
+        tenant_id=tenant.id,
         product_id=product.id,
         customer_id=customer_id,
         customer_name_snapshot=customer_name_snapshot,
@@ -149,7 +149,7 @@ async def create_manual_movement(
             balance.last_updated = datetime.now(timezone.utc)
         else:
             balance = StockBalance(
-                tenant_id=active_tenant_id,
+                tenant_id=tenant.id,
                 product_id=product.id,
                 quantity=quantity,
                 updated_by_user_id=current_user.id,
@@ -182,7 +182,7 @@ async def create_manual_movement(
             db.add(cb)
         else:
             cb = CustomerBalance(
-                tenant_id=active_tenant_id,
+                tenant_id=tenant.id,
                 customer_id=customer_id,
                 balance=amount_delta,
                 last_updated=datetime.now(timezone.utc),
@@ -200,7 +200,7 @@ async def create_manual_movement(
 )
 async def get_customer_inventory_summary(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """
     Returns a pivoted summary of inventory 'outside' per customer.
@@ -208,7 +208,7 @@ async def get_customer_inventory_summary(
     """
     # 1. Get all active products for the tenant to define columns
     products = db.exec(
-        select(Product).where(Product.tenant_id == active_tenant_id)
+        select(Product).where(Product.tenant_id == tenant.id)
     ).all()
     active_skus = [p.sku for p in products]
     sku_name_map = {p.sku: p.name for p in products}
@@ -230,7 +230,7 @@ async def get_customer_inventory_summary(
             func.sum(InventoryMovement.quantity).label("total_qty"),
             func.max(InventoryMovement.created_at).label("last_movement"),
         )
-        .where(InventoryMovement.tenant_id == active_tenant_id)
+        .where(InventoryMovement.tenant_id == tenant.id)
         .where(InventoryMovement.customer_id != None)
         .where(InventoryMovement.type.in_(outside_types))
         .group_by(
@@ -288,7 +288,7 @@ async def get_customer_inventory_summary(
 )
 async def get_customer_inventory(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """
     Returns current inventory 'outside' (at customer locations).
@@ -324,7 +324,7 @@ async def get_customer_inventory(
             func.sum(InventoryMovement.quantity).label("total_qty"),
             func.max(InventoryMovement.created_at).label("last_movement"),
         )
-        .where(InventoryMovement.tenant_id == active_tenant_id)
+        .where(InventoryMovement.tenant_id == tenant.id)
         .where(InventoryMovement.customer_id != None)
         .where(InventoryMovement.type.in_(outside_types))
         .group_by(
@@ -359,7 +359,7 @@ async def get_customer_inventory(
         p_name = (
             db.exec(
                 select(Product.name).where(
-                    Product.sku == sku, Product.tenant_id == active_tenant_id
+                    Product.sku == sku, Product.tenant_id == tenant.id
                 )
             ).first()
             or sku
@@ -385,11 +385,11 @@ async def update_movement(
     description: Optional[str] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """Update a movement's metadata (owner only)."""
     movement = db.get(InventoryMovement, id)
-    if not movement or movement.tenant_id != active_tenant_id:
+    if not movement or movement.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Movement not found")
 
     if description is not None:
@@ -407,7 +407,7 @@ async def update_movement(
 @router.post("/reconcile-all")
 async def reconcile_all(
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """Utility to recalculate all balances from movement history, scoped to active tenant."""
     from sqlalchemy import text
@@ -422,13 +422,13 @@ async def reconcile_all(
               AND type IN ('delivery', 'delivery_to_customer') 
               AND quantity > 0
         """),
-            {"tid": active_tenant_id},
+            {"tid": tenant.id},
         )
 
         # 2. Reconstruct Stock Balances (All products for tenant)
         db.execute(
             text("DELETE FROM stock_balances WHERE tenant_id = :tid"),
-            {"tid": active_tenant_id},
+            {"tid": tenant.id},
         )
         sql_stock = """
         INSERT INTO stock_balances (id, tenant_id, product_id, quantity, last_updated)
@@ -443,12 +443,12 @@ async def reconcile_all(
         WHERE p.tenant_id = :tid
         GROUP BY p.tenant_id, p.id;
         """
-        db.execute(text(sql_stock), {"tid": active_tenant_id})
+        db.execute(text(sql_stock), {"tid": tenant.id})
 
         # 3. Reconstruct Customer Balances (All customers for tenant)
         db.execute(
             text("DELETE FROM customer_balances WHERE tenant_id = :tid"),
-            {"tid": active_tenant_id},
+            {"tid": tenant.id},
         )
         sql_customers = """
         INSERT INTO customer_balances (id, tenant_id, customer_id, balance, last_updated)
@@ -480,19 +480,19 @@ async def reconcile_all(
         WHERE c.tenant_id = :tid
         GROUP BY c.tenant_id, c.id, m_bal.move_balance, p_count.pay_total;
         """
-        db.execute(text(sql_customers), {"tid": active_tenant_id})
+        db.execute(text(sql_customers), {"tid": tenant.id})
 
         db.commit()
 
         # Verify counts
         stock_count = db.exec(
             select(func.count(StockBalance.id)).where(
-                StockBalance.tenant_id == active_tenant_id
+                StockBalance.tenant_id == tenant.id
             )
         ).one()
         cust_count = db.exec(
             select(func.count(CustomerBalance.id)).where(
-                CustomerBalance.tenant_id == active_tenant_id
+                CustomerBalance.tenant_id == tenant.id
             )
         ).one()
 
@@ -513,17 +513,17 @@ async def reconcile_all(
 async def delete_movement(
     id: UUID,
     db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
+    tenant: Tenant = Depends(require_active_billing),
 ):
     """Delete a movement and trigger full reconciliation for data integrity (owner only)."""
     movement = db.get(InventoryMovement, id)
-    if not movement or movement.tenant_id != active_tenant_id:
+    if not movement or movement.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Movement not found")
 
     db.delete(movement)
     db.commit()
 
     # Trigger internal reconciliation to ensure balances match the new reality
-    await reconcile_all(db, active_tenant_id)
+    await reconcile_all(db, tenant.id)
 
     return {"status": "success", "message": "Movement deleted and balances reconciled"}

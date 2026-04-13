@@ -21,6 +21,7 @@ from app.models.models import (
     TenantInfo,
     TenantWhatsAppIntegration,
 )
+from app.core.billing import BillingResolver
 from typing import List, Optional
 from uuid import UUID
 
@@ -29,15 +30,13 @@ router = APIRouter()
 
 def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
     """
-    STRICT BEST-EFFORT (V2.2.0/V2.3.0): Resolves tenant info without ever failing.
-    Uses persisted onboarding state as the primary source of truth.
+    STRICT BEST-EFFORT (V2.5.0 Hardened): Resolves tenant info with deterministic billing.
+    Uses BillingResolver as the authority for state and entitlements.
     """
     # 1. Operational "Ready" Semantics (V2.3.0 Deterministic)
-    # Reflects capacity for the base platform to operate.
     is_ready = tenant.ready and tenant.status == "active"
 
-    # 2. Support Metrics (Onboarding Counters for Context)
-    # These are secondary to onboarding_state in V2.3.0.
+    # 2. Support Metrics (Onboarding Counters)
     has_customers = tenant.clients_imported
     has_products = tenant.stock_imported
     try:
@@ -53,12 +52,8 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
             ).one()
             > 0
         )
-    except Exception as metrics_err:
-        logger.warning(
-            "metrics.onboarding_counts.failed",
-            tenant_id=str(tenant.id),
-            error=str(metrics_err),
-        )
+    except Exception:
+        pass
 
     # 3. WhatsApp Status (Best-Effort)
     wa_status = "not_connected"
@@ -80,17 +75,11 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
             wa_acc_name = wa_integration.business_name
             wa_app_id = wa_integration.meta_app_id
             wa_connected = wa_integration.setup_completed
-    except Exception as wa_err:
-        logger.warning(
-            "metrics.whatsapp_lookup.failed",
-            tenant_id=str(tenant.id),
-            error=str(wa_err),
-        )
+    except Exception:
+        pass
 
-    # 4. Onboarding Info (V2.3.0 Persisted State)
-    # The source of truth for the onboarding flow progression.
-    onboarding_state = tenant.onboarding_state or "created"
-    onboarding_step = tenant.onboarding_step or 1
+    # 4. Resolve Deterministic Billing (V2.5.0)
+    billing_data = BillingResolver.resolve_billing(tenant)
 
     # 5. Assembly with Null-Safe Defaults (V2.3.0 Hardened Contract)
     return TenantInfo(
@@ -99,8 +88,8 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
         slug=tenant.slug,
         logo_url=tenant.logo_url,
         status=tenant.status,
-        onboarding_state=onboarding_state,
-        onboarding_step=onboarding_step,
+        onboarding_state=tenant.onboarding_state or "created",
+        onboarding_step=tenant.onboarding_step or 1,
         business_whatsapp_number=tenant.business_whatsapp_number,
         clients_imported=has_customers,
         stock_imported=has_products,
@@ -112,11 +101,7 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
         whatsapp_app_id=wa_app_id,
         timezone=tenant.timezone,
         currency=tenant.currency,
-        billing_status=tenant.billing_status or "inactive",
-        plan_code=tenant.plan_code or "basic_monthly",
-        trial_ends_at=tenant.trial_ends_at,
-        grace_ends_at=tenant.grace_ends_at,
-        subscription_ends_at=tenant.subscription_ends_at,
+        billing=billing_data,
     )
 
 

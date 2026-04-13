@@ -3,7 +3,7 @@ from sqlmodel import Session, select, func
 from app.core.db import get_session
 from app.core.dependencies import (
     get_current_user,
-    get_active_tenant,
+    require_active_billing,
     require_tenant_role,
 )
 from app.models.models import (
@@ -59,7 +59,7 @@ class ProductImportCommitRequest(BaseModel):
 @router.get("", response_model=List[Product])
 async def list_products(
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """List all products for the active tenant."""
     products = db.exec(
@@ -71,7 +71,7 @@ async def list_products(
 @router.get("/stock")
 async def list_products_stock(
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """List products with current stock levels."""
     statement = (
@@ -100,7 +100,7 @@ async def list_products_stock(
 async def import_products_preview(
     file: UploadFile = File(...),
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """Step 1: Preview CSV data for product/stock import."""
     content = await file.read()
@@ -202,7 +202,7 @@ async def import_products_commit(
     request: ProductImportCommitRequest,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """Step 2: Commit valid product rows to the database."""
     tenant_id = active_tenant.id
@@ -303,7 +303,7 @@ async def create_product(
     sku: Optional[str] = None,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """Create a new product for the active tenant."""
     new_product = Product(
@@ -334,7 +334,7 @@ async def update_product(
     update_data: ProductUpdate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
 ):
     """Update a product and optional stock for the active tenant."""
     product = db.get(Product, id)
@@ -412,7 +412,7 @@ async def update_product(
 async def delete_product(
     id: UUID,
     db: Session = Depends(get_session),
-    active_tenant: Tenant = Depends(get_active_tenant),
+    active_tenant: Tenant = Depends(require_active_billing),
     _=Depends(require_tenant_role(["owner"])),
 ):
     """Delete a product (Owner only). Deep cleanup of all linked records."""

@@ -354,28 +354,72 @@ def require_platform_role(authorized_roles: List[str]):
     return role_dependency
 
 
-async def require_premium(
+async def require_active_billing(
     db: Session = Depends(get_db),
     membership: Any = Depends(get_active_membership),
-):
+) -> Tenant:
     """
-    Entitlement Guard: Ensures the tenant has an active premium subscription.
+    STRICT ENFORCEMENT (V2.5.0): Ensures tenant has basic access to dashboard/orders.
     """
     from app.models.models import Tenant
+    from app.core.billing import BillingResolver
+
+    if not membership:
+        raise HTTPException(status_code=400, detail="No active tenant context")
 
     tenant = db.get(Tenant, membership.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    is_premium = tenant.plan_code.startswith("premium")
-    is_active = tenant.billing_status == "active"
-
-    # Owners of premium tenants or those in grace can continue briefly
-    # (Future-proof for grace window)
-    if not (is_premium and is_active):
+    billing = BillingResolver.resolve_billing(tenant)
+    if not billing.entitlements.can_access_dashboard:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Se requiere un plan Premium activo para esta función.",
+            detail="Acceso restringido. Por favor regulariza tu suscripción o contacta a soporte.",
+        )
+
+    return tenant
+
+
+async def require_whatsapp_entitlement(
+    db: Session = Depends(get_db),
+    membership: Any = Depends(get_active_membership),
+) -> Tenant:
+    """
+    STRICT ENFORCEMENT (V2.5.0): Validates capacity to use WhatsApp automation.
+    """
+    from app.models.models import Tenant
+    from app.core.billing import BillingResolver
+
+    tenant = await require_active_billing(db, membership)
+    billing = BillingResolver.resolve_billing(tenant)
+
+    if not billing.entitlements.can_process_whatsapp:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Capacidad de procesamiento de WhatsApp suspendida. Revisa tu facturación.",
+        )
+
+    return tenant
+
+
+async def require_premium(
+    db: Session = Depends(get_db),
+    membership: Any = Depends(get_active_membership),
+) -> Tenant:
+    """
+    Entitlement Guard (V2.5.0): Requires full paid plan features (vía can_export).
+    """
+    from app.models.models import Tenant
+    from app.core.billing import BillingResolver
+
+    tenant = await require_active_billing(db, membership)
+    billing = BillingResolver.resolve_billing(tenant)
+
+    if not billing.entitlements.can_export:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Se requiere un plan Premium activo para esta función avanzada.",
         )
 
     return tenant

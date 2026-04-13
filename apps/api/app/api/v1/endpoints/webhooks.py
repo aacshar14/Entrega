@@ -160,6 +160,34 @@ async def receive_whatsapp_event(
         # Bind tenant context for ALL subsequent logs
         structlog.contextvars.bind_contextvars(tenant_id=str(target_tenant_id))
 
+        # --- BILLING ENFORCEMENT (V2.5.0) ---
+        from app.core.billing import BillingResolver
+
+        tenant = db.get(Tenant, target_tenant_id)
+        if not tenant:
+            return {"status": "error", "message": "Tenant mismatch"}
+
+        billing = BillingResolver.resolve_billing(tenant)
+        if not billing.entitlements.can_process_whatsapp:
+            logger.warning(
+                "webhooks.billing_blocked",
+                tenant_id=str(target_tenant_id),
+                effective_status=billing.effective_status,
+            )
+            # Log the message but do NOT enqueue for AI/Order processing
+            new_msg = WhatsAppMessage(
+                tenant_id=target_tenant_id,
+                phone_number_id=str(business_number_id),
+                sender_wa_id=from_number,
+                message_sid=msg_id,
+                body=body,
+                raw_payload=json.dumps(payload),
+                processing_status="billing_suspended",
+            )
+            db.add(new_msg)
+            db.commit()
+            return {"status": "accepted_but_blocked_by_billing"}
+
         # 3. 🗄️ Persist Inbound WhatsAppMessage before processing (Level 2 Audit)
         # Check if already exists (Idempotency L1)
         existing_msg = db.exec(

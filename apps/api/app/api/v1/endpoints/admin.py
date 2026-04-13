@@ -40,6 +40,68 @@ class DemoMessageRequest(BaseModel):
     from_number: str = "5218781234567"
 
 
+class BillingOverrideRequest(BaseModel):
+    billing_status: Optional[str] = None
+    plan_code: Optional[str] = None
+    is_blocked: Optional[bool] = None
+    block_reason: Optional[str] = None
+    trial_extension_days: Optional[int] = None
+    subscription_extension_days: Optional[int] = None
+
+
+@router.post("/tenants/{tenant_id}/billing-control", dependencies=[Depends(require_platform_role(["admin"]))])
+async def admin_billing_control(
+    tenant_id: UUID,
+    req: BillingOverrideRequest,
+    current_admin_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_session),
+):
+    """
+    Platform Admin only: Surgical billing overrides and blocking.
+    """
+    tenant = db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    if req.is_blocked is not None:
+        tenant.is_blocked = req.is_blocked
+        tenant.block_reason = req.block_reason
+
+    if req.billing_status:
+        tenant.billing_status = req.billing_status
+    
+    if req.plan_code:
+        tenant.plan_code = req.plan_code
+
+    if req.trial_extension_days:
+        base_date = tenant.trial_ends_at or get_utc_now()
+        tenant.trial_ends_at = base_date + timedelta(days=req.trial_extension_days)
+    
+    if req.subscription_extension_days:
+        base_date = tenant.subscription_ends_at or get_utc_now()
+        tenant.subscription_ends_at = base_date + timedelta(days=req.subscription_extension_days)
+
+    tenant.manually_overridden_by = current_admin_id
+    tenant.manually_overridden_at = get_utc_now()
+    
+    db.add(tenant)
+    
+    # Audit trail
+    from app.models.models import AuditLog
+    audit = AuditLog(
+        tenant_id=tenant_id,
+        user_id=current_admin_id,
+        action="admin_billing_override",
+        data_before=None, # Simplified for now
+        data_after=json.dumps(req.dict()),
+        ip_address="internal_admin_portal"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {"status": "updated", "tenant_id": tenant_id}
+
+
 @router.get("/health/", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 @router.get("/health", dependencies=[Depends(require_platform_role(["admin", "owner"]))])
 async def admin_health_check():

@@ -72,6 +72,12 @@ class Tenant(SQLModel, table=True):
     billing_updated_by: Optional[UUID] = None
     billing_updated_at: Optional[datetime] = None
 
+    # Global Enforcement (V2.5.0)
+    is_blocked: bool = Field(default=False, index=True)
+    block_reason: Optional[str] = None
+    manually_overridden_by: Optional[UUID] = None
+    manually_overridden_at: Optional[datetime] = None
+
     created_at: datetime = Field(default_factory=get_utc_now)
     updated_at: datetime = Field(default_factory=get_utc_now)
 
@@ -487,6 +493,30 @@ class PlatformAlert(SQLModel, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, index=True)
 
 
+# --- Response & DTO Schemas (V2.5.0 Hardened) ---
+
+
+class BillingEntitlements(BaseModel):
+    can_access_dashboard: bool = True
+    can_process_whatsapp: bool = True
+    can_create_orders: bool = True
+    can_export: bool = True
+    show_paywall: bool = False
+
+
+class BillingInfo(BaseModel):
+    billing_status: str
+    effective_status: str  # trial_active, trial_expired, active_paid, grace, suspended
+    plan_code: str
+    trial_ends_at: Optional[datetime] = None
+    subscription_ends_at: Optional[datetime] = None
+    grace_ends_at: Optional[datetime] = None
+    is_blocked: bool = False
+    block_reason: Optional[str] = None
+    entitlements: BillingEntitlements
+    days_remaining: Optional[int] = None
+
+
 # --- Response & DTO Schemas (Bottom to ensure all SQLModel classes are defined) ---
 
 
@@ -510,12 +540,8 @@ class TenantInfo(BaseModel):
     timezone: str = "UTC"
     currency: str = "MXN"
 
-    # Billing (V1.3/Phase 5)
-    billing_status: str = "trial"
-    plan_code: Optional[str] = "trial"
-    trial_ends_at: Optional[datetime] = None
-    grace_ends_at: Optional[datetime] = None
-    subscription_ends_at: Optional[datetime] = None
+    # Unified Billing Context (V2.5.0)
+    billing: Optional[BillingInfo] = None
 
 
 class MembershipInfo(BaseModel):
