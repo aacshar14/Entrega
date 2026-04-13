@@ -74,8 +74,6 @@ jobs:
         run: |
           gcloud run jobs execute entrega-migrate \
             --region $REGION \
-            --command=python \
-            --args=migrate_and_validate.py \
             --wait
 
   deploy_api:
