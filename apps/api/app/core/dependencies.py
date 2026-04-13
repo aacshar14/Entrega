@@ -214,68 +214,41 @@ async def get_active_membership(
     current_user: Any = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Optional[Any]:
-    from app.models.models import TenantUser
+    """
+    STRICT RESOLUTION (V2.2.0): Deterministic tenant context resolution.
+    Follows precedence: Header -> Default -> Oldest Membership.
+    """
+    from app.models.models import TenantUser, Tenant
     from app.core.logging import logger
 
-    # 1. Capture Header Intent
     header_tenant_id = request.headers.get("X-Tenant-Id")
 
-    logger.debug(
-        "tenant_resolution.start",
-        user_id=str(current_user.id),
-        header_tenant_id=header_tenant_id,
-    )
-
-    # 👑 Superuser Resolution: Admins see EVERYTHING
+    # 1. Platform Admin: No header = No tenant context (Global)
     if current_user.platform_role == "admin":
-        if header_tenant_id:
-            try:
-                target_id = UUID(header_tenant_id)
-                # Ensure the tenant actually exists
-                from app.models.models import Tenant
+        if not header_tenant_id:
+            logger.info("tenant_resolution.admin_global", user_id=str(current_user.id))
+            return None
 
-                tenant = db.get(Tenant, target_id)
-                if not tenant:
-                    raise HTTPException(
-                        status_code=404, detail="Requested tenant does not exist."
-                    )
+        # Admin with header: Force validation
+        try:
+            target_id = UUID(header_tenant_id)
+            tenant = db.get(Tenant, target_id)
+            if not tenant:
+                raise HTTPException(status_code=404, detail="Tenant not found")
 
-                # Synthetic membership for admin bypass
-                membership = TenantUser(
-                    tenant_id=target_id,
-                    user_id=current_user.id,
-                    tenant_role="owner",  # Admin acts as owner
-                    is_active=True,
-                )
-                logger.debug(
-                    "tenant_resolution.admin_bypass", tenant_id=header_tenant_id
-                )
-            except ValueError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid X-Tenant-Id format."
-                )
-        else:
-            # Fallback for admin: Pick 'entrega' (Platform) first, then any other
-            from app.models.models import Tenant
-            first_tenant = db.exec(
-                select(Tenant).where(Tenant.slug == "entrega")
-            ).first() or db.exec(select(Tenant)).first()
-            if first_tenant:
-                membership = TenantUser(
-                    tenant_id=first_tenant.id,
-                    user_id=current_user.id,
-                    tenant_role="owner",
-                    is_active=True,
-                )
-            else:
-                # Still no tenants in the system at all
-                return None
-
-        if membership:
-            structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
+            membership = TenantUser(
+                tenant_id=target_id,
+                user_id=current_user.id,
+                tenant_role="owner",
+                is_active=True,
+            )
+            logger.info("tenant_resolution.admin_header_bypass", tenant_id=str(target_id))
+            structlog.contextvars.bind_contextvars(tenant_id=str(target_id))
             return membership
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format")
 
-    # 🕵️ Standard User Resolution Logic
+    # 2. Standard User with Header: Strict Validation (403 if unauthorized)
     if header_tenant_id:
         try:
             target_id = UUID(header_tenant_id)
@@ -288,51 +261,32 @@ async def get_active_membership(
             ).first()
 
             if not membership:
-                logger.warning(
-                    "tenant_resolution.unauthorized",
-                    user_id=str(current_user.id),
-                    requested_tenant=header_tenant_id,
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have access to the requested tenant.",
-                )
+                logger.warning("tenant_resolution.unauthorized", user_id=str(current_user.id), requested=header_tenant_id)
+                raise HTTPException(status_code=403, detail="Unauthorized tenant context")
+
+            structlog.contextvars.bind_contextvars(tenant_id=str(target_id))
+            return membership
         except ValueError:
-            logger.error(
-                "tenant_resolution.invalid_uuid",
-                user_id=str(current_user.id),
-                header_tenant_id=header_tenant_id,
-            )
-            raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format.")
-    else:
-        # Fallback to default/first membership if no header
-        membership = db.exec(
-            select(TenantUser)
-            .where(
-                TenantUser.user_id == current_user.id,
-                TenantUser.is_active.is_not(False),
-            )
-            .order_by(TenantUser.is_default.desc())
-        ).first()
+            raise HTTPException(status_code=400, detail="Invalid X-Tenant-Id format")
 
-    if not membership:
-        logger.warning("tenant_resolution.no_membership", user_id=str(current_user.id))
-        raise HTTPException(
-            status_code=400, detail="No active tenant context found for user."
+    # 3. Standard User without Header: Fallback Precedence
+    # order: is_default DESC, created_at ASC (oldest), id ASC (tie-breaker)
+    membership = db.exec(
+        select(TenantUser)
+        .where(TenantUser.user_id == current_user.id, TenantUser.is_active.is_not(False))
+        .order_by(
+            TenantUser.is_default.desc(),
+            TenantUser.created_at.asc(),
+            TenantUser.tenant_id.asc(),
         )
+    ).first()
 
-    # 🛡️ Hardening: Bind tenant_id to session context (Safe mode V1.9.9)
-    try:
+    if membership:
+        logger.info("tenant_resolution.fallback_success", user_id=str(current_user.id), tenant_id=str(membership.tenant_id))
         structlog.contextvars.bind_contextvars(tenant_id=str(membership.tenant_id))
-    except:
-        pass
-    logger.info(
-        "tenant_resolution.success",
-        user_id=str(current_user.id),
-        tenant_id=str(membership.tenant_id),
-    )
+        return membership
 
-    return membership
+    return None
 
 
 async def get_active_tenant(

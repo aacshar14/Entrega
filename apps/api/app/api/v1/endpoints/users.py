@@ -27,12 +27,18 @@ from uuid import UUID
 router = APIRouter()
 
 
-def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
-    """Helper to calculate onboarding progress for a tenant."""
-    # Tracing: Onboarding metrics start
-    logger.debug("users.get_tenant_info.metrics_start", tenant_id=str(tenant.id))
-    has_customers = False
-    has_products = False
+def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
+    """
+    STRICT BEST-EFFORT (V2.2.0): Resolves tenant info without ever failing the response.
+    Implements mandatory fallback table for all optional metrics.
+    """
+    # 1. Operational "Ready" Semantics (Deterministic)
+    # Target: Tenant active AND explicitly marked ready in DB.
+    is_ready = tenant.ready and tenant.status == "active"
+
+    # 2. Best-Effort Metrics (Onboarding Counters)
+    has_customers = tenant.clients_imported
+    has_products = tenant.stock_imported
     try:
         has_customers = (
             db.exec(
@@ -46,72 +52,63 @@ def get_tenant_info(db: Session, tenant: Tenant) -> TenantInfo:
             ).one()
             > 0
         )
-    except Exception as e:
-        # 🛡️ Hardening: Metrics failure must NEVER crash the /me response
-        if "logger" in globals():
-            logger.warning(
-                "users.get_tenant_info.metrics_failed",
-                tenant_id=str(tenant.id),
-                error=str(e),
-            )
+    except Exception as metrics_err:
+        logger.warning(
+            "metrics.onboarding_counts.failed",
+            tenant_id=str(tenant.id),
+            error=str(metrics_err),
+        )
 
-    # Check WhatsApp
-
-    # 🆕 Unified Integration Lookup (V1.4 Source of Truth)
-    # 🛡️ Hardening: Defensive lookup to prevent /me 500 if DB is out of sync
-    status = "not_connected"
-    display_number = None
-    account_name = None
+    # 3. Best-Effort WhatsApp Status
+    # Defaults according to V2.2.0 Fallback Table
+    wa_status = "not_connected"
+    wa_display = None
+    wa_acc_name = None
+    wa_app_id = None
+    wa_connected = False
 
     try:
-        logger.debug("users.get_tenant_info.wa_lookup_start", tenant_id=str(tenant.id))
-        wa_integ = db.exec(
+        wa_integration = db.exec(
             select(TenantWhatsAppIntegration).where(
                 TenantWhatsAppIntegration.tenant_id == tenant.id
             )
         ).first()
-        logger.debug("users.get_tenant_info.wa_lookup_done", found=wa_integ is not None)
 
-        if wa_integ:
-            status = wa_integ.status or "connected"
-            display_number = wa_integ.display_phone_number or wa_integ.phone_number_id
-            account_name = wa_integ.business_name
-    except Exception as e:
-        if "logger" in globals():
-            logger.warning(
-                "users.get_tenant_info.wa_lookup_failed",
-                tenant_id=str(tenant.id),
-                error=str(e),
-            )
-        # Fallback to defaults already set above
+        if wa_integration:
+            wa_status = wa_integration.status
+            wa_display = wa_integration.display_phone_number
+            wa_acc_name = wa_integration.business_name
+            wa_app_id = wa_integration.meta_app_id
+            wa_connected = wa_integration.setup_completed
+    except Exception as wa_err:
+        logger.warning(
+            "metrics.whatsapp_lookup.failed",
+            tenant_id=str(tenant.id),
+            error=str(wa_err),
+        )
 
-    has_wa = status == "connected" or status == "verified"
-
+    # 4. Assembly with Null-Safe Defaults (V2.2.0 Table)
     return TenantInfo(
         id=tenant.id,
         name=tenant.name,
         slug=tenant.slug,
         logo_url=tenant.logo_url,
-        status=tenant.status or "active",
-        onboarding_step=(
-            1
-            if not has_customers
-            else (2 if not has_products else (3 if not has_wa else 4))
-        ),
+        status=tenant.status,
+        onboarding_step=tenant.onboarding_step or 1,
         business_whatsapp_number=tenant.business_whatsapp_number,
         clients_imported=has_customers,
         stock_imported=has_products,
-        business_whatsapp_connected=has_wa,
-        whatsapp_status=status,
-        whatsapp_display_number=display_number,
-        whatsapp_account_name=account_name,
-        timezone=tenant.timezone or "UTC",
-        currency=tenant.currency or "MXN",
-        ready=has_customers
-        and has_products,  # Business rule: customers + stock = ready
-        billing_status=tenant.billing_status or "trial",
+        business_whatsapp_connected=wa_connected,
+        ready=is_ready,
+        whatsapp_status=wa_status,
+        whatsapp_display_number=wa_display,
+        whatsapp_account_name=wa_acc_name,
+        whatsapp_app_id=wa_app_id,
+        timezone=tenant.timezone,
+        currency=tenant.currency,
+        billing_status=tenant.billing_status or "inactive",
+        plan_code=tenant.plan_code or "basic_monthly",
         trial_ends_at=tenant.trial_ends_at,
-        grace_ends_at=None,
         subscription_ends_at=tenant.subscription_ends_at,
     )
 
@@ -123,84 +120,58 @@ async def get_me(
     db: Session = Depends(get_session),
 ):
     """
-    Returns current user profile, active tenant context, and all memberships.
-    Calculates real-time onboarding progress for the pilot activation flow.
+    DETERMINISTIC BOOTSTRAP (V2.2.0): Single source of truth for identity and context.
+    Strict enforcement of tenant precedence and null-safe resilience.
     """
     logger.info("users.get_me.start", user_id=str(current_user.id))
-    # 1. Resolve memberships based on platform role
-    if current_user.platform_role == "admin":
-        # Platform Admins see ALL tenants
-        tenants_db = db.exec(select(Tenant)).all()
-        membership_infos = []
-        active_tenant_info = None
 
-        for t in tenants_db:
-            try:
-                t_info = get_tenant_info(db, t)
-                is_platform = t.slug == "entrega"
-
-                m_info = MembershipInfo(
-                    tenant=t_info,
-                    role="owner",
-                    is_default=is_platform,
-                )
-                membership_infos.append(m_info)
-
-                # If the admin has selected a tenant via X-Tenant-Id, use it as active
-                if active_membership and t.id == active_membership.tenant_id:
-                    active_tenant_info = t_info
-            except Exception as e:
-                logger.error(
-                    "users.get_me.admin_tenant_error", tenant_id=str(t.id), error=str(e)
-                )
-
-        # fallback: if no active tenant, pick 'entrega' first, or simply the first one available
-        if not active_tenant_info and membership_infos:
-            default_m = next(
-                (m for m in membership_infos if m.is_default), membership_infos[0]
-            )
-            active_tenant_info = default_m.tenant
-
-        logger.info(
-            "users.get_me.response_assembled_admin", user_id=str(current_user.id)
-        )
-        return MeResponse(
-            user=current_user,
-            active_tenant=active_tenant_info,
-            memberships=membership_infos,
-        )
-
-    # 2. Standard User Resolution
+    # 1. Build Membership List (Null-Safe Iteration)
+    # We query ALL memberships for this user
     memberships_db = db.exec(
         select(TenantUser, Tenant)
         .join(Tenant)
-        .where(TenantUser.user_id == current_user.id)
+        .where(TenantUser.user_id == current_user.id, TenantUser.is_active.is_not(False))
+        .order_by(
+            TenantUser.is_default.desc(),
+            TenantUser.created_at.asc(),
+            TenantUser.tenant_id.asc(),
+        )
     ).all()
 
     membership_infos = []
-    active_tenant_info = None
-
     for tu, t in memberships_db:
         try:
-            t_info = get_tenant_info(db, t)
-            m_info = MembershipInfo(
-                tenant=t_info, role=tu.tenant_role, is_default=tu.is_default
+            membership_infos.append(
+                MembershipInfo(
+                    tenant=get_tenant_info_safe(db, t),
+                    role=tu.tenant_role,
+                    is_default=tu.is_default,
+                )
             )
-            membership_infos.append(m_info)
-
-            if active_membership and tu.tenant_id == active_membership.tenant_id:
-                active_tenant_info = t_info
         except Exception as e:
             logger.error(
-                "users.get_me.user_tenant_error", tenant_id=str(t.id), error=str(e)
+                "users.get_me.membership_error",
+                user_id=str(current_user.id),
+                tenant_id=str(t.id),
+                error=str(e),
             )
 
-    # fallback: if no active tenant, but we have memberships, pick default or first
-    if not active_tenant_info and membership_infos:
-        default_m = next(
-            (m for m in membership_infos if m.is_default), membership_infos[0]
+    # 2. Resolve Active Tenant Info
+    # If get_active_membership (deterministic resolver) returned a context, use it.
+    active_tenant_info = None
+    if active_membership:
+        target_tenant = db.get(Tenant, active_membership.tenant_id)
+        if target_tenant:
+            active_tenant_info = get_tenant_info_safe(db, target_tenant)
+
+    # 3. Assemble Response
+    # Determinism check: Admin without header MUST have active_tenant=None
+    if current_user.platform_role == "admin" and active_tenant_info:
+        logger.debug(
+            "users.get_me.admin_context_active", tenant_id=str(active_tenant_info.id)
         )
-        active_tenant_info = default_m.tenant
+    elif current_user.platform_role == "admin":
+        logger.info("users.get_me.admin_global_context")
 
     return MeResponse(
         user=current_user,
@@ -249,112 +220,3 @@ async def update_me(
     db.commit()
     db.refresh(current_user)
     return current_user
-
-
-class UserCreate(BaseModel):
-    email: str
-    full_name: str
-    role: str = "operator"
-
-
-@router.post("", response_model=User, dependencies=[Depends(require_roles(["owner"]))])
-async def create_user(
-    request: UserCreate,
-    db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
-):
-    """
-    Invite/Create a new user for the tenant.
-    In the pilot, we create a local user and a membership.
-    """
-    # Check if user already exists globally
-    user = db.exec(select(User).where(User.email == request.email)).first()
-
-    if not user:
-        user = User(
-            email=request.email, full_name=request.full_name, platform_role="user"
-        )
-        db.add(user)
-        db.flush()
-
-    # Check if already a member
-    membership = db.exec(
-        select(TenantUser).where(
-            TenantUser.user_id == user.id, TenantUser.tenant_id == active_tenant_id
-        )
-    ).first()
-
-    if not membership:
-        membership = TenantUser(
-            tenant_id=active_tenant_id, user_id=user.id, tenant_role=request.role
-        )
-        db.add(membership)
-
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@router.patch(
-    "/{id}", response_model=User, dependencies=[Depends(require_roles(["owner"]))]
-)
-async def update_user(
-    id: UUID,
-    full_name: Optional[str] = None,
-    role: Optional[str] = None,
-    is_active: Optional[bool] = None,
-    db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
-):
-    """Update a user's role or status within the tenant context."""
-    user = db.get(User, id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    membership = db.exec(
-        select(TenantUser).where(
-            TenantUser.user_id == user.id, TenantUser.tenant_id == active_tenant_id
-        )
-    ).first()
-
-    if not membership:
-        raise HTTPException(
-            status_code=404, detail="User is not a member of this tenant"
-        )
-
-    if full_name is not None:
-        user.full_name = full_name
-        db.add(user)
-
-    if role is not None:
-        membership.tenant_role = role
-        db.add(membership)
-
-    if is_active is not None:
-        membership.is_active = is_active
-        db.add(membership)
-
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@router.delete("/{id}", dependencies=[Depends(require_roles(["owner"]))])
-async def remove_user(
-    id: UUID,
-    db: Session = Depends(get_session),
-    active_tenant_id: UUID = Depends(get_active_tenant_id),
-):
-    """Remove a user's membership from the tenant (owner only)."""
-    membership = db.exec(
-        select(TenantUser).where(
-            TenantUser.user_id == id, TenantUser.tenant_id == active_tenant_id
-        )
-    ).first()
-
-    if not membership:
-        raise HTTPException(status_code=404, detail="Membership not found")
-
-    db.delete(membership)
-    db.commit()
-    return {"status": "ok", "message": "User removed from team"}
