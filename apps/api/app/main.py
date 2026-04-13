@@ -59,21 +59,26 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # 🛡️ Global Identity & Dashboard Bridges (Root Level Compatibility)
+    from app.api.v1.endpoints import users, dashboard
+    root_bridge = APIRouter()
+    
+    @root_bridge.get("/me", response_model=None, tags=["identity"])
+    @root_bridge.get("/me/", response_model=None, tags=["identity"])
+    async def get_me_bridge(
+        current_user: users.User = users.Depends(users.get_current_user),
+        active_membership: users.Optional[users.TenantUser] = users.Depends(users.get_active_membership),
+        db: users.Session = users.Depends(users.get_session),
+    ):
+        return await users.get_me(current_user, active_membership, db)
+
+    app.include_router(root_bridge)
+    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard-gateway"])
+    app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
+
     # Include API Router (Lazy load to break circularity)
     from app.api.v1.api import api_router
-
     app.include_router(api_router, prefix=settings.API_V1_STR)
-
-    # 🔗 Root Webhook Gateway (Required for Meta standard compliance)
-    from app.api.v1.endpoints import webhooks
-
-    app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
-    
-    # 🛡️ Global Identity Resolution (Root Level Compatibility)
-    from app.api.v1.endpoints import users, dashboard
-    app.get("/me", response_model=None, tags=["identity"])(users.get_me)
-    app.get("/me/", response_model=None, tags=["identity"])(users.get_me)
-    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard-gateway"])
 
     return app
 
