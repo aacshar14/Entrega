@@ -116,7 +116,7 @@ class EventWorker:
             tenant_id=str(tenant.id), event_id=str(event.id)
         )
 
-        # --- BILLING ENFORCEMENT (V2.5.0 Async) ---
+        # --- BILLING ENFORCEMENT (V2.5.0 Async / V2.8.0 Hardened) ---
         from app.core.billing import BillingResolver
         billing = BillingResolver.resolve_billing(tenant)
         
@@ -124,11 +124,12 @@ class EventWorker:
             logger.warning(
                 "worker.billing_block_active", 
                 status=billing.effective_status,
-                event_type=event.event_type
+                event_type=event.event_type,
+                tenant_id=str(tenant.id)
             )
-            # We don't want to retry this event if billing is the issue.
-            # Mark as failed with a specific reason.
-            return # Silent exit, we rely on the webhook-level persistence
+            # HARDENING: Do not mark as DONE if billing is the blocker.
+            # Raise an exception so it goes to the mark_failed flow with context.
+            raise ValueError(f"BILLING_BLOCKED: {billing.effective_status}")
 
         if event.source == "whatsapp" and event.event_type == "message":
             msg_id = event.message_sid

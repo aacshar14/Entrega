@@ -44,11 +44,15 @@ class QueueManager:
     def claim_events(self, worker_id: str, limit: int = 10) -> List[InboundEvent]:
         """
         Atomically claim pending events for this worker using FOR UPDATE SKIP LOCKED.
-        This prevents multiple workers from processing the same event.
+        Implements FAIRNESS (V2.8.0) by limiting events per tenant in each batch
+        to prevent 'Noisy Neighbor' monopolization.
         """
         now = datetime.now(timezone.utc)
+        
+        # Max events per tenant per claim cycle to ensure fairness
+        max_per_tenant = max(1, limit // 2) 
 
-        # SQL raw query for FOR UPDATE SKIP LOCKED which is much safer for concurrency in Postgres
+        # SQL with Window Function for Round-Robin-like fairness
         query = text("""
             UPDATE inbound_events
             SET 
@@ -57,13 +61,17 @@ class QueueManager:
                 locked_by = :worker_id,
                 attempt_count = attempt_count + 1
             WHERE id IN (
-                SELECT id 
-                FROM inbound_events
-                WHERE status IN ('pending', 'failed')
-                  AND attempt_count < :max_retries
-                  AND available_at <= :now
-                  AND (locked_at IS NULL OR locked_at < :timeout)
-                ORDER BY created_at ASC
+                SELECT id FROM (
+                    SELECT id, 
+                           ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at ASC) as r_num
+                    FROM inbound_events
+                    WHERE status IN ('pending', 'failed')
+                      AND attempt_count < :max_retries
+                      AND available_at <= :now
+                      AND (locked_at IS NULL OR locked_at < :timeout)
+                ) as ranked_events
+                WHERE r_num <= :max_per_tenant
+                ORDER BY r_num ASC, id ASC
                 LIMIT :limit
                 FOR UPDATE SKIP LOCKED
             )
@@ -81,6 +89,7 @@ class QueueManager:
                 "worker_id": worker_id,
                 "max_retries": max_retries,
                 "limit": limit,
+                "max_per_tenant": max_per_tenant,
                 "timeout": lock_timeout,
             },
         )
@@ -90,6 +99,9 @@ class QueueManager:
         events = []
         for event_id in ids:
             events.append(self.db.get(InboundEvent, event_id))
+
+        if events:
+            logger.info("worker.claim_fairness_applied", batch_size=len(events), worker_id=worker_id)
 
         return events
 
