@@ -430,6 +430,94 @@ export default function SettingsPage() {
             </form>
           </div>
         </div>
+        
+        {/* PLAN Y FACTURACIÓN (V3.0.0 Surgical) */}
+        <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#1D3146] flex items-center gap-2">
+              <DollarSign size={16} /> Plan y Facturación
+            </h3>
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                activeTenant.billing?.effective_status === "active_paid"
+                  ? "bg-emerald-100 text-emerald-600"
+                  : activeTenant.billing?.effective_status === "trial_active"
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-rose-100 text-rose-600"
+              }`}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${activeTenant.billing?.effective_status === "active_paid" ? "bg-emerald-500 animate-pulse" : "bg-current"}`}
+              ></div>
+              {activeTenant.billing?.effective_status === "active_paid"
+                ? "Suscripción Activa"
+                : activeTenant.billing?.effective_status === "trial_active"
+                  ? "Periodo de Prueba"
+                  : "Suscripción Suspendida"}
+            </div>
+          </div>
+
+          <div className="bg-[#EBEEF2]/30 rounded-[2rem] p-8 border border-slate-100 grid md:grid-cols-2 gap-8 items-center">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-[#1D3146] rounded-xl flex items-center justify-center text-[#56CCF2] shadow-lg">
+                  <DollarSign size={24} />
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-[#1D3146]">
+                    Plan {activeTenant.billing?.plan_code?.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {activeTenant.billing?.effective_status === "active_paid" 
+                      ? `Próxima renovación: ${activeTenant.billing?.subscription_ends_at ? new Date(activeTenant.billing.subscription_ends_at).toLocaleDateString() : "N/A"}`
+                      : activeTenant.billing?.effective_status === "trial_active"
+                        ? `Vence en: ${activeTenant.billing?.days_remaining} días`
+                        : "Acceso restringido por pago"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const data = await apiRequest(
+                      "/billing/checkout-session",
+                      "POST",
+                      {
+                        plan_code: "premium_monthly",
+                        success_url: window.location.origin + "/settings?success=true",
+                        cancel_url: window.location.origin + "/settings?cancel=true",
+                      },
+                      activeTenant.id
+                    );
+                    if (data?.url) window.location.href = data.url;
+                  } catch (err: any) {
+                    setError(err.message);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="px-8 py-4 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-[10px] tracking-widest disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="animate-spin" size={16} /> : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    {activeTenant.billing?.effective_status === "active_paid" 
+                      ? "Administrar suscripción" 
+                      : activeTenant.billing?.effective_status === "trial_active"
+                        ? "Activar plan"
+                        : "Reactivar plan"}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* WhatsApp Section */}
         <div className="md:col-span-12 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100">

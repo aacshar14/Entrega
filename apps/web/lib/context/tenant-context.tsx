@@ -37,10 +37,25 @@ interface Tenant {
   whatsapp_app_id?: string;
   timezone?: string;
   currency?: string;
+  plan_code?: string;
   billing_status?: string;
-  trial_ends_at?: string;
-  grace_ends_at?: string;
-  subscription_ends_at?: string;
+  billing?: {
+    billing_status: string;
+    effective_status: string;
+    plan_code: string;
+    subscription_ends_at?: string;
+    trial_ends_at?: string;
+    grace_ends_at?: string;
+    is_blocked: boolean;
+    days_remaining?: number;
+    entitlements: {
+      can_access_dashboard: boolean;
+      can_process_whatsapp: boolean;
+      can_create_orders: boolean;
+      can_export: boolean;
+      show_paywall: boolean;
+    };
+  };
 }
 
 interface Membership {
