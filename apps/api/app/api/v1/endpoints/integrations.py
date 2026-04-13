@@ -204,6 +204,7 @@ async def complete_whatsapp_integration(
 @router.get("/whatsapp/onboarding-url")
 async def get_whatsapp_onboarding_url(
     tenant: Tenant = Depends(require_premium),
+    active_tenant_id: UUID = Depends(get_active_tenant_id),
     db: Session = Depends(get_session),
 ):
     """
