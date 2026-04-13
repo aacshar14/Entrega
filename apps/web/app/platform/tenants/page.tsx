@@ -280,18 +280,6 @@ export default function PlatformTenants() {
         ))}
       </div>
 
-      {/* Confirmation Modal */}
-      {modalConfig && (
-        <ConfirmModal
-          isOpen={modalOpen}
-          title={modalConfig.title}
-          message={modalConfig.message}
-          confirmLabel={modalConfig.confirmLabel}
-          variant={modalConfig.variant}
-          onConfirm={executeUpdate}
-          onCancel={() => setModalOpen(false)}
-        />
-      )}
     </div>
   );
 }
