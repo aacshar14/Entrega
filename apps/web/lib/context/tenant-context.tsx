@@ -127,6 +127,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const isPublic = [
           "/landing",
           "/login",
+          "/signup",
+          "/demo",
           "/",
           "/select-tenant",
           "/privacy-policy",
@@ -189,6 +191,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           const isPublic = [
             "/landing",
             "/login",
+            "/signup",
+            "/demo",
             "/",
             "/select-tenant",
             "/privacy-policy",
@@ -229,6 +233,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const isPublic = [
           "/landing",
           "/login",
+          "/signup",
+          "/demo",
           "/",
           "/privacy-policy",
           "/terms",
@@ -262,6 +268,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const isPublic = [
           "/landing",
           "/login",
+          "/signup",
+          "/demo",
           "/",
           "/privacy-policy",
           "/terms",
