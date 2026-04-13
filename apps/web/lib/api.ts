@@ -1,7 +1,12 @@
 import { createClient } from "@/utils/supabase/client";
 
 // Use relative path to leverage Next.js proxy/rewrites in production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.entrega.space/api/v1";
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.entrega.space/api/v1";
+
+// 🛡️ Hardening: Ensure production URL always includes version prefix to resolve 404s
+if (API_BASE_URL === "https://api.entrega.space") {
+  API_BASE_URL = "https://api.entrega.space/api/v1";
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

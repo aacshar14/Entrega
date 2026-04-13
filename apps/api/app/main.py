@@ -25,18 +25,17 @@ def get_application() -> FastAPI:
         redirect_slashes=True,  # 🛡️ Hardening: Ensure standard slash behavior (V1.5.1)
     )
 
-    # 🛡️ Global Identity & Dashboard Bridges (Absolute High Priority - V3.1.4)
-    from app.api.v1.endpoints import users, dashboard
+    # 🛡️ Global Identity & Dashboard Bridges (Absolute High Priority - V3.1.5)
+    from fastapi.responses import RedirectResponse
     
-    @app.get("/me", response_model=None, tags=["identity-bridge"])
-    @app.get("/me/", response_model=None, tags=["identity-bridge"])
-    async def get_me_bridge(
-        current_user: users.User = users.Depends(users.get_current_user),
-        active_membership: users.Optional[users.TenantUser] = users.Depends(users.get_active_membership),
-        db: users.Session = users.Depends(users.get_session),
-    ):
-        return await users.get_me(current_user, active_membership, db)
+    @app.get("/me", tags=["identity-bridge"])
+    @app.get("/me/", tags=["identity-bridge"])
+    async def redirect_to_v1_me(request: Request):
+        # 🛡️ Hardening: Redirect root identity to versioned V1 to eliminate 404s
+        target_url = f"{str(request.base_url).rstrip('/')}{settings.API_V1_STR}/me/"
+        return RedirectResponse(url=target_url, status_code=307)
 
+    from app.api.v1.endpoints import dashboard
     app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard-gateway"])
     
     # Setup Rate Limiting
