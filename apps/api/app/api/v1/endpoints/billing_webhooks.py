@@ -9,7 +9,7 @@ from app.services.stripe_service import StripeService
 router = APIRouter()
 
 
-@router.post("/stripe")
+@router.post("/webhook")
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(None),

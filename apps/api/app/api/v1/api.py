@@ -43,7 +43,7 @@ api_router.include_router(
 )
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(
-    billing_webhooks.router, prefix="/billing/webhooks", tags=["billing"]
+    billing_webhooks.router, prefix="/billing", tags=["billing"]
 )
 
 # 🛡️ Identity Resolution (Root Level for Frontend Compatibility)

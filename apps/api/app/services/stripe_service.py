@@ -163,7 +163,9 @@ class StripeService:
         tenant.stripe_subscription_id = stripe_subscription_id
         tenant.stripe_price_id = price_id
         tenant.plan_code = plan_code
-        tenant.billing_status = "active"
+        tenant.billing_status = "active_paid"
+        tenant.is_blocked = False
+        tenant.block_reason = None
         tenant.subscription_ends_at = datetime.fromtimestamp(
             subscription.current_period_end, tz=timezone.utc
         )
@@ -214,13 +216,13 @@ class StripeService:
             return
 
         status_map = {
-            "active": "active",
+            "active": "active_paid",
             "past_due": "past_due",
             "unpaid": "canceled",
             "canceled": "canceled",
             "incomplete": "inactive",
             "incomplete_expired": "canceled",
-            "trialing": "active",
+            "trialing": "active_paid",
         }
 
         tenant.billing_status = status_map.get(subscription.status, "canceled")
