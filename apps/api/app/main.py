@@ -68,6 +68,11 @@ def get_application() -> FastAPI:
     from app.api.v1.endpoints import webhooks
 
     app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
+    
+    # 🛡️ Global Identity Resolution (Root Level Compatibility)
+    from app.api.v1.endpoints import users
+    app.get("/me", response_model=None, tags=["identity"])(users.get_me)
+    app.get("/me/", response_model=None, tags=["identity"])(users.get_me)
 
     return app
 
