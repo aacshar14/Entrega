@@ -50,7 +50,8 @@ class BillingOverrideRequest(BaseModel):
     grace_extension_days: Optional[int] = None
 
 
-@router.post("/tenants/{tenant_id}/billing-control", dependencies=[Depends(require_platform_role(["admin"]))])
+@router.post("/tenants/{tenant_id}/billing-control/", dependencies=[Depends(require_platform_role(["admin"]))])
+@router.post("/tenants/{tenant_id}/billing-control", include_in_schema=False, dependencies=[Depends(require_platform_role(["admin"]))])
 async def admin_billing_control(
     tenant_id: UUID,
     req: BillingOverrideRequest,

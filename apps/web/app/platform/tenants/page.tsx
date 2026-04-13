@@ -44,9 +44,9 @@ export default function PlatformTenants() {
     try {
       await apiRequest(`admin/tenants/${tenantId}/billing-control`, "POST", payload);
       window.location.reload();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Billing update failed", err);
-      alert("Error al actualizar facturación");
+      alert(`Error al actualizar facturación: ${err.message || "Error desconocido"}`);
     }
   };
 
