@@ -217,6 +217,11 @@ export default function SettingsPage() {
     }
   };
 
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
+  // ... (existing helper functions)
+
   if (!activeTenant) return null;
 
   return (
@@ -496,10 +501,12 @@ export default function SettingsPage() {
             <div className="flex flex-col items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={async () => {
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (!activeTenant?.id) return;
-                  setLoading(true);
-                  setError(null);
+                  setBillingLoading(true);
+                  setBillingError(null);
                   try {
                     const data = await apiRequest(
                       "/billing/checkout-session",
@@ -513,15 +520,15 @@ export default function SettingsPage() {
                     );
                     if (data?.url) window.location.href = data.url;
                   } catch (err: any) {
-                    setError(err.message || "Error al conectar con Stripe");
+                    setBillingError(err.message || "Error al conectar con Stripe");
                   } finally {
-                    setLoading(false);
+                    setBillingLoading(false);
                   }
                 }}
-                disabled={loading || activeRole !== "owner"}
+                disabled={billingLoading || activeRole !== "owner"}
                 className="w-full py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all uppercase text-xs tracking-widest disabled:opacity-50 disabled:hover:scale-100"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : (
+                {billingLoading ? <Loader2 className="animate-spin" size={18} /> : (
                   <>
                     <DollarSign size={18} />
                     {activeTenant.billing?.effective_status === "active_paid" 
@@ -532,6 +539,13 @@ export default function SettingsPage() {
                   </>
                 )}
               </button>
+              
+              {billingError && (
+                <p className="text-[10px] text-rose-500 font-bold animate-in fade-in slide-in-from-top-2">
+                  {billingError}
+                </p>
+              )}
+
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.15em] italic">
                 Sin tarjeta • Cancelas cuando quieras
               </p>
