@@ -31,12 +31,12 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. Live Debt & Business Context TRUTH (V5.5.0 Normalization)
+        # 1. Live Debt & Business Context TRUTH (V5.6.6 Robust Sum)
         from sqlalchemy import text
         q_debt = text("""
             SELECT 
                 COALESCE(SUM(ABS(balance)), 0.0) as total_debt,
-                COUNT(id) as debtor_count
+                COUNT(id) FILTER (WHERE balance < 0) as debtor_count
             FROM customer_balances 
             WHERE tenant_id = :tid 
             AND balance < 0
