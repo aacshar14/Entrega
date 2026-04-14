@@ -30,23 +30,45 @@ async def get_dashboard_summary(
         now_utc = datetime.now(timezone.utc)
         now_naive = now_utc.replace(tzinfo=None)
 
-        # 1. KPIs
-        from app.services.dashboard_service import DashboardService
+        # 1. Live Debt & Business Context TRUTH (V5.5.0 Normalization)
+        q_debt = text("""
+            SELECT 
+                COALESCE(SUM(ABS(balance)), 0.0) as total_debt,
+                COUNT(id) as debtor_count
+            FROM customer_balances 
+            WHERE tenant_id = :tid 
+            AND balance < 0
+        """)
+        debt_res = db.execute(q_debt, {"tid": t_id_str}).first()
+        live_total_debt = float(debt_res.total_debt or 0.0)
+        live_debtor_count = int(debt_res.debtor_count or 0)
 
-        ds = DashboardService(db)
-        kpis = ds.get_dashboard_kpis(active_tenant)
+        # 2. Daily Metrics (Live)
+        today_start = now_naive.replace(hour=0, minute=0, second=0, microsecond=0)
+        q_daily = text("""
+            SELECT 
+                COUNT(id) as orders_today,
+                COALESCE(SUM(ABS(quantity)), 0.0) as sales_units_today
+            FROM inventory_movements 
+            WHERE tenant_id = :tid 
+            AND type IN ('delivery', 'Delivery')
+            AND created_at >= :start
+        """)
+        daily_res = db.execute(q_daily, {"tid": t_id_str, "start": today_start}).first()
+        total_deliveries_kpi = int(daily_res.orders_today or 0)
+        # Note: In V5.5.0 sales_today reflects units delivered today to maintain responsiveness
+        sales_today = float(daily_res.sales_units_today or 0.0) 
 
-        total_debt_abs = abs(float(kpis.get("total_debt", 0.0) or 0.0))
-        sales_today = float(kpis.get("sales_today", 0.0) or 0.0)
-        total_deliveries_kpi = int(float(kpis.get("deliveries_today", 0.0) or 0.0))
-
-        # 2. Financial History
+        # 3. Financial History (Live)
         historical_total_payments = (
-            db.exec(
-                select(func.sum(Payment.amount)).where(Payment.tenant_id == tenant_id)
-            ).one()
+            db.execute(
+                text("SELECT SUM(amount) FROM payments WHERE tenant_id = :tid"), 
+                {"tid": t_id_str}
+            ).scalar()
             or 0.0
         )
+
+
 
         # 3. Monthly Flow (Updated from Weekly V5.1.0)
         from sqlalchemy import text
@@ -169,10 +191,11 @@ async def get_dashboard_summary(
                 ).one(),
                 "product_count": product_count,
                 "total_payments": float(historical_total_payments),
-                "total_debt": total_debt_abs,
+                "total_debt": live_total_debt,
+                "debtor_count": live_debtor_count,
                 "low_stock_count": db.exec(
                     select(func.count(StockBalance.id)).where(
-                        StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
+                        StockBalance.tenant_id == t_id_str, StockBalance.quantity <= 0
                     )
                 ).one(),
                 "monthly_produced": float(produced_this_month or 0.0),

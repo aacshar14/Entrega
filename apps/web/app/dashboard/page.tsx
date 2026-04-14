@@ -21,11 +21,10 @@ interface DashboardStats {
   product_count: number;
   total_payments: number;
   total_debt: number;
-  low_stock_count: number;
-  weekly_produced: number;
-  weekly_delivered: number;
   force_monthly_in: number;
   force_monthly_out: number;
+  debtor_count: number;
+  low_stock_count: number;
 }
 
 interface StockItem {
@@ -317,7 +316,7 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest italic flex items-center gap-1">
-              <AlertCircle size={12} /> Cuentas por Cobrar
+              <AlertCircle size={12} /> {data.stats.debtor_count} Cuentas por Cobrar
             </p>
           </div>
 
@@ -342,7 +341,7 @@ export default function Dashboard() {
                 {data.stats.low_stock_count} Stock Bajo
               </span>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V5.4.3): {data.stats.force_monthly_in} In /{" "}
+                Mensual (V5.5.0): {data.stats.force_monthly_in} In /{" "}
                 {data.stats.force_monthly_out} Out
               </p>
 
