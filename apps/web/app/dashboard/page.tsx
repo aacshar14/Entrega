@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.9.5";
+const DASHBOARD_VERSION = "V6.0.0";
 
 interface DashboardStats {
   customer_count: number;
@@ -26,6 +26,9 @@ interface DashboardStats {
   total_debt: number;
   force_monthly_in: number;
   force_monthly_out: number;
+  total_stock_hq: number;
+  total_stock_outside: number;
+  total_stock_global: number;
   debtor_count: number;
   low_stock_count: number;
 }
@@ -349,9 +352,22 @@ export default function Dashboard() {
                 {data.stats?.low_stock_count ?? 0} Stock Bajo
               </span>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V5.9.5): {data.stats?.force_monthly_in ?? 0} In /{" "}
-                {data.stats?.force_monthly_out ?? 0} Out
+                Mensual (V6.0.0): {data.stats?.force_monthly_in ?? 0} In / {data.stats?.force_monthly_out ?? 0} Out
               </p>
+              <div className="mt-3 bg-white/10 p-2 rounded-xl flex justify-between items-center">
+                <span className="text-[9px] font-black uppercase opacity-60 italic">Inventario Real</span>
+                <span className="text-[12px] font-black">{data.stats?.total_stock_global ?? 0} Total</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="bg-white/20 p-2 rounded-lg text-center">
+                   <p className="text-[8px] opacity-60 uppercase font-black">Bodega</p>
+                   <p className="text-[11px] font-black">{data.stats?.total_stock_hq ?? 0}</p>
+                </div>
+                <div className="bg-blue-900/30 p-2 rounded-lg text-center">
+                   <p className="text-[8px] opacity-60 uppercase font-black">En Calle</p>
+                   <p className="text-[11px] font-black">{data.stats?.total_stock_outside ?? 0}</p>
+                </div>
+              </div>
 
             </div>
           </div>

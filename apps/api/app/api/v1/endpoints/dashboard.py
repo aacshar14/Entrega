@@ -85,13 +85,35 @@ async def get_dashboard_summary(
 
         # OUT = Deliveries (Monthly)
         q_out = text("""
-            SELECT SUM(quantity) 
+            SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
             WHERE tenant_id = :tid 
             AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') 
             AND created_at >= :start
         """)
         delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
+
+        # TOTAL HQ STOCK (Live)
+        q_hq = text("SELECT SUM(quantity) FROM stock_balances WHERE tenant_id = :tid")
+        total_hq_stock = db.execute(q_hq, {"tid": t_id_str}).scalar() or 0.0
+
+        # TOTAL OUTSIDE STOCK (Live)
+        q_outside_total = text("""
+            SELECT SUM(ABS(quantity)) 
+            FROM inventory_movements 
+            WHERE tenant_id = :tid 
+            AND type IN ('delivery', 'delivery_to_customer')
+        """)
+        q_returns_total = text("""
+            SELECT SUM(ABS(quantity)) 
+            FROM inventory_movements 
+            WHERE tenant_id = :tid 
+            AND type IN ('return', 'return_from_customer', 'sale_reported')
+        """)
+        
+        sum_out = db.execute(q_outside_total, {"tid": t_id_str}).scalar() or 0.0
+        sum_ret = db.execute(q_returns_total, {"tid": t_id_str}).scalar() or 0.0
+        total_outside_stock = max(0, sum_out - sum_ret)
 
 
 
@@ -201,11 +223,11 @@ async def get_dashboard_summary(
                 "monthly_produced": float(produced_this_month or 0.0),
                 "monthly_delivered": abs(float(delivered_this_month or 0.0)),
                 "force_monthly_in": float(produced_this_month or 0.0),
-                "force_monthly_out": abs(float(delivered_this_month or 0.0)),
-                "weekly_produced": float(
-                    produced_this_month or 0.0
-                ),  # Alias for monthly in V5.1.0
-                "weekly_delivered": abs(float(delivered_this_month or 0.0)),
+                "force_monthly_in": float(produced_this_month or 0.0),
+                "force_monthly_out": float(delivered_this_month or 0.0),
+                "total_stock_hq": float(total_hq_stock),
+                "total_stock_outside": float(total_outside_stock),
+                "total_stock_global": float(total_hq_stock + total_outside_stock),
 
             },
             "stock": formatted_stock,

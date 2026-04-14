@@ -23,6 +23,15 @@ class MovementManualCreate(BaseModel):
     type: str
     customer_id: Optional[UUID] = None
     description: Optional[str] = None
+    unit_price: Optional[float] = None
+
+class MovementUpdate(BaseModel):
+    product_id: Optional[UUID] = None
+    quantity: Optional[float] = None
+    type: Optional[str] = None
+    customer_id: Optional[UUID] = None
+    unit_price: Optional[float] = None
+    description: Optional[str] = None
 
 
 router = APIRouter()
@@ -389,24 +398,42 @@ async def get_customer_inventory(
 @router.patch("/{id}", dependencies=[Depends(require_roles(["owner"]))])
 async def update_movement(
     id: UUID,
-    description: Optional[str] = None,
+    update: MovementUpdate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(require_active_billing),
 ):
-    """Update a movement's metadata (owner only)."""
+    """Update a movement's core data (owner only) and trigger full reconciliation."""
     movement = db.get(InventoryMovement, id)
     if not movement or movement.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Movement not found")
 
-    if description is not None:
-        movement.description = description
+    # Update fields if provided
+    if update.product_id:
+        movement.product_id = update.product_id
+    if update.quantity is not None:
+        movement.quantity = update.quantity
+    if update.type:
+        movement.type = update.type
+    if update.customer_id:
+        movement.customer_id = update.customer_id
+    if update.unit_price is not None:
+        movement.unit_price = update.unit_price
+    if update.description:
+        movement.description = update.description
 
+    # Recalculate total_amount if quantity or unit_price changed
+    movement.total_amount = abs(movement.quantity) * movement.unit_price
+    
     movement.updated_by_user_id = current_user.id
     movement.updated_at = datetime.now(timezone.utc)
 
     db.add(movement)
     db.commit()
+    
+    # TRIGGER RECONCILIATION: Cascade the update to all balances
+    await reconcile_all(db, tenant)
+    
     db.refresh(movement)
     return movement
 
