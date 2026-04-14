@@ -479,9 +479,9 @@ export default function Dashboard() {
 
                 <div className="flex gap-8 items-center">
                    <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">FUERA (MES)</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock Vivo Fuera</p>
                     <p className="text-2xl font-black">
-                      {safeMoney(monthlyOut)}
+                      {safeMoney(totalOutside)}
                     </p>
                   </div>
 

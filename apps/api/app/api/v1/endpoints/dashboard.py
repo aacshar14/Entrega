@@ -88,7 +88,7 @@ async def get_dashboard_summary(
             SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
             WHERE tenant_id = CAST(:tid AS uuid)
-            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer', 'sale_reported', 'Sale_reported') 
+            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') 
             AND created_at >= :start
         """)
         delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
