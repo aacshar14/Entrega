@@ -57,7 +57,7 @@ async def get_dashboard_summary(
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
                     InventoryMovement.tenant_id == t_id_str,
-                    InventoryMovement.type == "adjustment",
+                    InventoryMovement.type.in_(["adjustment", "Adjustment"]),
                     InventoryMovement.quantity > 0,
                     InventoryMovement.created_at >= month_start_naive,
                 )
@@ -69,12 +69,16 @@ async def get_dashboard_summary(
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
                     InventoryMovement.tenant_id == t_id_str,
-                    InventoryMovement.type == "delivery",
+                    InventoryMovement.type.in_(
+                        ["delivery", "Delivery", "delivery_to_customer"]
+                    ),
                     InventoryMovement.created_at >= month_start_naive,
                 )
             ).one()
             or 0.0
         )
+
+
 
 
 
