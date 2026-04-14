@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/", include_in_schema=False)
 async def health_check():
     """Basic health check for infrastructure monitoring."""
-    return {"status": "ok", "timestamp": "now"}
+    return {"status": "ok", "timestamp": "now", "code_version": "dashboard_v7_cache_bust"}
 
 
 @router.get("/ready", response_model=Dict[str, str])
