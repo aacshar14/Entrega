@@ -166,20 +166,13 @@ export default function Dashboard() {
   );
   // Dual source of truth: backend canonical first, debtors list length as safety net
   const debtorCount =
-    safeNumber(stats?.debtor_count ?? (stats as any)?.debtor_count_live) ||
-    safeArray(debtorsList).length;
+    Number(stats?.debtor_count ?? (stats as any)?.debtor_count_live ?? debtorsList.length ?? 0);
 
-  const monthlyIn = safeNumber(
-    (stats as any)?.force_monthly_in ??
-    (stats as any)?.monthly_produced ??
-    (stats as any)?.weekly_produced
-  );
+  const monthlyIn =
+    Number((stats as any)?.force_monthly_in ?? (stats as any)?.monthly_produced ?? (stats as any)?.weekly_produced ?? 0);
 
-  const monthlyOut = safeNumber(
-    (stats as any)?.force_monthly_out ??
-    (stats as any)?.monthly_delivered ??
-    (stats as any)?.weekly_delivered
-  );
+  const monthlyOut =
+    Number((stats as any)?.force_monthly_out ?? (stats as any)?.monthly_delivered ?? (stats as any)?.weekly_delivered ?? 0);
 
   // Contract version log — remove after V7 rollout confirmed
   if (process.env.NODE_ENV !== 'production') {
