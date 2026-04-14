@@ -77,19 +77,34 @@ export function Sidebar({ isOpen, onClose }) {
         isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
       }`}
     >
-      <div className="p-8 pb-12 flex justify-between items-center">
-        <Link
-          href={isPlatformPath ? "/platform" : "/dashboard"}
-          className="flex flex-col items-center justify-center w-full"
-        >
-          <Logo variant="master" className="w-56 h-auto drop-shadow-2xl" />
-        </Link>
-        <button
-          onClick={onClose}
-          className="lg:hidden p-2 text-white/50 hover:text-white"
-        >
-          <X size={24} />
-        </button>
+      <div className="p-8 pb-8 flex flex-col items-center">
+        <div className="flex justify-between items-center w-full mb-6">
+          <Link
+            href={isPlatformPath ? "/platform" : "/dashboard"}
+            className="flex flex-col items-center justify-center w-full"
+          >
+            <Logo variant="master" className="w-48 h-auto drop-shadow-xl" />
+          </Link>
+          <button
+            onClick={onClose}
+            className="lg:hidden p-2 text-white/50 hover:text-white"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {!isPlatformPath && (
+          <div className="w-full">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center">
+              <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] mb-1">
+                NEGOCIO ACTIVO
+              </p>
+              <h2 className="text-sm font-black text-white truncate px-2">
+                {useTenant().activeTenant?.name?.toUpperCase() ?? "ENTREGA"}
+              </h2>
+            </div>
+          </div>
+        )}
       </div>
 
       <nav className="flex-grow px-4 space-y-1">
@@ -133,13 +148,22 @@ export function Sidebar({ isOpen, onClose }) {
 
       {isPlatformPath ? (
         <div className="p-8 border-t border-white/5">
-          <div className="bg-white/5 rounded-2xl p-4">
+          <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
             <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">
-              Status Global
+              {isPlatformPath ? "Status Global" : "Estado del Bot"}
             </p>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <p className="text-xs font-bold">API Operativa</p>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                (isPlatformPath || useTenant().activeTenant?.whatsapp_status === "connected") 
+                  ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                  : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+              }`}></div>
+              <p className="text-[11px] font-bold">
+                {isPlatformPath 
+                  ? "API Operativa" 
+                  : (useTenant().activeTenant?.whatsapp_status === "connected" ? "WhatsApp Activo" : "Revisar Conexión")
+                }
+              </p>
             </div>
           </div>
         </div>

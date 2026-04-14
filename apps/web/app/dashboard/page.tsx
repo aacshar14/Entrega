@@ -272,6 +272,40 @@ export default function Dashboard() {
           </div>
         )}
 
+
+        {/* Welcome Header */}
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+               <span className="px-3 py-1 bg-[#56CCF2]/10 text-[#56CCF2] text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                Dashboard Operativo
+              </span>
+              <div className="h-[1px] w-8 bg-slate-200"></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
+            </div>
+            <h1 className="text-4xl lg:text-5xl font-black text-[#1D3146] tracking-tight">
+              ¡Hola, {(data.user?.full_name ?? "Admin").split(' ')[0]}! 👋
+            </h1>
+            <p className="text-slate-500 mt-2 font-medium">
+              Aquí tienes el resumen de <span className="text-[#1D3146] font-bold">{data.active_tenant?.name ?? "tu negocio"}</span> para hoy.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+             <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#56CCF2]/10 rounded-2xl flex items-center justify-center">
+                  <Activity size={20} className="text-[#56CCF2]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Actividad</p>
+                  <p className="text-sm font-bold text-[#1D3146]">Sistema Live</p>
+                </div>
+             </div>
+          </div>
+        </header>
+
         {/* 4 Cards Principales */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="rounded-3xl p-7 bg-gradient-to-br from-[#1D3146] to-[#2B4764] text-white flex flex-col justify-between h-44 shadow-2xl shadow-[#1D3146]/20 transition-transform hover:scale-[1.02]">
