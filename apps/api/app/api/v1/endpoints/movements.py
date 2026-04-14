@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, func
 from app.core.db import get_session
 from app.core.dependencies import get_current_user, require_roles, require_active_billing
+from app.models.models import (
     User,
     Tenant,
     InventoryMovement,
@@ -10,7 +11,7 @@ from app.core.dependencies import get_current_user, require_roles, require_activ
     StockBalance,
     CustomerBalance,
 )
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel
@@ -179,13 +180,8 @@ async def create_manual_movement(
         if type in ["delivery", "delivery_to_customer"]:
             amount_delta = -amount_delta
 
-        logger.info(
-            "movements.balance_sync",
-            customer_id=str(customer_id),
-            delta=amount_delta,
-            type=type,
-            total_amount=new_movement.total_amount
-        )
+        # Financial Sync - Atomic Update
+        print(f"[FINANCIAL SYNC] Customer: {customer_id} | Delta: {amount_delta} | Type: {type}")
 
         if cb:
             cb.balance += amount_delta

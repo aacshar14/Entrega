@@ -129,7 +129,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 max-w-[1400px] animate-in fade-in duration-500">
+    <div className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 px-4 md:px-0">
       {/* Trial / Expiry Banners */}
       {data.billing.status === "suspended" ? (
         <div className="p-10 rounded-[2.5rem] bg-rose-600 text-white shadow-2xl shadow-rose-500/30 flex flex-col md:flex-row items-center justify-between gap-8 border-4 border-rose-400/20 animate-in slide-in-from-top duration-700">
