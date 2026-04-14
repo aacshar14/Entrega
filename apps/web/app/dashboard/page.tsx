@@ -415,7 +415,7 @@ export default function Dashboard() {
           <div className="bg-gradient-to-br from-[#FF9F1C] to-[#FF4B2B] rounded-[2.5rem] p-1 shadow-2xl shadow-orange-200/50">
             <div className="bg-white/10 backdrop-blur-xl rounded-[2.3rem] p-8 text-white relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                <Package size={120} weight="fill" />
+                <Package size={120} />
               </div>
               
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
