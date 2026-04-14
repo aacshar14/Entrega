@@ -132,6 +132,12 @@ export default function Dashboard() {
     );
   }
 
+  // Derivaciones de Stock Reales (No usar stock_status fantasma)
+  const stockItems = data?.stock || [];
+  const totalInWarehouse = stockItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const totalOutside = stockItems.reduce((sum, item) => sum + (item.quantity_outside || 0), 0);
+  const totalInventory = totalInWarehouse + totalOutside;
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 px-4 md:px-0">
       {/* Trial / Expiry Banners */}
@@ -375,11 +381,11 @@ export default function Dashboard() {
                 </p>
                 <div className="flex flex-col mt-2">
                    <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black italic">{data.stock_status?.in_warehouse?.toLocaleString() ?? 0}</span>
+                    <span className="text-4xl font-black italic">{totalInWarehouse.toLocaleString()}</span>
                     <span className="text-[10px] font-bold opacity-60 mb-1">EN BODEGA</span>
                   </div>
                   <div className="flex items-end gap-2 mt-1">
-                    <span className="text-4xl font-black text-white/90">{data.stock_status?.outside?.toLocaleString() ?? 0}</span>
+                    <span className="text-4xl font-black text-white/90">{totalOutside.toLocaleString()}</span>
                     <span className="text-[10px] font-bold text-orange-200 mb-1">EN LA CALLE</span>
                   </div>
                 </div>
@@ -392,7 +398,7 @@ export default function Dashboard() {
             <div className="pt-4 border-t border-white/10 mt-2 flex justify-between items-center">
               <div className="flex flex-col">
                 <span className="text-[9px] font-black opacity-60 uppercase">Total Sistema</span>
-                <span className="text-xl font-black">{data.stock_status?.total_inventory?.toLocaleString() ?? 0}</span>
+                <span className="text-xl font-black">{totalInventory.toLocaleString()}</span>
               </div>
               <Link 
                 href="/stock"
@@ -431,7 +437,7 @@ export default function Dashboard() {
                    <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock en Calle</p>
                     <p className="text-2xl font-black">
-                      {data.stock_status?.outside?.toLocaleString() ?? 0}
+                      {totalOutside.toLocaleString()}
                     </p>
                   </div>
 
