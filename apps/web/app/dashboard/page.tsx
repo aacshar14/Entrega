@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.7.5";
+const DASHBOARD_VERSION = "V5.8.0";
 
 interface DashboardStats {
   customer_count: number;
