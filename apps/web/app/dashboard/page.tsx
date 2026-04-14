@@ -17,13 +17,13 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.7.0";
+const DASHBOARD_VERSION = "V5.7.5";
 
 interface DashboardStats {
   customer_count: number;
   product_count: number;
   total_payments: number;
-  total_debt_final: number;
+  total_debt: number;
   force_monthly_in: number;
   force_monthly_out: number;
   debtor_count: number;
@@ -194,24 +194,24 @@ export default function Dashboard() {
       {/* Operational Trigger Prompts */}
       {!data.billing.is_expired && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data.billing.total_orders >= 5 && (
+          {(data.billing?.total_orders ?? 0) >= 5 && (
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4 text-emerald-700 animate-in zoom-in duration-500">
               <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center grow-0 shrink-0">
                 <Truck size={20} />
               </div>
               <p className="text-sm font-black uppercase tracking-tight">
-                Ya estás usando Entrega para vender ({data.billing.total_orders}{" "}
+                Ya estás usando Entrega para vender ({data.billing?.total_orders ?? 0}{" "}
                 envíos)
               </p>
             </div>
           )}
-          {data.billing.sales_today > 0 && (
+          {(data.billing?.sales_today ?? 0) > 0 && (
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center gap-4 text-blue-700 animate-in zoom-in duration-700">
               <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center grow-0 shrink-0">
                 <Banknote size={20} />
               </div>
               <p className="text-sm font-black uppercase tracking-tight">
-                Hoy generaste ${data.billing.sales_today.toLocaleString()} con
+                Hoy generaste ${(data.billing?.sales_today ?? 0).toLocaleString()} con
                 Entrega
               </p>
             </div>
@@ -278,7 +278,7 @@ export default function Dashboard() {
                   Clientes Registrados
                 </p>
                 <h3 className="text-5xl font-black mt-2">
-                  {data.stats.customer_count}
+                  {data.stats?.customer_count ?? 0}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -297,7 +297,7 @@ export default function Dashboard() {
                   Pagos Recibidos (Histórico)
                 </p>
                 <h3 className="text-4xl font-black mt-2">
-                  ${data.stats.total_payments.toLocaleString()}
+                  ${(data.stats?.total_payments ?? 0).toLocaleString()}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -316,7 +316,7 @@ export default function Dashboard() {
                   Saldo Pendiente (Adeudos)
                 </p>
                 <h3 className="text-4xl font-black mt-2">
-                  ${data.stats.total_debt_final.toLocaleString()}
+                  ${(data.stats?.total_debt ?? 0).toLocaleString()}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -324,7 +324,7 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest italic flex items-center gap-1">
-              <AlertCircle size={12} /> {data.stats.debtor_count} Cuentas por Cobrar
+              <AlertCircle size={12} /> {data.stats?.debtor_count ?? 0} Cuentas por Cobrar
             </p>
           </div>
 
@@ -335,7 +335,7 @@ export default function Dashboard() {
                   Productos en Catálogo
                 </p>
                 <h3 className="text-5xl font-black mt-2">
-                  {data.stats.product_count}
+                  {data.stats?.product_count ?? 0}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -344,13 +344,13 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-col gap-1">
               <span
-                className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit ${data.stats.low_stock_count > 0 ? "bg-white/20 text-white" : "bg-green-500 text-white"}`}
+                className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit ${(data.stats?.low_stock_count ?? 0) > 0 ? "bg-white/20 text-white" : "bg-green-500 text-white"}`}
               >
-                {data.stats.low_stock_count} Stock Bajo
+                {data.stats?.low_stock_count ?? 0} Stock Bajo
               </span>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V5.5.0): {data.stats.force_monthly_in} In /{" "}
-                {data.stats.force_monthly_out} Out
+                Mensual (V5.5.0): {data.stats?.force_monthly_in ?? 0} In /{" "}
+                {data.stats?.force_monthly_out ?? 0} Out
               </p>
 
             </div>
@@ -397,7 +397,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-right">
                           <p className="font-black text-rose-500 text-lg">
-                            ${activity.amount.toLocaleString()}
+                            ${(activity?.amount ?? 0).toLocaleString()}
                           </p>
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                             {new Date(activity.created_at).toLocaleTimeString(
@@ -518,7 +518,7 @@ export default function Dashboard() {
                         {p.name}
                       </span>
                       <span className="text-right font-black text-rose-500 text-xl">
-                        ${p.amount.toLocaleString()}
+                        ${(p?.amount ?? 0).toLocaleString()}
                       </span>
                     </div>
                   ))
