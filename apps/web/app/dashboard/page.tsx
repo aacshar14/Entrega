@@ -335,10 +335,10 @@ export default function Dashboard() {
               </span>
             </div>
             <h1 className="text-4xl lg:text-5xl font-black text-[#1D3146] tracking-tight">
-              ¡{welcomeMessage}, {firstName}! 👋
+              {welcomeMessage} 👋
             </h1>
             <p className="text-slate-500 mt-2 font-medium italic">
-              Hoy en <span className="text-[#1D3146] font-bold">{businessName}</span> • <span className="text-slate-400">{tenantName}</span>
+              Hoy en <span className="text-[#1D3146] font-bold">{tenantName}</span>
             </p>
           </div>
 
@@ -417,7 +417,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="rounded-[2.5rem] p-8 bg-gradient-to-br from-orange-500 to-amber-600 text-white flex flex-col justify-between min-h-[14rem] shadow-2xl shadow-orange-500/30 transition-all hover:scale-[1.01] border-t border-white/20">
+          <div className="rounded-3xl p-7 bg-gradient-to-br from-orange-500 to-amber-600 text-white flex flex-col justify-between h-44 shadow-2xl shadow-orange-500/20 transition-transform hover:scale-[1.02]">
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-100">

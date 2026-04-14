@@ -93,18 +93,6 @@ export function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
 
-        {!isPlatformPath && (
-          <div className="w-full">
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center">
-              <p className="text-[10px] font-black text-[#56CCF2] uppercase tracking-[0.3em] mb-1">
-                NEGOCIO ACTIVO
-              </p>
-              <h2 className="text-sm font-black text-white truncate px-2">
-                {useTenant().activeTenant?.name?.toUpperCase() ?? "ENTREGA"}
-              </h2>
-            </div>
-          </div>
-        )}
       </div>
 
       <nav className="flex-grow px-4 space-y-1">
