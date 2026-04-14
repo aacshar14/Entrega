@@ -229,37 +229,36 @@ async def get_dashboard_summary(
         delivered = abs(float(delivered_this_month or 0.0))
 
         return {
+            "contract_version": "dashboard_v7",
             "stats": {
-                "customer_count": db.exec(
+                "customer_count": int(db.exec(
                     select(func.count(Customer.id)).where(
                         Customer.tenant_id == tenant_id
                     )
-                ).one(),
-                "product_count": product_count,
-                "total_payments": float(historical_total_payments),
-                "total_debt": live_total_debt,
-                "total_debt_final": live_total_debt,
-                "total_debt_live": live_total_debt,
-                # Debtor count — dual source of truth
-                "debtor_count": final_debtor_count,
-                "debtor_count_live": final_debtor_count,
-                "low_stock_count": db.exec(
+                ).one() or 0),
+                "product_count": int(product_count or 0),
+                "total_payments": float(historical_total_payments or 0.0),
+                "total_debt": float(live_total_debt or 0.0),
+                # Canonical contract fields (V7)
+                "debtor_count": int(final_debtor_count or 0),
+                "force_monthly_in": float(produced or 0.0),
+                "force_monthly_out": float(delivered or 0.0),
+                "low_stock_count": int(db.exec(
                     select(func.count(StockBalance.id)).where(
                         StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
                     )
-                ).one(),
-                # Monthly flow — canonical names
-                "monthly_produced": produced,
-                "monthly_delivered": delivered,
-                # force_monthly_* — expected by frontend V6.7.9
-                "force_monthly_in": produced,
-                "force_monthly_out": delivered,
-                # weekly_* — backward compat aliases for frontend fallback chain
-                "weekly_produced": produced,
-                "weekly_delivered": delivered,
-                "total_stock_hq": float(total_hq_stock),
-                "total_stock_outside": float(total_outside_stock),
-                "total_stock_global": float(total_hq_stock + total_outside_stock),
+                ).one() or 0),
+                "total_stock_hq": float(total_hq_stock or 0.0),
+                "total_stock_outside": float(total_outside_stock or 0.0),
+                "total_stock_global": float((total_hq_stock or 0.0) + (total_outside_stock or 0.0)),
+                # Compatibility aliases (keep for backward compat)
+                "monthly_produced": float(produced or 0.0),
+                "monthly_delivered": float(delivered or 0.0),
+                "weekly_produced": float(produced or 0.0),
+                "weekly_delivered": float(delivered or 0.0),
+                "total_debt_final": float(live_total_debt or 0.0),
+                "total_debt_live": float(live_total_debt or 0.0),
+                "debtor_count_live": int(final_debtor_count or 0),
             },
             "stock": formatted_stock,
             "recent_activity": recent_activity_resp,

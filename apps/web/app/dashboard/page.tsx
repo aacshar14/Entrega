@@ -159,8 +159,15 @@ export default function Dashboard() {
 
   const customerCount = safeNumber(stats?.customer_count);
   const totalPayments = safeNumber(stats?.total_payments);
-  const totalDebt = safeNumber((stats as any)?.total_debt_final ?? stats?.total_debt);
-  const debtorCount = safeNumber(stats?.debtor_count);
+  const totalDebt = safeNumber(
+    (stats as any)?.total_debt ??
+    (stats as any)?.total_debt_final ??
+    (stats as any)?.total_debt_live
+  );
+  // Dual source of truth: backend canonical first, debtors list length as safety net
+  const debtorCount =
+    safeNumber(stats?.debtor_count ?? (stats as any)?.debtor_count_live) ||
+    safeArray(debtorsList).length;
 
   const monthlyIn = safeNumber(
     (stats as any)?.force_monthly_in ??
@@ -173,6 +180,11 @@ export default function Dashboard() {
     (stats as any)?.monthly_delivered ??
     (stats as any)?.weekly_delivered
   );
+
+  // Contract version log — remove after V7 rollout confirmed
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Dashboard] contract_version:', (data as any)?.contract_version ?? 'unknown');
+  }
 
   const billingStatus = safeText(billing?.status, "trial");
   const billingDaysRemaining = safeNumber(billing?.days_remaining);
