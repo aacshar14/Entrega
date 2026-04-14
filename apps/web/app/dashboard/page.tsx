@@ -16,6 +16,8 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
+const DASHBOARD_VERSION = "V5.6.6";
+
 interface DashboardStats {
   customer_count: number;
   product_count: number;
@@ -217,13 +219,18 @@ export default function Dashboard() {
       )}
 
       {/* Welcome Header */}
-      <div className="mb-2">
-        <h1 className="text-3xl font-black text-[#1D3146] tracking-tight">
-          {data.welcome_message}
-        </h1>
-        <p className="text-slate-500 font-medium italic mt-1">
-          Hoy en {data.business_name || "Entrega"}
-        </p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-[#1D3146] tracking-tighter flex items-center gap-3">
+            {data.welcome_message}
+            <span className="text-[10px] bg-orange-500 text-white px-3 py-1 rounded-full uppercase tracking-widest shrink-0">
+              {DASHBOARD_VERSION}
+            </span>
+          </h1>
+          <p className="text-slate-500 font-bold italic mt-2 text-lg">
+            Hoy en {data.business_name || "Entrega"}
+          </p>
+        </div>
       </div>
 
       <div
