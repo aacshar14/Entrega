@@ -420,33 +420,33 @@ export default function Dashboard() {
           <div className="rounded-3xl p-7 bg-gradient-to-br from-orange-500 to-amber-600 text-white flex flex-col justify-between h-44 shadow-2xl shadow-orange-500/20 transition-transform hover:scale-[1.02]">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-100">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-100">
                   Estado del Stock
                 </p>
-                <div className="flex flex-col mt-2">
+                <div className="flex flex-col mt-1">
                    <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black italic">{safeMoney(totalInWarehouse)}</span>
-                    <span className="text-[10px] font-bold opacity-60 mb-1">EN BODEGA</span>
+                    <span className="text-3xl font-black italic">{safeMoney(totalInWarehouse)}</span>
+                    <span className="text-[9px] font-bold opacity-60 mb-1">BODEGA</span>
                   </div>
-                  <div className="flex items-end gap-2 mt-1">
-                    <span className="text-4xl font-black text-white/90">{safeMoney(totalOutside)}</span>
-                    <span className="text-[10px] font-bold text-orange-200 mb-1">EN LA CALLE</span>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-white/90">{safeMoney(totalOutside)}</span>
+                    <span className="text-[9px] font-bold text-orange-200 mb-1">CALLE</span>
                   </div>
                 </div>
               </div>
-              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                <Truck size={24} />
+              <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md">
+                <Truck size={20} />
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/10 mt-2 flex justify-between items-center">
+            <div className="pt-3 border-t border-white/10 flex justify-between items-center">
               <div className="flex flex-col">
-                <span className="text-[9px] font-black opacity-60 uppercase">Total Sistema</span>
-                <span className="text-xl font-black">{safeMoney(totalInventory)}</span>
+                <span className="text-[8px] font-black opacity-60 uppercase tracking-tighter">Total Sistema</span>
+                <span className="text-lg font-black">{safeMoney(totalInventory)}</span>
               </div>
               <Link 
                 href="/stock"
-                className="bg-white text-orange-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 transition-colors shadow-lg shadow-orange-900/20"
+                className="bg-white text-orange-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-orange-50 transition-colors shadow-lg shadow-orange-900/20"
               >
                 Stock
               </Link>
