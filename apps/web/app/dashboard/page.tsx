@@ -16,13 +16,13 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.6.8";
+const DASHBOARD_VERSION = "V5.6.9";
 
 interface DashboardStats {
   customer_count: number;
   product_count: number;
   total_payments: number;
-  total_debt: number;
+  total_debt_final: number;
   force_monthly_in: number;
   force_monthly_out: number;
   debtor_count: number;
@@ -74,7 +74,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiRequest("dashboard", "GET", null, activeTenant.id);
+      const res = await apiRequest(`dashboard?_t=${Date.now()}`, "GET", null, activeTenant.id);
       setData(res);
     } catch (err) {
       console.error("Dashboard fetch failed:", err);
@@ -315,7 +315,7 @@ export default function Dashboard() {
                   Saldo Pendiente (Adeudos)
                 </p>
                 <h3 className="text-4xl font-black mt-2">
-                  ${data.stats.total_debt.toLocaleString()}
+                  ${data.stats.total_debt_final.toLocaleString()}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
