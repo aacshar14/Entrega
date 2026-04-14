@@ -48,34 +48,33 @@ async def get_dashboard_summary(
             or 0.0
         )
 
-        # 3. Weekly Flow (CORRECTED: IN uses 'adjustment' > 0 V1.9.18)
-        last_monday_naive = (now_naive - timedelta(days=now_naive.weekday())).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        # 3. Monthly Flow (Updated from Weekly V5.1.0)
+        month_start_naive = now_naive.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # IN = Adjustments with positive quantity
-        produced_this_week = (
+        # IN = Adjustments with positive quantity (Monthly)
+        produced_this_month = (
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
                     InventoryMovement.tenant_id == tenant_id,
                     InventoryMovement.type == "adjustment",
                     InventoryMovement.quantity > 0,
-                    InventoryMovement.created_at >= last_monday_naive,
+                    InventoryMovement.created_at >= month_start_naive,
                 )
             ).one()
             or 0.0
         )
 
-        delivered_this_week = (
+        delivered_this_month = (
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
                     InventoryMovement.tenant_id == tenant_id,
                     InventoryMovement.type == "delivery",
-                    InventoryMovement.created_at >= last_monday_naive,
+                    InventoryMovement.created_at >= month_start_naive,
                 )
             ).one()
             or 0.0
         )
+
 
         # 4. Stock Maestro (Excluding Hidden/Test Products V1.9.18)
         # Note: In the future we can use is_active, but for now we filter 'Birthday Cake' manually if requested
@@ -173,10 +172,13 @@ async def get_dashboard_summary(
                         StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
                     )
                 ).one(),
+                "monthly_produced": float(produced_this_month or 0.0),
+                "monthly_delivered": abs(float(delivered_this_month or 0.0)),
                 "weekly_produced": float(
-                    produced_this_week or 0.0
-                ),  # Reflecting adjustments as IN
-                "weekly_delivered": abs(float(delivered_this_week or 0.0)),
+                    produced_this_month or 0.0
+                ),  # Alias for monthly in V5.1.0
+                "weekly_delivered": abs(float(delivered_this_month or 0.0)),
+
             },
             "stock": formatted_stock,
             "recent_activity": recent_activity_resp,
