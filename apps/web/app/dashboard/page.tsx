@@ -68,7 +68,7 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
-  const { activeTenant } = useTenant();
+  const { activeTenant, user } = useTenant();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -286,10 +286,10 @@ export default function Dashboard() {
               </span>
             </div>
             <h1 className="text-4xl lg:text-5xl font-black text-[#1D3146] tracking-tight">
-              ¡Hola, {(data.user?.full_name ?? "Admin").split(' ')[0]}! 👋
+              ¡Hola, {(user?.full_name ?? "Admin").split(' ')[0]}! 👋
             </h1>
             <p className="text-slate-500 mt-2 font-medium">
-              Aquí tienes el resumen de <span className="text-[#1D3146] font-bold">{data.active_tenant?.name ?? "tu negocio"}</span> para hoy.
+              Aquí tienes el resumen de <span className="text-[#1D3146] font-bold">{activeTenant?.name ?? "tu negocio"}</span> para hoy.
             </p>
           </div>
 
