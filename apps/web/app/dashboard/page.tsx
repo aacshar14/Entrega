@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V6.0.0";
+const DASHBOARD_VERSION = "V6.3.0";
 
 interface DashboardStats {
   customer_count: number;
@@ -331,44 +331,103 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="rounded-3xl p-7 bg-gradient-to-br from-orange-500 to-orange-600 text-white flex flex-col justify-between h-44 shadow-2xl shadow-orange-500/20 transition-transform hover:scale-[1.02]">
+          {/* Inventario Maestro (Live) */}
+          <div className="rounded-[2.5rem] p-8 bg-gradient-to-br from-orange-500 to-amber-600 text-white flex flex-col justify-between min-h-[14rem] shadow-2xl shadow-orange-500/30 transition-all hover:scale-[1.01] border-t border-white/20">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                  Productos en Catálogo
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-100">
+                  Estado del Stock
                 </p>
-                <h3 className="text-5xl font-black mt-2">
-                  {data.stats?.product_count ?? 0}
-                </h3>
+                <div className="flex flex-col mt-2">
+                   <div className="flex items-end gap-2">
+                    <span className="text-4xl font-black italic">{data.stock_status?.in_warehouse?.toLocaleString() ?? 0}</span>
+                    <span className="text-[10px] font-bold opacity-60 mb-1">EN BODEGA</span>
+                  </div>
+                  <div className="flex items-end gap-2 mt-1">
+                    <span className="text-4xl font-black text-white/90">{data.stock_status?.outside?.toLocaleString() ?? 0}</span>
+                    <span className="text-[10px] font-bold text-orange-200 mb-1">EN LA CALLE</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-white/10 p-3 rounded-2xl">
-                <Package size={24} />
+              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                <Truck size={24} />
               </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <span
-                className={`text-[11px] font-black px-2 py-0.5 rounded-lg w-fit ${(data.stats?.low_stock_count ?? 0) > 0 ? "bg-white/20 text-white" : "bg-green-500 text-white"}`}
-              >
-                {data.stats?.low_stock_count ?? 0} Stock Bajo
-              </span>
-              <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V6.0.0): {data.stats?.force_monthly_in ?? 0} In / {data.stats?.force_monthly_out ?? 0} Out
-              </p>
-              <div className="mt-3 bg-white/10 p-2 rounded-xl flex justify-between items-center">
-                <span className="text-[9px] font-black uppercase opacity-60 italic">Inventario Real</span>
-                <span className="text-[12px] font-black">{data.stats?.total_stock_global ?? 0} Total</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="bg-white/20 p-2 rounded-lg text-center">
-                   <p className="text-[8px] opacity-60 uppercase font-black">Bodega</p>
-                   <p className="text-[11px] font-black">{data.stats?.total_stock_hq ?? 0}</p>
-                </div>
-                <div className="bg-blue-900/30 p-2 rounded-lg text-center">
-                   <p className="text-[8px] opacity-60 uppercase font-black">En Calle</p>
-                   <p className="text-[11px] font-black">{data.stats?.total_stock_outside ?? 0}</p>
-                </div>
-              </div>
 
+            <div className="pt-4 border-t border-white/10 mt-2 flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black opacity-60 uppercase">Total Sistema</span>
+                <span className="text-xl font-black">{data.stock_status?.total_inventory?.toLocaleString() ?? 0}</span>
+              </div>
+              <Link 
+                href="/stock"
+                className="bg-white text-orange-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 transition-colors shadow-lg shadow-orange-900/20"
+              >
+                Stock
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Operational Intelligence Center (Orange Banner) */}
+        <section className="mb-10">
+          <div className="bg-gradient-to-br from-[#FF9F1C] to-[#FF4B2B] rounded-[2.5rem] p-1 shadow-2xl shadow-orange-200/50">
+            <div className="bg-white/10 backdrop-blur-xl rounded-[2.3rem] p-8 text-white relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                <Package size={120} weight="fill" />
+              </div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div className="flex-1">
+                  <h2 className="text-sm font-black uppercase tracking-[0.3em] opacity-80 mb-2">
+                    Inteligencia Operativa (Mensual)
+                  </h2>
+                  <div className="flex items-end gap-3">
+                    <span className="text-6xl font-black tracking-tighter">
+                      {data.operational_flow?.monthly_out?.toLocaleString() ?? 0}
+                    </span>
+                    <span className="text-xl font-bold opacity-80 pb-2 italic">
+                      unidades fuera
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-8 items-center">
+                   <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock en Calle</p>
+                    <p className="text-2xl font-black">
+                      {data.stock_status?.outside?.toLocaleString() ?? 0}
+                    </p>
+                  </div>
+
+                  <div className="h-20 w-[1px] bg-white/20 hidden md:block"></div>
+
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
+                      <span>Eficiencia de Entrega</span>
+                      <span>
+                        {data.operational_flow?.in_out_ratio?.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="h-4 bg-white/20 rounded-full overflow-hidden border border-white/10 p-0.5">
+                      <div 
+                        className="h-full bg-white rounded-full transition-all duration-1000 shadow-sm"
+                        style={{ width: `${Math.min(100, data.operational_flow?.in_out_ratio ?? 0)}%` }}
+                      ></div>
+                    </div>
+                    <p className="mt-3 text-[10px] italic font-medium opacity-70">
+                      * Proporción de stock producido que ha sido entregado.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/inventory"
+                  className="bg-white text-[#FF4B2B] px-8 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-50 transition-all shadow-xl shadow-orange-900/10 active:scale-95 text-center"
+                >
+                  Ver Stock
+                </Link>
+              </div>
             </div>
           </div>
         </section>

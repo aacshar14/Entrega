@@ -77,7 +77,7 @@ async def get_dashboard_summary(
             SELECT SUM(quantity) 
             FROM inventory_movements 
             WHERE tenant_id = :tid 
-            AND type IN ('adjustment', 'Adjustment', 'production', 'Production') 
+            AND type IN ('adjustment', 'Adjustment', 'production', 'Production', 'restock', 'Restock') 
             AND quantity > 0 
             AND created_at >= :start
         """)
@@ -88,7 +88,7 @@ async def get_dashboard_summary(
             SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
             WHERE tenant_id = :tid 
-            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') 
+            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer', 'sale_reported', 'Sale_reported') 
             AND created_at >= :start
         """)
         delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
@@ -133,28 +133,36 @@ async def get_dashboard_summary(
 
         formatted_stock = []
         for p, sb in stock_balances:
-            outside_qty = (
-                db.exec(
-                    select(func.sum(InventoryMovement.quantity)).where(
-                        InventoryMovement.tenant_id == t_id_str,
-                        InventoryMovement.product_id == p.id,
-                        InventoryMovement.type.in_(
-                            ["delivery", "delivery_to_customer"]
-                        ),
-                    )
-                ).one()
-                or 0.0
-            )
+            # Deliveries (Out from warehouse to street)
+            sum_delivered = db.exec(
+                select(func.sum(InventoryMovement.quantity)).where(
+                    InventoryMovement.tenant_id == t_id_str,
+                    InventoryMovement.product_id == p.id,
+                    InventoryMovement.type.in_(["delivery", "delivery_to_customer"]),
+                )
+            ).one() or 0.0
 
-            outside_abs = abs(float(outside_qty))
-            formatted_stock.append(
-                {
-                    "name": str(p.name),
-                    "quantity": float(sb.quantity or 0.0),
-                    "quantity_outside": outside_abs,
-                    "total": float(sb.quantity or 0.0) + outside_abs,
-                }
-            )
+            # Sales + Returns (Back from street or finalized)
+            sum_finalized = db.exec(
+                select(func.sum(InventoryMovement.quantity)).where(
+                    InventoryMovement.tenant_id == t_id_str,
+                    InventoryMovement.product_id == p.id,
+                    InventoryMovement.type.in_(["sale_reported", "return", "return_from_customer"]),
+                )
+            ).one() or 0.0
+
+            # Real Stock in Street (Calle)
+            # Normalizing with ABS: Abs(Output) - Abs(Sold/Returned)
+            outside_abs = max(0, abs(float(sum_delivered)) - abs(float(sum_finalized)))
+
+            formatted_stock.append({
+                "id": str(p.id),
+                "name": p.name,
+                "sku": p.sku,
+                "quantity": float(sb.quantity or 0.0),      # Bodega
+                "quantity_outside": float(outside_abs),      # Calle
+                "total": float((sb.quantity or 0.0) + outside_abs)
+            })
 
         # 5. Activity
         recent_movements = db.exec(
@@ -168,8 +176,9 @@ async def get_dashboard_summary(
 
         recent_activity_resp = []
         for m, c, p in recent_movements:
-            calculated_amount = 0.0
-            if m.type in ["delivery", "delivery_to_customer"] and p:
+            # Use snapshot amount if available (V6.1.0 logic), fallback to manual calculation
+            calculated_amount = float(m.total_amount or 0.0)
+            if calculated_amount == 0.0 and m.type in ["delivery", "delivery_to_customer"] and p:
                 tier = (c.tier if c else "menudeo") or "menudeo"
                 price = p.price_menudeo or p.price or 0.0
                 if tier == "mayoreo":
@@ -222,7 +231,6 @@ async def get_dashboard_summary(
                 ).one(),
                 "monthly_produced": float(produced_this_month or 0.0),
                 "monthly_delivered": abs(float(delivered_this_month or 0.0)),
-                "force_monthly_in": float(produced_this_month or 0.0),
                 "force_monthly_in": float(produced_this_month or 0.0),
                 "force_monthly_out": float(delivered_this_month or 0.0),
                 "total_stock_hq": float(total_hq_stock),

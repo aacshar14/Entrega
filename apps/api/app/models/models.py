@@ -2,12 +2,31 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint, Index
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+from enum import Enum
 
 
 def get_utc_now():
     return datetime.now(timezone.utc)
 
+
+# --- Enumerations for Deterministic Logic ---
+
+class MovementType(str, Enum):
+    DELIVERY = "delivery"
+    RESTOCK = "restock"
+    RETURN = "return"
+    ADJUSTMENT = "adjustment"
+    PRODUCTION = "production"
+    SALE_REPORTED = "sale_reported"
+    DELIVERY_TO_CUSTOMER = "delivery_to_customer"
+    RETURN_FROM_CUSTOMER = "return_from_customer"
+
+class WhatsAppMessageStatus(str, Enum):
+    PENDING = "pending"
+    PROCESSED = "processed"
+    FAILED = "failed"
+    IGNORED = "ignored"
 
 # --- Database Tables (SQLModel) ---
 
@@ -208,8 +227,21 @@ class InventoryMovement(SQLModel, table=True):
     product_id: Optional[UUID] = Field(default=None, foreign_key="products.id")
     customer_id: Optional[UUID] = Field(default=None, foreign_key="customers.id")
     quantity: float  # positive for stock additions, negative for deliveries
-    type: str  # 'delivery', 'restock', 'return', 'adjustment', 'sale_reported', 'delivery_to_customer', 'return_from_customer'
+    type: MovementType = Field(default=MovementType.DELIVERY, index=True)
     description: Optional[str] = None
+
+    @validator("type", pre=True)
+    def validate_movement_type(cls, v):
+        if isinstance(v, str):
+            try:
+                return MovementType(v.lower())
+            except ValueError:
+                raise ValueError(f"Invalid MovementType: {v}")
+        return v
+
+    class Config:
+        validate_assignment = True
+        validate_default = True
     customer_name_snapshot: Optional[str] = None
 
     # Financial Metadata (Snapshot at time of movement)
@@ -267,9 +299,23 @@ class WhatsAppMessage(SQLModel, table=True):
     message_type: str = Field(default="text")
 
     # State Machine (V2 Audit)
-    processing_status: str = Field(
-        default="pending", index=True
-    )  # 'pending', 'processed', 'failed', 'ignored'
+    processing_status: WhatsAppMessageStatus = Field(
+        default=WhatsAppMessageStatus.PENDING, index=True
+    )
+
+    @validator("processing_status", pre=True)
+    def validate_status(cls, v):
+        if isinstance(v, str):
+            try:
+                return WhatsAppMessageStatus(v.lower())
+            except ValueError:
+                raise ValueError(f"Invalid WhatsAppMessageStatus: {v}")
+        return v
+
+    class Config:
+        validate_assignment = True
+        validate_default = True
+
     last_error_code: Optional[str] = Field(
         default=None, index=True
     )  # Normalized error code (e.g., 'PARSE_FAILED')
@@ -277,6 +323,10 @@ class WhatsAppMessage(SQLModel, table=True):
 
     processed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=get_utc_now)
+
+    @property
+    def is_processed(self) -> bool:
+        return self.processing_status == WhatsAppMessageStatus.PROCESSED
 
 
 class MessageLog(SQLModel, table=True):

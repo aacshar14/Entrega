@@ -12,6 +12,8 @@ from app.models.models import (
     CustomerBalance,
     Payment,
     WhatsAppMessage,
+    WhatsAppMessageStatus,
+    MovementType,
 )
 
 
@@ -129,7 +131,7 @@ class ParserService:
                     product_id=product.id,
                     customer_id=customer.id,
                     quantity=-qty,  # Negative for outgoing delivery
-                    type="delivery",
+                    type=MovementType.DELIVERY,
                     description=f"WhatsApp Delivery: {whatsapp_msg.body}",
                     sku=product.sku,
                     tier_applied=tier_applied,
@@ -197,7 +199,7 @@ class ParserService:
             )
 
         # Mark as processed
-        whatsapp_msg.processing_status = "processed"
+        whatsapp_msg.processing_status = WhatsAppMessageStatus.PROCESSED
         whatsapp_msg.processed_at = datetime.now(timezone.utc)
         db.add(whatsapp_msg)
         db.commit()
