@@ -11,12 +11,13 @@ import {
   Loader2,
   Users,
   Wallet,
+  Filter,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.6.9";
+const DASHBOARD_VERSION = "V5.7.0";
 
 interface DashboardStats {
   customer_count: number;

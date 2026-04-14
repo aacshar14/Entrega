@@ -188,7 +188,7 @@ async def get_dashboard_summary(
                 ).one(),
                 "product_count": product_count,
                 "total_payments": float(historical_total_payments),
-                "total_debt_final": live_total_debt + 0.99,
+                "total_debt_final": live_total_debt,
                 "total_debt_live": live_total_debt,
                 "debtor_count": live_debtor_count,
                 "debtor_count_live": live_debtor_count,
