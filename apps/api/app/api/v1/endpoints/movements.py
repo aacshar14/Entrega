@@ -106,14 +106,18 @@ async def create_manual_movement(
         # Resolve price tier if it's a delivery
         if type in ["delivery", "delivery_to_customer"]:
             if customer.tier == "mayoreo":
-                unit_price = product.price_mayoreo
+                unit_price = product.price_mayoreo or product.price
                 tier_applied = "mayoreo"
             elif customer.tier == "especial":
-                unit_price = product.price_especial
+                unit_price = product.price_especial or product.price
                 tier_applied = "especial"
             else:
-                unit_price = product.price_menudeo
+                unit_price = product.price_menudeo or product.price
                 tier_applied = "menudeo"
+            
+            # 🛡️ Hardening: If still 0, ensure we use the canonical base price
+            if not unit_price:
+                unit_price = product.price
 
     # 3. Create Movement
     new_movement = InventoryMovement(
@@ -134,19 +138,19 @@ async def create_manual_movement(
     db.add(new_movement)
 
     # 4. Synchronize with StockBalance (Warehouse Stock)
-    # sale_reported only affects 'outside' stock and money, not physical warehouse inventory
     if type != "sale_reported":
         from app.models.models import StockBalance
 
         balance = db.exec(
             select(StockBalance)
-            .where(StockBalance.product_id == product.id)
+            .where(StockBalance.product_id == product.id, StockBalance.tenant_id == tenant.id)
             .with_for_update()
         ).first()
         if balance:
             balance.quantity += quantity
             balance.updated_by_user_id = current_user.id
             balance.last_updated = datetime.now(timezone.utc)
+            db.add(balance)
         else:
             balance = StockBalance(
                 tenant_id=tenant.id,
@@ -154,7 +158,7 @@ async def create_manual_movement(
                 quantity=quantity,
                 updated_by_user_id=current_user.id,
             )
-        db.add(balance)
+            db.add(balance)
 
     # 5. Synchronize with CustomerBalance (Financial Debt)
     if customer_id and type in [
@@ -167,14 +171,21 @@ async def create_manual_movement(
 
         cb = db.exec(
             select(CustomerBalance)
-            .where(CustomerBalance.customer_id == customer_id)
+            .where(CustomerBalance.customer_id == customer_id, CustomerBalance.tenant_id == tenant.id)
             .with_for_update()
         ).first()
 
-        # Delivery increases debt (subtract from balance), Return decreases debt (add to balance)
         amount_delta = new_movement.total_amount
         if type in ["delivery", "delivery_to_customer"]:
             amount_delta = -amount_delta
+
+        logger.info(
+            "movements.balance_sync",
+            customer_id=str(customer_id),
+            delta=amount_delta,
+            type=type,
+            total_amount=new_movement.total_amount
+        )
 
         if cb:
             cb.balance += amount_delta
