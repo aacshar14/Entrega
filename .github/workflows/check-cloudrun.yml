@@ -12,5 +12,4 @@ jobs:
         with:
           project_id: entrega-468815
       - run: |
-          gcloud run services describe entrega-api --region us-central1
-          gcloud run revisions list --service entrega-api --region us-central1 --limit 5
+          gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=entrega-api AND resource.labels.revision_name=entrega-api-00442-8zs AND severity>=WARNING" --limit=50 --format="table(timestamp, severity, textPayload)"
