@@ -50,12 +50,13 @@ async def get_dashboard_summary(
 
         # 3. Monthly Flow (Updated from Weekly V5.1.0)
         month_start_naive = now_naive.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        t_id_str = str(tenant_id)
 
         # IN = Adjustments with positive quantity (Monthly)
         produced_this_month = (
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == tenant_id,
+                    InventoryMovement.tenant_id == t_id_str,
                     InventoryMovement.type == "adjustment",
                     InventoryMovement.quantity > 0,
                     InventoryMovement.created_at >= month_start_naive,
@@ -67,13 +68,14 @@ async def get_dashboard_summary(
         delivered_this_month = (
             db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == tenant_id,
+                    InventoryMovement.tenant_id == t_id_str,
                     InventoryMovement.type == "delivery",
                     InventoryMovement.created_at >= month_start_naive,
                 )
             ).one()
             or 0.0
         )
+
 
 
         # 4. Stock Maestro (Excluding Hidden/Test Products V1.9.18)
@@ -92,7 +94,7 @@ async def get_dashboard_summary(
             outside_qty = (
                 db.exec(
                     select(func.sum(InventoryMovement.quantity)).where(
-                        InventoryMovement.tenant_id == tenant_id,
+                        InventoryMovement.tenant_id == t_id_str,
                         InventoryMovement.product_id == p.id,
                         InventoryMovement.type.in_(
                             ["delivery", "delivery_to_customer"]
@@ -117,7 +119,7 @@ async def get_dashboard_summary(
             select(InventoryMovement, Customer, Product)
             .join(Customer, InventoryMovement.customer_id == Customer.id, isouter=True)
             .join(Product, InventoryMovement.product_id == Product.id, isouter=True)
-            .where(InventoryMovement.tenant_id == tenant_id)
+            .where(InventoryMovement.tenant_id == t_id_str)
             .order_by(desc(InventoryMovement.created_at))
             .limit(15)
         ).all()
@@ -187,7 +189,7 @@ async def get_dashboard_summary(
                 for c, cb in db.exec(
                     select(Customer, CustomerBalance)
                     .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
-                    .where(Customer.tenant_id == tenant_id)
+                    .where(Customer.tenant_id == t_id_str)
                     .order_by(CustomerBalance.balance)
                     .limit(5)
                 ).all()
