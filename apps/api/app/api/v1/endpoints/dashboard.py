@@ -210,6 +210,24 @@ async def get_dashboard_summary(
             )
         ).one()
 
+        # Debtor count safety: cross-check against the debtors list
+        debtors_list = [
+            {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
+            for c, cb in db.exec(
+                select(Customer, CustomerBalance)
+                .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
+                .where(Customer.tenant_id == tenant_id)
+                .order_by(CustomerBalance.balance)
+                .limit(5)
+            ).all()
+            if cb and cb.balance is not None and cb.balance < 0
+        ]
+        # If UUID fix returns 0 but debtors_list is non-empty, use list length as truth
+        final_debtor_count = live_debtor_count if live_debtor_count > 0 else len(debtors_list)
+
+        produced = float(produced_this_month or 0.0)
+        delivered = abs(float(delivered_this_month or 0.0))
+
         return {
             "stats": {
                 "customer_count": db.exec(
@@ -222,35 +240,30 @@ async def get_dashboard_summary(
                 "total_debt": live_total_debt,
                 "total_debt_final": live_total_debt,
                 "total_debt_live": live_total_debt,
-                "debtor_count": live_debtor_count,
-                "debtor_count_live": live_debtor_count,
+                # Debtor count — dual source of truth
+                "debtor_count": final_debtor_count,
+                "debtor_count_live": final_debtor_count,
                 "low_stock_count": db.exec(
                     select(func.count(StockBalance.id)).where(
                         StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
                     )
                 ).one(),
-                "monthly_produced": float(produced_this_month or 0.0),
-                "monthly_delivered": abs(float(delivered_this_month or 0.0)),
-                "force_monthly_in": float(produced_this_month or 0.0),
-                "force_monthly_out": float(delivered_this_month or 0.0),
+                # Monthly flow — canonical names
+                "monthly_produced": produced,
+                "monthly_delivered": delivered,
+                # force_monthly_* — expected by frontend V6.7.9
+                "force_monthly_in": produced,
+                "force_monthly_out": delivered,
+                # weekly_* — backward compat aliases for frontend fallback chain
+                "weekly_produced": produced,
+                "weekly_delivered": delivered,
                 "total_stock_hq": float(total_hq_stock),
                 "total_stock_outside": float(total_outside_stock),
                 "total_stock_global": float(total_hq_stock + total_outside_stock),
-
             },
             "stock": formatted_stock,
             "recent_activity": recent_activity_resp,
-            "debtors": [
-                {"name": str(c.name or "S/N"), "amount": abs(float(cb.balance or 0.0))}
-                for c, cb in db.exec(
-                    select(Customer, CustomerBalance)
-                    .join(CustomerBalance, Customer.id == CustomerBalance.customer_id)
-                    .where(Customer.tenant_id == tenant_id)
-                    .order_by(CustomerBalance.balance)
-                    .limit(5)
-                ).all()
-                if cb and cb.balance is not None and cb.balance < 0
-            ],
+            "debtors": debtors_list,
             "billing": {
                 "status": status,
                 "days_remaining": max(0, days_rem),
@@ -260,7 +273,7 @@ async def get_dashboard_summary(
                 ),
                 "trial_ends_at": trial_end.isoformat() if trial_end else None,
                 "total_orders": int(total_deliveries_kpi or 0),
-                "sales_today": sales_today,
+                "sales_today": float(sales_today or 0.0),
             },
             "welcome_message": f"¡Hola de nuevo, {current_user.full_name or current_user.email}!",
             "business_name": str(active_tenant.name or "Mi Negocio"),
