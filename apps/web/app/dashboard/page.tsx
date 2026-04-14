@@ -24,6 +24,8 @@ interface DashboardStats {
   low_stock_count: number;
   weekly_produced: number;
   weekly_delivered: number;
+  force_monthly_in: number;
+  force_monthly_out: number;
 }
 
 interface StockItem {
