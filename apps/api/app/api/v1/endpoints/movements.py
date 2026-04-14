@@ -124,10 +124,20 @@ async def create_manual_movement(
             else:
                 unit_price = product.price_menudeo or product.price
                 tier_applied = "menudeo"
-            
-            # 🛡️ Hardening: If still 0, ensure we use the canonical base price
+
+            # Final fallback to canonical base price
             if not unit_price:
                 unit_price = product.price
+
+            # HARD GUARD: Never allow a delivery with $0 price — it corrupts debt state
+            if not unit_price or unit_price <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Product '{product.name}' has no price configured for tier '{tier_applied}'. "
+                        "Set a valid price before recording a delivery."
+                    ),
+                )
 
     # 3. Create Movement
     new_movement = InventoryMovement(

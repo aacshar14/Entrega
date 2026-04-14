@@ -36,9 +36,9 @@ async def get_dashboard_summary(
         q_debt = text("""
             SELECT 
                 COALESCE(SUM(ABS(balance)), 0.0) as total_debt,
-                COUNT(id) FILTER (WHERE balance < 0) as debtor_count
+                COUNT(*) as debtor_count
             FROM customer_balances 
-            WHERE tenant_id = :tid 
+            WHERE tenant_id = CAST(:tid AS uuid)
             AND balance < 0
         """)
         debt_res = db.execute(q_debt, {"tid": t_id_str}).first()
@@ -50,20 +50,20 @@ async def get_dashboard_summary(
         q_daily = text("""
             SELECT 
                 COUNT(id) as orders_today,
-                COALESCE(SUM(ABS(quantity)), 0.0) as sales_units_today
+                COALESCE(SUM(ABS(total_amount)), 0.0) as sales_amount_today
             FROM inventory_movements 
-            WHERE tenant_id = :tid 
-            AND type IN ('delivery', 'Delivery')
+            WHERE tenant_id = CAST(:tid AS uuid)
+            AND type IN ('delivery', 'Delivery', 'delivery_to_customer')
             AND created_at >= :start
         """)
         daily_res = db.execute(q_daily, {"tid": t_id_str, "start": today_start}).first()
         total_deliveries_kpi = int(daily_res.orders_today or 0)
-        sales_today = float(daily_res.sales_units_today or 0.0) 
+        sales_today = float(daily_res.sales_amount_today or 0.0)
 
         # 3. Financial History (Live)
         historical_total_payments = (
             db.execute(
-                text("SELECT SUM(amount) FROM payments WHERE tenant_id = :tid"), 
+                text("SELECT SUM(amount) FROM payments WHERE tenant_id = CAST(:tid AS uuid)"), 
                 {"tid": t_id_str}
             ).scalar()
             or 0.0
@@ -76,7 +76,7 @@ async def get_dashboard_summary(
         q_in = text("""
             SELECT SUM(quantity) 
             FROM inventory_movements 
-            WHERE tenant_id = :tid 
+            WHERE tenant_id = CAST(:tid AS uuid)
             AND type IN ('adjustment', 'Adjustment', 'production', 'Production', 'restock', 'Restock') 
             AND quantity > 0 
             AND created_at >= :start
@@ -87,27 +87,27 @@ async def get_dashboard_summary(
         q_out = text("""
             SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
-            WHERE tenant_id = :tid 
+            WHERE tenant_id = CAST(:tid AS uuid)
             AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer', 'sale_reported', 'Sale_reported') 
             AND created_at >= :start
         """)
         delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
 
         # TOTAL HQ STOCK (Live)
-        q_hq = text("SELECT SUM(quantity) FROM stock_balances WHERE tenant_id = :tid")
+        q_hq = text("SELECT SUM(quantity) FROM stock_balances WHERE tenant_id = CAST(:tid AS uuid)")
         total_hq_stock = db.execute(q_hq, {"tid": t_id_str}).scalar() or 0.0
 
         # TOTAL OUTSIDE STOCK (Live)
         q_outside_total = text("""
             SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
-            WHERE tenant_id = :tid 
+            WHERE tenant_id = CAST(:tid AS uuid)
             AND type IN ('delivery', 'delivery_to_customer')
         """)
         q_returns_total = text("""
             SELECT SUM(ABS(quantity)) 
             FROM inventory_movements 
-            WHERE tenant_id = :tid 
+            WHERE tenant_id = CAST(:tid AS uuid)
             AND type IN ('return', 'return_from_customer', 'sale_reported')
         """)
         
