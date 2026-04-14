@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
   Filter,
+  Activity,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
