@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import uuid4, UUID
-from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint, Index
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint, Index, Column, String
 from pydantic import BaseModel, validator
 from enum import Enum
 
@@ -227,7 +227,7 @@ class InventoryMovement(SQLModel, table=True):
     product_id: Optional[UUID] = Field(default=None, foreign_key="products.id")
     customer_id: Optional[UUID] = Field(default=None, foreign_key="customers.id")
     quantity: float  # positive for stock additions, negative for deliveries
-    type: MovementType = Field(default=MovementType.DELIVERY, index=True)
+    type: MovementType = Field(sa_column=Column(String, default="delivery", index=True))
     description: Optional[str] = None
 
     @validator("type", pre=True)

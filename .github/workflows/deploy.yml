@@ -260,7 +260,33 @@ jobs:
 
       - name: API Contract Validation
         run: |
-          echo "Skipping contract validation to debug 400 error..."
+          TOKEN="${{ env.SMOKE_ACCESS_TOKEN }}"
+          BASE_URL="https://api.entrega.space/api/v1"
+          
+          check_route() {
+            ROUTE=$1
+            # -L follows redirects, -s silent, -o output to blackhole, -w %{http_code} prints final status
+            ST=$(curl -L -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL$ROUTE" || echo "000")
+            if [[ "$ST" =~ ^(200|401|403)$ ]]; then
+              echo "✅ $ROUTE: Final Status $ST"
+            else
+              echo "❌ $ROUTE FAIL: Final Status $ST"
+              exit 1
+            fi
+          }
+
+          check_route "/dashboard/"
+          check_route "/customers/"
+          check_route "/products/"
+          check_route "/movements/"
+          check_route "/payments/"
+          
+          # Strict check for Dashboard (Must be 200 with test token)
+          DASH_STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE_URL/dashboard/")
+          if [ "$DASH_STATUS" != "200" ]; then
+            echo "❌ Dashboard Contract Internal Error: Final Status $DASH_STATUS"
+            exit 1
+          fi
 
       - name: Frontend Reachability
         run: |
