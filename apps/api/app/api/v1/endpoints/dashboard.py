@@ -83,12 +83,13 @@ async def get_dashboard_summary(
         """)
         produced_this_month = db.execute(q_in, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
 
-        # OUT = Deliveries (Monthly)
+        # OUT = Net Deliveries (Deliveries - Returns/Sales) Monthly
         q_out = text("""
-            SELECT SUM(ABS(quantity)) 
+            SELECT 
+                COALESCE(SUM(CASE WHEN type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') THEN ABS(quantity) ELSE 0 END), 0.0) -
+                COALESCE(SUM(CASE WHEN type IN ('return', 'return_from_customer', 'sale_reported', 'Sale_reported') THEN ABS(quantity) ELSE 0 END), 0.0)
             FROM inventory_movements 
             WHERE tenant_id = CAST(:tid AS uuid)
-            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') 
             AND created_at >= :start
         """)
         delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
