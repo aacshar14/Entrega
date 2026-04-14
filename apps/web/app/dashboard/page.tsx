@@ -401,7 +401,7 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Operational Intelligence Center (Orange Banner) */}
         <section className="mb-10">
