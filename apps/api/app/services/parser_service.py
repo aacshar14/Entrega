@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import re
 from enum import Enum
 from typing import Dict, Any, Optional, Tuple
@@ -65,22 +66,21 @@ class ParserService:
         """Orchestrates parsing and database updates matching real business logic."""
         logger.info(
             "Processing business logic from message",
-            sender=whatsapp_msg.from_number,
+            sender=whatsapp_msg.sender_wa_id,
             body=whatsapp_msg.body,
         )
 
         intent, entities = ParserService.parse_intent(whatsapp_msg.body or "")
-        whatsapp_msg.intent = intent.value
 
         # 1. Identify Customer by Phone Number
         statement = select(Customer).where(
-            Customer.phone_number == whatsapp_msg.from_number
+            Customer.phone_number == whatsapp_msg.sender_wa_id
         )
         customer = db.exec(statement).first()
 
         if not customer:
             logger.warning(
-                "Message from unregistered number", phone=whatsapp_msg.from_number
+                "Message from unregistered number", phone=whatsapp_msg.sender_wa_id
             )
             # In V1.1 we assume pilot customers are pre-registered manually or via onboarding
             return "unknown_customer"
@@ -109,7 +109,21 @@ class ParserService:
                     stock.quantity -= qty
                     db.add(stock)
 
-                # Record Movement
+                # 2. Resolve Price based on Customer Tier
+                unit_price = product.price # Default fallback
+                tier_applied = "menudeo"
+
+                if customer.tier == "mayoreo":
+                    unit_price = product.price_mayoreo or product.price
+                    tier_applied = "mayoreo"
+                elif customer.tier == "especial":
+                    unit_price = product.price_especial or product.price
+                    tier_applied = "especial"
+                else:
+                    unit_price = product.price_menudeo or product.price
+                    tier_applied = "menudeo"
+
+                # 3. Record Movement with Financial Metadata
                 movement = InventoryMovement(
                     tenant_id=tenant_id,
                     product_id=product.id,
@@ -117,10 +131,15 @@ class ParserService:
                     quantity=-qty,  # Negative for outgoing delivery
                     type="delivery",
                     description=f"WhatsApp Delivery: {whatsapp_msg.body}",
+                    sku=product.sku,
+                    tier_applied=tier_applied,
+                    unit_price=unit_price,
+                    total_amount=qty * unit_price,
+                    customer_name_snapshot=customer.name
                 )
                 db.add(movement)
 
-                # Update Customer Balance (negative is debt)
+                # 4. Update Customer Balance (negative is debt)
                 balance_stmt = select(CustomerBalance).where(
                     CustomerBalance.customer_id == customer.id,
                     CustomerBalance.tenant_id == tenant_id,
@@ -132,13 +151,14 @@ class ParserService:
                     )
 
                 # Each delivery increases debt (decreases balance)
-                total_cost = qty * product.price
+                total_cost = qty * unit_price
                 balance.balance -= total_cost
                 db.add(balance)
 
                 logger.info(
                     "Delivery registered successfully",
                     customer=customer.name,
+                    tier=tier_applied,
                     product=product.name,
                     cost=total_cost,
                 )
@@ -177,7 +197,8 @@ class ParserService:
             )
 
         # Mark as processed
-        whatsapp_msg.processed = True
+        whatsapp_msg.processing_status = "processed"
+        whatsapp_msg.processed_at = datetime.now(timezone.utc)
         db.add(whatsapp_msg)
         db.commit()
 
