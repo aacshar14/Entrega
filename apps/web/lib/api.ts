@@ -29,7 +29,8 @@ export async function apiRequest(
   accessToken?: string,
 ) {
   let cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  if (!cleanEndpoint.endsWith("/")) {
+  // 🛡️ Hardening: Only append trailing slash if it's not already there AND there are no query params
+  if (!cleanEndpoint.includes("?") && !cleanEndpoint.endsWith("/")) {
     cleanEndpoint = `${cleanEndpoint}/`;
   }
   const url = `${API_BASE_URL}${cleanEndpoint}`;
