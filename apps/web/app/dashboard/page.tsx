@@ -132,16 +132,26 @@ export default function Dashboard() {
     );
   }
 
-  // Derivaciones de Stock Reales (No usar stock_status fantasma)
-  const stockItems = data?.stock || [];
+  // Guardarraíles de Datos Obligatorios
+  const stats = data?.stats;
+  const stockItems = Array.isArray(data?.stock) ? data.stock : [];
+  const recentActivity = Array.isArray(data?.recent_activity) ? data.recent_activity : [];
+  const debtorsList = Array.isArray(data?.debtors) ? data.debtors : [];
+
+  // Derivaciones de Inventario
   const totalInWarehouse = stockItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalOutside = stockItems.reduce((sum, item) => sum + (item.quantity_outside || 0), 0);
   const totalInventory = totalInWarehouse + totalOutside;
 
+  // Derivaciones de Eficiencia Mensual Real
+  const monthlyOut = stats?.force_monthly_out ?? 0;
+  const monthlyIn = stats?.force_monthly_in ?? 0;
+  const deliveryEfficiency = monthlyIn > 0 ? Math.min(100, (monthlyOut / monthlyIn) * 100) : 0;
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 px-4 md:px-0">
       {/* Trial / Expiry Banners */}
-      {data.billing.status === "suspended" ? (
+      {data.billing?.status === "suspended" ? (
         <div className="p-10 rounded-[2.5rem] bg-rose-600 text-white shadow-2xl shadow-rose-500/30 flex flex-col md:flex-row items-center justify-between gap-8 border-4 border-rose-400/20 animate-in slide-in-from-top duration-700">
           <div className="space-y-2 text-center md:text-left">
             <h3 className="text-3xl font-black tracking-tight">
@@ -159,7 +169,7 @@ export default function Dashboard() {
             Activar cuenta
           </Link>
         </div>
-      ) : data.billing.status === "grace" ? (
+      ) : data.billing?.status === "grace" ? (
         <div className="p-8 rounded-[2rem] bg-purple-600 text-white shadow-xl shadow-purple-500/20 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-purple-400/30 animate-pulse">
           <div className="flex items-center gap-4">
             <AlertCircle size={32} />
@@ -168,8 +178,8 @@ export default function Dashboard() {
                 Periodo de Gracia
               </p>
               <p className="text-purple-100 text-sm font-medium">
-                Te quedan {data.billing.days_remaining}{" "}
-                {data.billing.days_remaining === 1 ? "día" : "días"} para
+                Te quedan {data.billing?.days_remaining ?? 0}{" "}
+                {(data.billing?.days_remaining ?? 0) === 1 ? "día" : "días"} para
                 activar tu plan antes de la suspensión.
               </p>
             </div>
@@ -182,14 +192,14 @@ export default function Dashboard() {
           </Link>
         </div>
       ) : (
-        data.billing.status === "trial" &&
-        data.billing.days_remaining <= 3 && (
+        data.billing?.status === "trial" &&
+        (data.billing?.days_remaining ?? 0) <= 3 && (
           <div className="p-6 rounded-[2rem] bg-amber-500 text-white shadow-xl shadow-amber-500/20 flex items-center justify-between gap-6 border-2 border-amber-300/30">
             <p className="font-bold flex items-center gap-3">
               <AlertCircle size={20} className="animate-pulse" />
               Estás en tu periodo gratis. Te quedan{" "}
-              {data.billing.days_remaining}{" "}
-              {data.billing.days_remaining === 1 ? "día" : "días"}.
+              {data.billing?.days_remaining ?? 0}{" "}
+              {(data.billing?.days_remaining ?? 0) === 1 ? "día" : "días"}.
             </p>
             <Link
               href="/onboarding"
@@ -202,7 +212,7 @@ export default function Dashboard() {
       )}
 
       {/* Operational Trigger Prompts */}
-      {!data.billing.is_expired && (
+      {!data.billing?.is_expired && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(data.billing?.total_orders ?? 0) >= 5 && (
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4 text-emerald-700 animate-in zoom-in duration-500">
@@ -233,7 +243,7 @@ export default function Dashboard() {
       <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-[#1D3146] tracking-tighter flex items-center gap-3">
-            {data.welcome_message}
+            {data.welcome_message || "Bienvenido"}
             <span className="text-[10px] bg-orange-500 text-white px-3 py-1 rounded-full uppercase tracking-widest shrink-0">
               {DASHBOARD_VERSION}
             </span>
@@ -245,10 +255,10 @@ export default function Dashboard() {
       </div>
 
       <div
-        className={`space-y-8 relative ${data.billing.is_expired ? "overflow-hidden rounded-[3rem]" : ""}`}
+        className={`space-y-8 relative ${data.billing?.is_expired ? "overflow-hidden rounded-[3rem]" : ""}`}
       >
         {/* Soft Paywall Overlay */}
-        {data.billing.is_expired && (
+        {data.billing?.is_expired && (
           <div className="absolute inset-0 z-50 bg-white/40 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
             <div className="max-w-md space-y-8 animate-in fade-in zoom-in duration-700">
               <div className="w-24 h-24 bg-rose-500 text-white rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-rose-500/40 rotate-6">
@@ -322,7 +332,7 @@ export default function Dashboard() {
                   Clientes Registrados
                 </p>
                 <h3 className="text-5xl font-black mt-2">
-                  {data.stats?.customer_count ?? 0}
+                  {stats?.customer_count ?? 0}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -341,7 +351,7 @@ export default function Dashboard() {
                   Pagos Recibidos (Histórico)
                 </p>
                 <h3 className="text-4xl font-black mt-2">
-                  ${(data.stats?.total_payments ?? 0).toLocaleString()}
+                  ${(stats?.total_payments ?? 0).toLocaleString()}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -360,7 +370,7 @@ export default function Dashboard() {
                   Saldo Pendiente (Adeudos)
                 </p>
                 <h3 className="text-4xl font-black mt-2">
-                  ${(data.stats?.total_debt ?? 0).toLocaleString()}
+                  ${(stats?.total_debt ?? 0).toLocaleString()}
                 </h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl">
@@ -368,7 +378,7 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest italic flex items-center gap-1">
-              <AlertCircle size={12} /> {data.stats?.debtor_count ?? 0} Cuentas por Cobrar
+              <AlertCircle size={12} /> {stats?.debtor_count ?? 0} Cuentas por Cobrar
             </p>
           </div>
 
@@ -381,11 +391,11 @@ export default function Dashboard() {
                 </p>
                 <div className="flex flex-col mt-2">
                    <div className="flex items-end gap-2">
-                    <span className="text-4xl font-black italic">{totalInWarehouse.toLocaleString()}</span>
+                    <span className="text-4xl font-black italic">{(totalInWarehouse ?? 0).toLocaleString()}</span>
                     <span className="text-[10px] font-bold opacity-60 mb-1">EN BODEGA</span>
                   </div>
                   <div className="flex items-end gap-2 mt-1">
-                    <span className="text-4xl font-black text-white/90">{totalOutside.toLocaleString()}</span>
+                    <span className="text-4xl font-black text-white/90">{(totalOutside ?? 0).toLocaleString()}</span>
                     <span className="text-[10px] font-bold text-orange-200 mb-1">EN LA CALLE</span>
                   </div>
                 </div>
@@ -398,7 +408,7 @@ export default function Dashboard() {
             <div className="pt-4 border-t border-white/10 mt-2 flex justify-between items-center">
               <div className="flex flex-col">
                 <span className="text-[9px] font-black opacity-60 uppercase">Total Sistema</span>
-                <span className="text-xl font-black">{totalInventory.toLocaleString()}</span>
+                <span className="text-xl font-black">{(totalInventory ?? 0).toLocaleString()}</span>
               </div>
               <Link 
                 href="/stock"
@@ -425,7 +435,7 @@ export default function Dashboard() {
                   </h2>
                   <div className="flex items-end gap-3">
                     <span className="text-6xl font-black tracking-tighter">
-                      {data.operational_flow?.monthly_out?.toLocaleString() ?? 0}
+                      {(monthlyOut ?? 0).toLocaleString()}
                     </span>
                     <span className="text-xl font-bold opacity-80 pb-2 italic">
                       unidades fuera
@@ -437,7 +447,7 @@ export default function Dashboard() {
                    <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock en Calle</p>
                     <p className="text-2xl font-black">
-                      {totalOutside.toLocaleString()}
+                      {(totalOutside ?? 0).toLocaleString()}
                     </p>
                   </div>
 
@@ -447,13 +457,13 @@ export default function Dashboard() {
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
                       <span>Eficiencia de Entrega</span>
                       <span>
-                        {data.operational_flow?.in_out_ratio?.toFixed(0)}%
+                        {(deliveryEfficiency ?? 0).toFixed(0)}%
                       </span>
                     </div>
                     <div className="h-4 bg-white/20 rounded-full overflow-hidden border border-white/10 p-0.5">
                       <div 
                         className="h-full bg-white rounded-full transition-all duration-1000 shadow-sm"
-                        style={{ width: `${Math.min(100, data.operational_flow?.in_out_ratio ?? 0)}%` }}
+                        style={{ width: `${deliveryEfficiency}%` }}
                       ></div>
                     </div>
                     <p className="mt-3 text-[10px] italic font-medium opacity-70">
@@ -488,9 +498,9 @@ export default function Dashboard() {
               </div>
 
               <div className="p-0">
-                {data.recent_activity && data.recent_activity.length > 0 ? (
+                {recentActivity.length > 0 ? (
                   <div className="divide-y divide-slate-50">
-                    {data.recent_activity.map((activity, i) => (
+                    {recentActivity.map((activity, i) => (
                       <div
                         key={i}
                         className="py-5 px-8 flex items-center justify-between hover:bg-slate-50/50 transition-all cursor-default"
@@ -505,7 +515,7 @@ export default function Dashboard() {
                             </p>
                             <p className="text-xs font-bold text-slate-400 capitalize flex items-center gap-2">
                               <span className="text-[#56CCF2] font-black">
-                                {activity.quantity} unid.
+                                {activity.quantity ?? 0} unid.
                               </span>{" "}
                               •{activity.description}
                             </p>
@@ -516,10 +526,10 @@ export default function Dashboard() {
                             ${(activity?.amount ?? 0).toLocaleString()}
                           </p>
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                            {new Date(activity.created_at).toLocaleTimeString(
+                            {activity.created_at ? new Date(activity.created_at).toLocaleTimeString(
                               [],
                               { hour: "2-digit", minute: "2-digit" },
-                            )}
+                            ) : "--:--"}
                           </p>
                         </div>
                       </div>
@@ -557,7 +567,7 @@ export default function Dashboard() {
                 </Link>
               </div>
               <div className="p-0 px-8 pb-8">
-                {data.stock.length > 0 ? (
+                {stockItems.length > 0 ? (
                   <table className="w-full">
                     <thead>
                       <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
@@ -568,7 +578,7 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {data.stock.map((item, idx) => (
+                      {stockItems.map((item, idx) => (
                         <tr
                           key={idx}
                           className="group hover:bg-slate-50/50 transition-colors"
@@ -578,13 +588,13 @@ export default function Dashboard() {
                           </td>
                           <td className="py-4 text-center">
                             <span
-                              className={`${item.quantity <= 10 ? "text-orange-600" : "text-slate-600"} font-medium`}
+                              className={`${(item.quantity ?? 0) <= 10 ? "text-orange-600" : "text-slate-600"} font-medium`}
                             >
-                              {item.quantity}
+                              {item.quantity ?? 0}
                             </span>
                           </td>
                           <td className="py-4 text-center text-slate-400 font-medium">
-                            {item.quantity_outside > 0 ? (
+                            {(item.quantity_outside ?? 0) > 0 ? (
                               <span className="text-blue-500">
                                 +{item.quantity_outside}
                               </span>
@@ -593,7 +603,7 @@ export default function Dashboard() {
                             )}
                           </td>
                           <td className="py-4 text-right font-black text-slate-900">
-                            {item.quantity + item.quantity_outside}
+                            {(item.quantity ?? 0) + (item.quantity_outside ?? 0)}
                           </td>
                         </tr>
                       ))}
@@ -624,8 +634,8 @@ export default function Dashboard() {
                   <span>CLIENTE</span>
                   <span className="text-right">DEBE</span>
                 </div>
-                {data.debtors.length > 0 ? (
-                  data.debtors.map((p, i) => (
+                {debtorsList.length > 0 ? (
+                  debtorsList.map((p, i) => (
                     <div
                       key={i}
                       className="grid grid-cols-2 py-5 px-8 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50/50 transition-all cursor-default"
