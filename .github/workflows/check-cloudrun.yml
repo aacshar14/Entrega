@@ -1,0 +1,16 @@
+name: Check Cloud Run
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: entrega-468815
+      - run: |
+          gcloud run services describe entrega-api --region us-central1
+          gcloud run revisions list --service entrega-api --region us-central1 --limit 5
