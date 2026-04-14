@@ -177,6 +177,8 @@ async def get_dashboard_summary(
                 ).one(),
                 "monthly_produced": float(produced_this_month or 0.0),
                 "monthly_delivered": abs(float(delivered_this_month or 0.0)),
+                "force_monthly_in": float(produced_this_month or 0.0),
+                "force_monthly_out": abs(float(delivered_this_month or 0.0)),
                 "weekly_produced": float(
                     produced_this_month or 0.0
                 ),  # Alias for monthly in V5.1.0

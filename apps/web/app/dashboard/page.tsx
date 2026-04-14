@@ -340,8 +340,8 @@ export default function Dashboard() {
                 {data.stats.low_stock_count} Stock Bajo
               </span>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V5.4.2): {data.stats.weekly_produced} In /{" "}
-                {data.stats.weekly_delivered} Out
+                Mensual (V5.4.3): {data.stats.force_monthly_in} In /{" "}
+                {data.stats.force_monthly_out} Out
               </p>
 
             </div>
