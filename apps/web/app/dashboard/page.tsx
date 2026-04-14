@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/api";
 import { useTenant } from "@/lib/context/tenant-context";
 import Link from "next/link";
 
-const DASHBOARD_VERSION = "V5.8.0";
+const DASHBOARD_VERSION = "V5.9.3";
 
 interface DashboardStats {
   customer_count: number;
@@ -349,7 +349,7 @@ export default function Dashboard() {
                 {data.stats?.low_stock_count ?? 0} Stock Bajo
               </span>
               <p className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
-                Mensual (V5.5.0): {data.stats?.force_monthly_in ?? 0} In /{" "}
+                Mensual (V5.9.3): {data.stats?.force_monthly_in ?? 0} In /{" "}
                 {data.stats?.force_monthly_out ?? 0} Out
               </p>
 
