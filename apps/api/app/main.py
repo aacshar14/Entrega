@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time
 from slowapi import _rate_limit_exceeded_handler
@@ -72,6 +72,7 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from app.api.v1.endpoints import webhooks
     app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks-gateway"])
 
     # Include API Router (Lazy load to break circularity)
