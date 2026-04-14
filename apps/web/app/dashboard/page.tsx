@@ -430,7 +430,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-end gap-2">
                     <span className="text-3xl font-black text-white/90">{safeMoney(totalOutside)}</span>
-                    <span className="text-[9px] font-bold text-orange-200 mb-1">CALLE</span>
+                    <span className="text-[9px] font-bold text-orange-200 mb-1">FUERA</span>
                   </div>
                 </div>
               </div>
@@ -479,9 +479,9 @@ export default function Dashboard() {
 
                 <div className="flex gap-8 items-center">
                    <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock en Calle</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">FUERA (MES)</p>
                     <p className="text-2xl font-black">
-                      {safeMoney(totalOutside)}
+                      {safeMoney(monthlyOut)}
                     </p>
                   </div>
 
