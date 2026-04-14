@@ -4,6 +4,7 @@ from uuid import uuid4, UUID
 from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint, Index, Column, String
 from pydantic import BaseModel, validator
 from enum import Enum
+from sqlalchemy import Enum as SAEnum
 
 
 def get_utc_now():
@@ -227,7 +228,7 @@ class InventoryMovement(SQLModel, table=True):
     product_id: Optional[UUID] = Field(default=None, foreign_key="products.id")
     customer_id: Optional[UUID] = Field(default=None, foreign_key="customers.id")
     quantity: float  # positive for stock additions, negative for deliveries
-    type: MovementType = Field(sa_column=Column(String, default="delivery", index=True))
+    type: MovementType = Field(sa_column=Column(SAEnum(MovementType, values_callable=lambda obj: [e.value for e in obj]), default="delivery", index=True))
     description: Optional[str] = None
 
     @validator("type", pre=True)
@@ -299,9 +300,7 @@ class WhatsAppMessage(SQLModel, table=True):
     message_type: str = Field(default="text")
 
     # State Machine (V2 Audit)
-    processing_status: WhatsAppMessageStatus = Field(
-        default=WhatsAppMessageStatus.PENDING, index=True
-    )
+    processing_status: WhatsAppMessageStatus = Field(sa_column=Column(SAEnum(WhatsAppMessageStatus, values_callable=lambda obj: [e.value for e in obj]), default="pending", index=True))
 
     @validator("processing_status", pre=True)
     def validate_status(cls, v):
