@@ -136,7 +136,7 @@ async def get_dashboard_summary(
             # Deliveries (Out from warehouse to street)
             sum_delivered = db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == t_id_str,
+                    InventoryMovement.tenant_id == tenant_id,
                     InventoryMovement.product_id == p.id,
                     InventoryMovement.type.in_(["delivery", "delivery_to_customer"]),
                 )
@@ -145,7 +145,7 @@ async def get_dashboard_summary(
             # Sales + Returns (Back from street or finalized)
             sum_finalized = db.exec(
                 select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == t_id_str,
+                    InventoryMovement.tenant_id == tenant_id,
                     InventoryMovement.product_id == p.id,
                     InventoryMovement.type.in_(["sale_reported", "return", "return_from_customer"]),
                 )
