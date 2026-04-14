@@ -30,15 +30,11 @@ router = APIRouter()
 
 def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
     """
-    STRICT BEST-EFFORT (V2.5.0 Hardened): Resolves tenant info with deterministic billing.
-    Uses BillingResolver as the authority for state and entitlements.
+    DETERMINISTIC ONBOARDING (V4.7.0): Resolves tenant truth from real tables.
+    Eliminates reliance on persisted flags (clients_imported, stock_imported, ready).
     """
-    # 1. Operational "Ready" Semantics (V2.3.0 Deterministic)
-    is_ready = tenant.ready and tenant.status == "active"
-
-    # 2. Support Metrics (Onboarding Counters)
-    has_customers = tenant.clients_imported
-    has_products = tenant.stock_imported
+    # 1. Dynamic Veracity (THE TRUTH)
+    # 🛡️ Hardening: We ignore persisted flags and compute from real row counts.
     try:
         has_customers = (
             db.exec(
@@ -52,8 +48,20 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
             ).one()
             > 0
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(
+            "users.tenant_info.count_failed",
+            tenant_id=str(tenant.id),
+            error=str(e),
+        )
+        # Fail-closed: In EntréGA, we prefer False over stale data if counts fail
+        has_customers = False
+        has_products = False
+
+    # 2. Calculated Ready State
+    # Rule: Tenant is ready ONLY if status is 'active' AND has at least one customer AND one product.
+    # 🛡️ DEPLOY-SAFE: We ignore the legacy 'tenant.ready' DB field.
+    is_ready = (tenant.status == "active") and has_customers and has_products
 
     # 3. WhatsApp Status (Best-Effort)
     wa_status = "not_connected"
@@ -78,7 +86,7 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
     except Exception:
         pass
 
-    # 4. Resolve Deterministic Billing (V2.5.0)
+    # 4. Resolve Deterministic Billing (V2.5.0 Authority)
     billing_data = BillingResolver.resolve_billing(tenant)
 
     # 5. Assembly with Null-Safe Defaults (V2.3.0 Hardened Contract)
