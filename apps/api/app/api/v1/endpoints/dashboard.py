@@ -189,7 +189,9 @@ async def get_dashboard_summary(
                 "product_count": product_count,
                 "total_payments": float(historical_total_payments),
                 "total_debt": live_total_debt,
+                "total_debt_live": live_total_debt,
                 "debtor_count": live_debtor_count,
+                "debtor_count_live": live_debtor_count,
                 "low_stock_count": db.exec(
                     select(func.count(StockBalance.id)).where(
                         StockBalance.tenant_id == tenant_id, StockBalance.quantity <= 0
