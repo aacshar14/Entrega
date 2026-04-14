@@ -49,34 +49,31 @@ async def get_dashboard_summary(
         )
 
         # 3. Monthly Flow (Updated from Weekly V5.1.0)
+        from sqlalchemy import text
         month_start_naive = now_naive.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         t_id_str = str(tenant_id)
 
         # IN = Adjustments with positive quantity (Monthly)
-        produced_this_month = (
-            db.exec(
-                select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == t_id_str,
-                    InventoryMovement.type.in_(["adjustment", "Adjustment"]),
-                    InventoryMovement.quantity > 0,
-                    InventoryMovement.created_at >= month_start_naive,
-                )
-            ).one()
-            or 0.0
-        )
+        q_in = text("""
+            SELECT SUM(quantity) 
+            FROM inventory_movements 
+            WHERE tenant_id = :tid 
+            AND type IN ('adjustment', 'Adjustment', 'production', 'Production') 
+            AND quantity > 0 
+            AND created_at >= :start
+        """)
+        produced_this_month = db.execute(q_in, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
 
-        delivered_this_month = (
-            db.exec(
-                select(func.sum(InventoryMovement.quantity)).where(
-                    InventoryMovement.tenant_id == t_id_str,
-                    InventoryMovement.type.in_(
-                        ["delivery", "Delivery", "delivery_to_customer"]
-                    ),
-                    InventoryMovement.created_at >= month_start_naive,
-                )
-            ).one()
-            or 0.0
-        )
+        # OUT = Deliveries (Monthly)
+        q_out = text("""
+            SELECT SUM(quantity) 
+            FROM inventory_movements 
+            WHERE tenant_id = :tid 
+            AND type IN ('delivery', 'Delivery', 'delivery_to_customer', 'Delivery_to_customer') 
+            AND created_at >= :start
+        """)
+        delivered_this_month = db.execute(q_out, {"tid": t_id_str, "start": month_start_naive}).scalar() or 0.0
+
 
 
 
