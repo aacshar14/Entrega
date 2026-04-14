@@ -56,7 +56,11 @@ jobs:
         run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
       - name: Build and Push
         run: |
-          docker build -t $API_IMAGE:${{ github.sha }} -t $API_IMAGE:latest ./apps/api
+          docker build \
+            --build-arg CACHE_BUST=${{ github.sha }} \
+            -t $API_IMAGE:${{ github.sha }} \
+            -t $API_IMAGE:latest \
+            ./apps/api
           docker push $API_IMAGE:${{ github.sha }}
           docker push $API_IMAGE:latest
 

@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Force cache invalidation for app source (CI passes git SHA)
+ARG CACHE_BUST=dev
+RUN echo "Cache bust: $CACHE_BUST"
 # Copy application source
 COPY . .
 
