@@ -14,7 +14,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       db: ${{ steps.filter.outputs.db }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -32,7 +32,7 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Black
         run: pip install black==26.3.1
       - name: Check Format
@@ -49,7 +49,7 @@ jobs:
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -74,7 +74,7 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Validate Dockerfile
         run: |
           cd apps/api
@@ -86,7 +86,7 @@ jobs:
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Node
         uses: actions/setup-node@v4
         with:

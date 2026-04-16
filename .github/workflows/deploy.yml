@@ -24,7 +24,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       db: ${{ steps.filter.outputs.db }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -45,7 +45,7 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -70,7 +70,7 @@ jobs:
     if: needs.changes.outputs.db == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -146,7 +146,7 @@ jobs:
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
