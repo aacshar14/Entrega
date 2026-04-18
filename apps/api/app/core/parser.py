@@ -139,7 +139,9 @@ class ParsingEngine:
     def execute_order(
         self, customer: Customer, items: List[Dict]
     ) -> Tuple[float, float, List[str]]:
-        """Executes inventory delivery to customer and adds financial debt"""
+        """Executes inventory delivery to customer via the canonical inventory service."""
+        from app.services.inventory_service import execute_delivery
+
         total_delivery_charge = 0.0
         product_summary = []
 
@@ -156,80 +158,26 @@ class ParsingEngine:
             if not product:
                 continue
 
-            total_charge = product.price_menudeo * qty
-            total_delivery_charge += total_charge
+            # WhatsApp default: menudeo tier (no tier resolution from message text)
+            unit_price = product.price_menudeo or product.price or 0.0
+            tier_applied = "menudeo"
 
-            # 1. Update Financial Debt for the Customer (Consignment/Credit)
-            cust_balance = self.session.exec(
-                select(CustomerBalance)
-                .where(
-                    CustomerBalance.tenant_id == self.tenant.id,
-                    CustomerBalance.customer_id == customer.id,
+            try:
+                execute_delivery(
+                    session=self.session,
+                    tenant=self.tenant,
+                    product=product,
+                    customer=customer,
+                    quantity=qty,
+                    unit_price=unit_price,
+                    tier_applied=tier_applied,
+                    description="Entrega a consignación vía WhatsApp",
                 )
-                .with_for_update()
-            ).first()
+            except ValueError as e:
+                # Re-raise so the worker can log STOCK_INSUFFICIENT etc.
+                raise
 
-            if not cust_balance:
-                cust_balance = CustomerBalance(
-                    tenant_id=self.tenant.id, customer_id=customer.id, balance=0.0
-                )
-                self.session.add(cust_balance)
-
-            # Resta del saldo (Genera deuda al cliente en negativo)
-            cust_balance.balance -= total_charge
-            # 2. Update Warehouse Stock (P0 Locking + Refinements)
-
-            logger.info(
-                "inventory.lock_request", sku=sku, tenant_id=str(self.tenant.id)
-            )
-            balance = self.session.exec(
-                select(StockBalance)
-                .where(
-                    StockBalance.tenant_id == self.tenant.id,
-                    StockBalance.product_id == product.id,
-                )
-                .with_for_update()
-            ).first()
-
-            if not balance:
-                # Initialize balance if missing
-                balance = StockBalance(
-                    tenant_id=self.tenant.id,
-                    product_id=product.id,
-                    quantity=0,
-                )
-                self.session.add(balance)
-
-            # 🛡️ Business Rule: Prevent negative stock anomalies
-            if balance.quantity < qty:
-                logger.error(
-                    "inventory.insufficient_stock",
-                    sku=sku,
-                    available=balance.quantity,
-                    requested=qty,
-                )
-                raise ValueError(
-                    f"Stock insuficiente para {sku}: disponible {balance.quantity}, solicitado {qty}"
-                )
-
-            balance.quantity -= qty
-            balance.last_updated = datetime.now(timezone.utc)
-            logger.info("inventory.lock_acquired_and_updated", sku=sku)
-
-            # 3. Registrar la entrega ("Lo que está afuera")
-            movement = InventoryMovement(
-                tenant_id=self.tenant.id,
-                product_id=product.id,
-                customer_id=customer.id,
-                customer_name_snapshot=customer.name,
-                quantity=-qty,  # Negative physically means it left HQ -> went to client
-                type="delivery_to_customer",
-                description="Entrega a consignación vía WhatsApp",
-                sku=product.sku,
-                unit_price=product.price_menudeo,
-                total_amount=total_charge,
-            )
-            self.session.add(movement)
+            total_delivery_charge += qty * unit_price
             product_summary.append(f"- {item['product_name']} x{qty}")
 
         # Emit Business Event: Order Processed
@@ -327,38 +275,18 @@ class ParsingEngine:
         return None
 
     def execute_payment(self, customer: Customer, amount: float) -> float:
-        """Registers a customer payment and updates balance (Credit)"""
-        from app.models.models import Payment
+        """Registers a customer payment via the canonical inventory service."""
+        from app.services.inventory_service import execute_payment as svc_execute_payment
 
-        # 1. Register the Payment
-        payment = Payment(
-            tenant_id=self.tenant.id,
-            customer_id=customer.id,
+        svc_execute_payment(
+            session=self.session,
+            tenant=self.tenant,
+            customer=customer,
             amount=amount,
             method="cash",  # Default for WhatsApp reported payments
         )
-        self.session.add(payment)
 
-        # 2. Update Balance (Abono = Balance increases/becomes less negative)
-        cust_balance = self.session.exec(
-            select(CustomerBalance)
-            .where(
-                CustomerBalance.tenant_id == self.tenant.id,
-                CustomerBalance.customer_id == customer.id,
-            )
-            .with_for_update()
-        ).first()
-
-        if not cust_balance:
-            cust_balance = CustomerBalance(
-                tenant_id=self.tenant.id, customer_id=customer.id, balance=0.0
-            )
-            self.session.add(cust_balance)
-
-        cust_balance.balance += amount
-        cust_balance.last_updated = datetime.now(timezone.utc)
-
-        # 3. Log Metric
+        # Emit Business Event: Payment Received
         self.session.add(
             BusinessMetricEvent(
                 tenant_id=self.tenant.id,
@@ -367,7 +295,18 @@ class ParsingEngine:
             )
         )
 
-        return cust_balance.balance
+        # Return current balance for receipt
+        final_balance = 0.0
+        cust_balance = self.session.exec(
+            select(CustomerBalance).where(
+                CustomerBalance.tenant_id == self.tenant.id,
+                CustomerBalance.customer_id == customer.id,
+            )
+        ).first()
+        if cust_balance:
+            final_balance = cust_balance.balance
+
+        return final_balance
 
     def process_and_log(
         self, sender: str, raw_text: str

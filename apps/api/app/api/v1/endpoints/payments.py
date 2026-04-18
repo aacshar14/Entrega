@@ -47,58 +47,30 @@ async def create_payment(
     current_user: User = Depends(get_current_user),
     active_tenant_id: UUID = Depends(get_active_tenant_id),
 ):
-    """Register a new payment and settle debts/reconcile inventory."""
-    customer_id = payment.customer_id
-    amount = payment.amount
-    method = payment.method
+    """Register a new payment. Only updates customer balance. Stock is never touched."""
+    from app.models.models import Customer, Tenant
+    from app.services.inventory_service import execute_payment
 
-    from app.models.models import CustomerBalance, InventoryMovement, Customer
+    # Validate tenant and customer
+    tenant = db.get(Tenant, active_tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # 1. Register Payment
-    new_payment = Payment(
-        tenant_id=active_tenant_id,
-        customer_id=customer_id,
-        amount=amount,
-        method=method,
-        created_by_user_id=current_user.id,
-    )
-    db.add(new_payment)
+    customer = db.get(Customer, payment.customer_id)
+    if not customer or customer.tenant_id != active_tenant_id:
+        raise HTTPException(status_code=404, detail="Customer not found in your tenant")
 
-    # 2. Update Customer Balance
-    balance_record = db.exec(
-        select(CustomerBalance).where(CustomerBalance.customer_id == customer_id)
-    ).first()
-
-    if balance_record:
-        balance_record.balance += amount  # Debt is negative, so adding reduces it
-        balance_record.last_updated = datetime.now(timezone.utc)
-        db.add(balance_record)
-    else:
-        new_balance = CustomerBalance(
-            tenant_id=active_tenant_id,
-            customer_id=customer_id,
-            balance=amount,
-            last_updated=datetime.now(timezone.utc),
+    try:
+        new_payment = execute_payment(
+            session=db,
+            tenant=tenant,
+            customer=customer,
+            amount=payment.amount,
+            method=payment.method,
+            created_by_user_id=current_user.id,
         )
-        db.add(new_balance)
-
-    # 3. Automatic Reconciliation (Consignment -> Sale)
-    # Convert 'delivery' movements to 'sale_reported' as they get paid
-    # Simple strategy: Mark recent deliveries as paid up to the amount
-    # For now, we'll just record a reconciliation movement
-    recon_movement = InventoryMovement(
-        tenant_id=active_tenant_id,
-        product_id=None,  # Overall payment
-        customer_id=customer_id,
-        quantity=0,  # Financial only
-        type="payment_received",
-        description=f"Pago recibido via {method}: ${amount:.2f}",
-        unit_price=0,
-        total_amount=amount,
-        created_by_user_id=current_user.id,
-    )
-    # We allow product_id to be NULL for pure financial movements if the model supports it
-    # Currently it doesn't (foreign key). So we skip creating InventoryMovement for pure cash if not linked to SKU.
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     db.commit()
     db.refresh(new_payment)
@@ -147,8 +119,9 @@ async def clear_total_debt(
     current_user: User = Depends(get_current_user),
     active_tenant_id: UUID = Depends(get_active_tenant_id),
 ):
-    """Liquidation of all debts for a customer."""
-    from app.models.models import CustomerBalance, InventoryMovement
+    """Liquidation of all debts for a customer. Stock is never touched."""
+    from app.models.models import CustomerBalance, Tenant
+    from app.services.inventory_service import execute_payment
 
     # 1. Get current balance
     balance_record = db.exec(
@@ -166,36 +139,26 @@ async def clear_total_debt(
 
     debt_amount = abs(balance_record.balance)
 
-    # 2. Register full payment
-    clearing_payment = Payment(
-        tenant_id=active_tenant_id,
-        customer_id=request.customer_id,
-        amount=debt_amount,
-        method=request.method,
-        created_by_user_id=current_user.id,
-        notes="Liquidación total de deuda",
-    )
-    db.add(clearing_payment)
+    tenant = db.get(Tenant, active_tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
 
-    # 3. Reset balance to zero
-    balance_record.balance = 0.0
-    balance_record.last_updated = datetime.now(timezone.utc)
-    db.add(balance_record)
+    from app.models.models import Customer
+    customer = db.get(Customer, request.customer_id)
+    if not customer or customer.tenant_id != active_tenant_id:
+        raise HTTPException(status_code=404, detail="Customer not found in your tenant")
 
-    # 4. Reconciliation movement (mark inventory as sold/settled)
-    recon_movement = InventoryMovement(
-        tenant_id=active_tenant_id,
-        product_id=None,
-        customer_id=request.customer_id,
-        quantity=0,
-        type="payment_received",
-        description=f"Liquidación TOTAL vía {request.method}",
-        unit_price=0,
-        total_amount=debt_amount,
-        created_by_user_id=current_user.id,
-    )
-    # Note: If InventoryMovement requires product_id, this might fail unless nullable
-    # For now we assume typical reconciliation pattern
+    try:
+        execute_payment(
+            session=db,
+            tenant=tenant,
+            customer=customer,
+            amount=debt_amount,
+            method=request.method,
+            created_by_user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     db.commit()
     return {"status": "success", "cleared_amount": debt_amount}

@@ -461,27 +461,37 @@ export default function Dashboard() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <Package size={120} />
               </div>
-              
+
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <div className="flex-1">
                   <h2 className="text-sm font-black uppercase tracking-[0.3em] opacity-80 mb-2">
-                    Inteligencia Operativa (Mensual)
+                    Stock en Campo
                   </h2>
                   <div className="flex items-end gap-3">
                     <span className="text-6xl font-black tracking-tighter">
-                      {safeMoney(monthlyOut)}
+                      {safeMoney(totalOutside)}
                     </span>
                     <span className="text-xl font-bold opacity-80 pb-2 italic">
-                      unidades fuera
+                      unidades
                     </span>
                   </div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] opacity-70 mt-1">
+                    Stock actual en clientes
+                  </p>
                 </div>
 
-                <div className="flex gap-8 items-center">
-                   <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Stock Vivo Fuera</p>
+                <div className="flex gap-6 items-center flex-wrap">
+                  <div className="bg-white/20 px-6 py-4 rounded-3xl border border-white/30 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Bodega</p>
                     <p className="text-2xl font-black">
-                      {safeMoney(totalOutside)}
+                      {safeMoney(totalInWarehouse)}
+                    </p>
+                  </div>
+
+                  <div className="bg-white/15 px-6 py-4 rounded-3xl border border-white/20 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Entregado este mes</p>
+                    <p className="text-2xl font-black opacity-90">
+                      {safeMoney(monthlyOut)}
                     </p>
                   </div>
 
@@ -495,13 +505,13 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="h-4 bg-white/20 rounded-full overflow-hidden border border-white/10 p-0.5">
-                      <div 
+                      <div
                         className="h-full bg-white rounded-full transition-all duration-1000 shadow-sm"
                         style={{ width: `${deliveryEfficiency}%` }}
                       ></div>
                     </div>
                     <p className="mt-3 text-[10px] italic font-medium opacity-70">
-                      * Proporción de stock producido que ha sido entregado.
+                      * Proporción de stock producido que ha sido entregado este mes.
                     </p>
                   </div>
                 </div>

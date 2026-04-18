@@ -65,152 +65,170 @@ async def create_manual_movement(
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(require_active_billing),
 ):
-    """Create a manual inventory movement with automated tier-pricing for deliveries."""
-    product_id = movement.product_id
-    quantity = movement.quantity
-    type = movement.type
-    customer_id = movement.customer_id
-    description = movement.description
-
+    """Create a manual inventory movement. Deliveries go through the shared inventory service."""
     from app.models.models import Customer, Product
+    from app.services.inventory_service import execute_delivery
 
-    # 1. Fetch Product for SKU and basic info
+    product_id = movement.product_id
+    quantity = abs(movement.quantity)  # Always work with positive; service handles sign
+    mov_type = movement.type
+    customer_id = movement.customer_id
+    description = movement.description or "Movimiento manual"
+
+    # 1. Fetch and validate Product
     product = db.get(Product, product_id)
     if not product or product.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    unit_price = 0.0
-    tier_applied = None
-
-    # 2. If customer-facing movement, enforce customer_id and get snapshot
-    customer_name_snapshot = None
-    if type in [
-        "delivery",
-        "return",
-        "sale_reported",
-        "delivery_to_customer",
-        "return_from_customer",
-    ]:
+    # --- DELIVERY PATH (canonical shared service) ---
+    if mov_type in ["delivery", "delivery_to_customer"]:
         if (
             not customer_id
             or str(customer_id) == "00000000-0000-0000-0000-000000000000"
         ):
             raise HTTPException(
                 status_code=400,
-                detail=f"A valid Customer ID is required for movement type: {type}. Placeholder IDs are not allowed.",
+                detail=f"A valid Customer ID is required for movement type: {mov_type}.",
             )
 
         customer = db.get(Customer, customer_id)
         if not customer or customer.tenant_id != tenant.id:
-            raise HTTPException(
-                status_code=404, detail="Customer not found in your tenant"
+            raise HTTPException(status_code=404, detail="Customer not found in your tenant")
+
+        # Resolve tier price
+        if customer.tier == "mayoreo":
+            unit_price = product.price_mayoreo or product.price
+            tier_applied = "mayoreo"
+        elif customer.tier == "especial":
+            unit_price = product.price_especial or product.price
+            tier_applied = "especial"
+        else:
+            unit_price = product.price_menudeo or product.price
+            tier_applied = "menudeo"
+
+        if not unit_price:
+            unit_price = product.price
+
+        # Override with manual unit_price if explicitly provided
+        if movement.unit_price is not None and movement.unit_price > 0:
+            unit_price = movement.unit_price
+
+        try:
+            new_movement = execute_delivery(
+                session=db,
+                tenant=tenant,
+                product=product,
+                customer=customer,
+                quantity=quantity,
+                unit_price=unit_price,
+                tier_applied=tier_applied,
+                description=description,
+                created_by_user_id=current_user.id,
             )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        db.commit()
+        db.refresh(new_movement)
+        return new_movement
+
+    # --- NON-DELIVERY PATH (restock, adjustment, production, return, sale_reported) ---
+    unit_price = movement.unit_price or 0.0
+    tier_applied = None
+    customer_name_snapshot = None
+    customer = None
+
+    if mov_type in ["return", "return_from_customer", "sale_reported"]:
+        if (
+            not customer_id
+            or str(customer_id) == "00000000-0000-0000-0000-000000000000"
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"A valid Customer ID is required for movement type: {mov_type}.",
+            )
+        customer = db.get(Customer, customer_id)
+        if not customer or customer.tenant_id != tenant.id:
+            raise HTTPException(status_code=404, detail="Customer not found in your tenant")
         customer_name_snapshot = customer.name
 
-        # Enforce Signs for Business Logic
-        if type in ["delivery", "delivery_to_customer"]:
-            quantity = -abs(quantity)  # Decreases warehouse
-        elif type in ["return", "return_from_customer", "sale_reported", "restock"]:
-            quantity = abs(quantity)  # Addition or offset
+    # Signed quantity: returns/restock/production are positive, adjustments keep sign
+    signed_qty = quantity
+    if mov_type in ["return", "return_from_customer", "restock", "production", "adjustment"]:
+        signed_qty = abs(quantity)  # These are additions to warehouse
+    # adjustment: keep as-is (caller may pass negative for a reduction)
 
-        # Resolve price tier if it's a delivery
-        if type in ["delivery", "delivery_to_customer"]:
-            if customer.tier == "mayoreo":
-                unit_price = product.price_mayoreo or product.price
-                tier_applied = "mayoreo"
-            elif customer.tier == "especial":
-                unit_price = product.price_especial or product.price
-                tier_applied = "especial"
-            else:
-                unit_price = product.price_menudeo or product.price
-                tier_applied = "menudeo"
-
-            # Final fallback to canonical base price
-            if not unit_price:
-                unit_price = product.price
-
-            # HARD GUARD: Never allow a delivery with $0 price — it corrupts debt state
-            if not unit_price or unit_price <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Product '{product.name}' has no price configured for tier '{tier_applied}'. "
-                        "Set a valid price before recording a delivery."
-                    ),
-                )
-
-    # 3. Create Movement
     new_movement = InventoryMovement(
         tenant_id=tenant.id,
         product_id=product.id,
         customer_id=customer_id,
         customer_name_snapshot=customer_name_snapshot,
-        quantity=quantity,
-        type=type,
+        quantity=signed_qty,
+        type=mov_type,
         description=description,
         sku=product.sku,
         tier_applied=tier_applied,
         unit_price=unit_price,
-        total_amount=abs(quantity) * unit_price,
+        total_amount=abs(signed_qty) * unit_price,
         created_by_user_id=current_user.id,
     )
-
     db.add(new_movement)
 
-    # 4. Synchronize with StockBalance (Warehouse Stock)
-    if type != "sale_reported":
-        from app.models.models import StockBalance
-
+    # Sync StockBalance for non-financial movements
+    if mov_type != "sale_reported":
         balance = db.exec(
             select(StockBalance)
             .where(StockBalance.product_id == product.id, StockBalance.tenant_id == tenant.id)
             .with_for_update()
         ).first()
+
         if balance:
-            balance.quantity += quantity
+            new_qty = balance.quantity + signed_qty
+            # Hard guard: warehouse cannot go negative
+            if new_qty < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Esta operación dejaría el almacén en negativo "
+                        f"(disponible: {balance.quantity}, delta: {signed_qty}). "
+                        "Verifica la cantidad."
+                    ),
+                )
+            balance.quantity = new_qty
             balance.updated_by_user_id = current_user.id
             balance.last_updated = datetime.now(timezone.utc)
             db.add(balance)
         else:
+            if signed_qty < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No existe stock registrado para este producto. No se puede reducir.",
+                )
             balance = StockBalance(
                 tenant_id=tenant.id,
                 product_id=product.id,
-                quantity=quantity,
+                quantity=signed_qty,
                 updated_by_user_id=current_user.id,
             )
             db.add(balance)
 
-    # 5. Synchronize with CustomerBalance (Financial Debt)
-    if customer_id and type in [
-        "delivery",
-        "delivery_to_customer",
-        "return",
-        "return_from_customer",
-    ]:
-        from app.models.models import CustomerBalance
-
+    # Sync CustomerBalance for returns
+    if customer_id and mov_type in ["return", "return_from_customer"]:
+        total_amount = abs(signed_qty) * unit_price
         cb = db.exec(
             select(CustomerBalance)
             .where(CustomerBalance.customer_id == customer_id, CustomerBalance.tenant_id == tenant.id)
             .with_for_update()
         ).first()
-
-        amount_delta = new_movement.total_amount
-        if type in ["delivery", "delivery_to_customer"]:
-            amount_delta = -amount_delta
-
-        # Financial Sync - Atomic Update
-        print(f"[FINANCIAL SYNC] Customer: {customer_id} | Delta: {amount_delta} | Type: {type}")
-
         if cb:
-            cb.balance += amount_delta
+            cb.balance += total_amount
             cb.last_updated = datetime.now(timezone.utc)
             db.add(cb)
         else:
             cb = CustomerBalance(
                 tenant_id=tenant.id,
                 customer_id=customer_id,
-                balance=amount_delta,
+                balance=total_amount,
                 last_updated=datetime.now(timezone.utc),
             )
             db.add(cb)
@@ -413,7 +431,7 @@ async def update_movement(
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(require_active_billing),
 ):
-    """Update a movement's core data (owner only) and trigger full reconciliation."""
+    """Update a movement's metadata (owner only). Does NOT auto-reconcile stock."""
     movement = db.get(InventoryMovement, id)
     if not movement or movement.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Movement not found")
@@ -434,26 +452,35 @@ async def update_movement(
 
     # Recalculate total_amount if quantity or unit_price changed
     movement.total_amount = abs(movement.quantity) * movement.unit_price
-    
+
     movement.updated_by_user_id = current_user.id
     movement.updated_at = datetime.now(timezone.utc)
 
     db.add(movement)
     db.commit()
-    
-    # TRIGGER RECONCILIATION: Cascade the update to all balances
-    await reconcile_all(db, tenant)
-    
     db.refresh(movement)
     return movement
 
 
-@router.post("/reconcile-all")
+@router.post("/reconcile-all", dependencies=[Depends(require_roles(["owner"]))])
 async def reconcile_all(
     db: Session = Depends(get_session),
     tenant: Tenant = Depends(require_active_billing),
 ):
-    """Utility to recalculate all balances from movement history, scoped to active tenant."""
+    """
+    RUNBOOK-ONLY: Recalculates all balances from movement history.
+    DISABLED in production to protect manually reconciled stock state.
+    Run only via a controlled migration script after explicit approval.
+    """
+    from app.core.config import settings
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "reconcile_all is DISABLED in production to protect reconciled stock state. "
+                "Run manually via the admin runbook only."
+            ),
+        )
     from sqlalchemy import text
 
     try:
@@ -559,7 +586,7 @@ async def delete_movement(
     db: Session = Depends(get_session),
     tenant: Tenant = Depends(require_active_billing),
 ):
-    """Delete a movement and trigger full reconciliation for data integrity (owner only)."""
+    """Delete a movement (owner only). Does NOT auto-reconcile stock."""
     movement = db.get(InventoryMovement, id)
     if not movement or movement.tenant_id != tenant.id:
         raise HTTPException(status_code=404, detail="Movement not found")
@@ -567,7 +594,4 @@ async def delete_movement(
     db.delete(movement)
     db.commit()
 
-    # Trigger internal reconciliation to ensure balances match the new reality
-    await reconcile_all(db, tenant.id)
-
-    return {"status": "success", "message": "Movement deleted and balances reconciled"}
+    return {"status": "success", "message": "Movement deleted"}
