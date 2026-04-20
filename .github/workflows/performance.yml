@@ -1,0 +1,60 @@
+name: SRE Pipeline - Performance Gating
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Environment to run tests against (e.g., https://api-test.entrega.space)'
+        required: true
+        default: 'https://api.entrega.space'
+      scenario:
+        description: 'Performance Scenario'
+        type: choice
+        required: true
+        default: 'smoke'
+        options:
+          - smoke
+          - baseline
+          - dashboard
+          - mixed
+          - stress
+          - webhook
+          - payments
+      stress_mode:
+        description: 'Stress target (soft/hard - only applies to stress scenario)'
+        type: choice
+        default: 'soft'
+        options:
+          - soft
+          - hard
+      allow_writes:
+        description: 'Enable disruptive/write tests explicitly'
+        type: boolean
+        default: false
+
+jobs:
+  k6_performance:
+    name: 🚀 Execute Performance Boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup K6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Execute Threshold Validation
+        env:
+          PERF_BASE_URL: ${{ github.event.inputs.target_env }}
+          ALLOW_WRITES: ${{ github.event.inputs.allow_writes }}
+          PERF_STRICT: 'true'
+          STRESS_MODE: ${{ github.event.inputs.stress_mode }}
+          # Injected from Github Secrets directly
+          PERF_API_TOKEN: ${{ secrets.PERF_API_TOKEN_STAGING }}
+          PERF_TENANT_ID: ${{ secrets.PERF_TENANT_ID_STAGING }}
+          PERF_PRODUCT_ID: ${{ secrets.PERF_PRODUCT_ID_STAGING }}
+          PERF_CUSTOMER_ID: ${{ secrets.PERF_CUSTOMER_ID_STAGING }}
+          PERF_WEBHOOK_SECRET: ${{ secrets.PERF_WEBHOOK_SECRET }}
+        run: |
+          echo "Starting K6 Scenario: ${{ github.event.inputs.scenario }}"
+          k6 run perf/scenarios/${{ github.event.inputs.scenario }}.js
