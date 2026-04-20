@@ -9,6 +9,7 @@ from app.core.dependencies import (
     get_active_membership,
     require_roles,
     get_active_tenant_id,
+    get_db,
 )
 from app.models.models import (
     User,
@@ -202,7 +203,7 @@ class UserUpdate(BaseModel):
 @router.patch("/me/", response_model=User)
 async def update_me(
     request: UserUpdate,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Allows any authenticated user to update their own full name."""
