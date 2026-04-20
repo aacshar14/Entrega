@@ -195,16 +195,18 @@ async def list_users(
         u_dict["is_active"] = active
         response.append(u_dict)
     return response
+class UserUpdate(BaseModel):
+    full_name: str
 
 
-@router.patch("/me", response_model=User)
+@router.patch("/me/", response_model=User)
 async def update_me(
-    full_name: str,
+    request: UserUpdate,
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
     """Allows any authenticated user to update their own full name."""
-    current_user.full_name = full_name
+    current_user.full_name = request.full_name
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
