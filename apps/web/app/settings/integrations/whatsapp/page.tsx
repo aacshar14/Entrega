@@ -284,20 +284,31 @@ export default function WhatsAppConfigPage() {
                   </button>
                 ) : (
                   <>
-                    <button
-                      onClick={handleLaunchOnboarding}
-                      disabled={processing || !canManage}
-                      className="flex items-center gap-3 px-10 py-5 bg-[#1D3146] text-[#56CCF2] rounded-3xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1D3146]/20 transition-all active:scale-95 disabled:opacity-50"
-                    >
-                      {processing ? (
-                        <RefreshCw className="animate-spin" size={20} />
-                      ) : (
-                        <MessageCircle size={20} />
-                      )}
-                      {status?.status === "token_expired"
-                        ? "Re-validar Conexión"
-                        : "Vincular WhatsApp"}
-                    </button>
+                    {!activeTenant?.billing?.entitlements?.can_export ? (
+                      <div className="px-6 py-4 bg-amber-50 border border-amber-100 rounded-2xl flex flex-col gap-1 w-full max-w-sm mt-2">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-amber-500">
+                          Función Premium
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">
+                          La integración de WhatsApp requiere un plan de pago activo.
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleLaunchOnboarding}
+                        disabled={processing || !canManage}
+                        className="flex items-center gap-3 px-10 py-5 bg-[#1D3146] text-[#56CCF2] rounded-3xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1D3146]/20 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        {processing ? (
+                          <RefreshCw className="animate-spin" size={20} />
+                        ) : (
+                          <MessageCircle size={20} />
+                        )}
+                        {status?.status === "token_expired"
+                          ? "Re-validar Conexión"
+                          : "Vincular WhatsApp"}
+                      </button>
+                    )}
 
                     {/* Allow disconnect if there is some metadata present even if not fully connected */}
                     {(status?.phone_number_id ||

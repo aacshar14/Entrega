@@ -590,6 +590,19 @@ export default function OnboardingPage() {
                     Desconectar Cuenta
                   </button>
                 </div>
+              ) : !activeTenant?.billing?.entitlements?.can_export ? (
+                <div className="py-8">
+                  <div className="w-16 h-16 bg-blue-50/50 text-blue-500/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageCircle size={32} />
+                  </div>
+                  <h3 className="text-sm font-black text-[#1D3146] uppercase tracking-tight mb-2">
+                    Función Premium
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium px-4">
+                    La integración oficial con WhatsApp Business Automation se habilitará
+                    una vez que contrates un plan Premium.
+                  </p>
+                </div>
               ) : (
                 <div className="py-4">
                   <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
