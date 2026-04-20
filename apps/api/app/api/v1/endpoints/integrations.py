@@ -36,7 +36,7 @@ class WhatsAppManualSetupRequest(BaseModel):
     access_token: str
 
 
-@router.post("/whatsapp/complete")
+@router.post("/whatsapp/complete/")
 async def complete_whatsapp_integration(
     payload: WhatsAppCompleteRequest,
     current_user: User = Depends(get_current_user),
@@ -201,7 +201,7 @@ async def complete_whatsapp_integration(
         raise HTTPException(status_code=400, detail=error_msg)
 
 
-@router.get("/whatsapp/onboarding-url")
+@router.get("/whatsapp/onboarding-url/")
 async def get_whatsapp_onboarding_url(
     tenant: Tenant = Depends(require_premium),
     active_tenant_id: UUID = Depends(get_active_tenant_id),
@@ -238,7 +238,7 @@ async def get_whatsapp_onboarding_url(
     return {"nonce": nonce, "app_id": settings.WHATSAPP_APP_ID}
 
 
-@router.post("/whatsapp/disconnect")
+@router.post("/whatsapp/disconnect/")
 async def disconnect_whatsapp(
     active_tenant_id: UUID = Depends(get_active_tenant_id),
     db: Session = Depends(get_session),
@@ -261,7 +261,7 @@ async def disconnect_whatsapp(
     return {"status": "success", "message": "Integración suspendida"}
 
 
-@router.get("/whatsapp/status")
+@router.get("/whatsapp/status/")
 async def get_whatsapp_status(
     active_tenant_id: UUID = Depends(get_active_tenant_id),
     db: Session = Depends(get_session),
@@ -286,7 +286,7 @@ async def get_whatsapp_status(
     }
 
 
-@router.get("/whatsapp/config")
+@router.get("/whatsapp/config/")
 async def get_whatsapp_public_config(db: Session = Depends(get_session)):
     """Returns the public Meta App configuration (Dynamic lookup)."""
     from sqlalchemy import text
@@ -317,7 +317,7 @@ async def get_whatsapp_public_config(db: Session = Depends(get_session)):
     }
 
 
-@router.post("/whatsapp/manual-setup")
+@router.post("/whatsapp/manual-setup/")
 async def setup_whatsapp_manual(
     payload: WhatsAppManualSetupRequest,
     current_user: User = Depends(get_current_user),

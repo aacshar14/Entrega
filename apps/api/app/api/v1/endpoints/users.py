@@ -60,9 +60,9 @@ def get_tenant_info_safe(db: Session, tenant: Tenant) -> TenantInfo:
         has_products = False
 
     # 2. Calculated Ready State
-    # Rule: Tenant is ready ONLY if status is 'active' AND has at least one customer AND one product.
+    # Rule: Tenant is ready ONLY if status is 'active' AND onboarding_state logic permits.
     # 🛡️ DEPLOY-SAFE: We ignore the legacy 'tenant.ready' DB field.
-    is_ready = (tenant.status == "active") and has_customers and has_products
+    is_ready = (tenant.status == "active") and (tenant.onboarding_state != "created")
 
     # 3. WhatsApp Status (Best-Effort)
     wa_status = "not_connected"
