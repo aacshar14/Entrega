@@ -30,7 +30,7 @@ class TenantUpdate(BaseModel):
     currency: Optional[str] = None
 
 
-@router.post("", response_model=Tenant)
+@router.post("/", response_model=Tenant)
 async def create_business(
     request: TenantCreate,
     db: Session = Depends(get_session),
@@ -130,13 +130,13 @@ async def create_business(
         )
 
 
-@router.get("/active", response_model=Tenant)
+@router.get("/active/", response_model=Tenant)
 async def get_active_business(tenant: Tenant = Depends(get_active_tenant)):
     """Get metadata for the currently active tenant."""
     return tenant
 
 
-@router.patch("/active", response_model=Tenant)
+@router.patch("/active/", response_model=Tenant)
 async def update_active_business(
     request: TenantUpdate,
     db: Session = Depends(get_session),
