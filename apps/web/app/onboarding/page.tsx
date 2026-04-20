@@ -685,7 +685,6 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={() => setStep(5)}
-                disabled={activeTenant?.whatsapp_status !== "connected"}
                 className="flex-grow py-5 bg-[#1D3146] text-[#56CCF2] font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-30"
               >
                 Finalizar Configuración
